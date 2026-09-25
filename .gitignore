@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Local tool output, logs and QA captures
+*.log
+*.pid
+artifacts/
+codex-artifacts/
+.brew-cache/
+tools/maestro/
+
+# Firebase local state and build output
+.firebase/
+firebase/functions/lib/
+firebase/emulator-data/
+
+# Secrets and signing material (never commit these)
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+keystore.properties
+upload-keystore*
+service-account*.json
+*.p8
+*.p12
+*.pem
+*.mobileprovision

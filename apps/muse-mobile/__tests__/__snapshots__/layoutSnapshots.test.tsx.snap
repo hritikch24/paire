@@ -1,0 +1,4339 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`layout snapshots across screen sizes renders Welcome and Discover on large screens 1`] = `
+[
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          {
+            "flexGrow": 1,
+          },
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={1}
+          gap="$6"
+          justifyContent="space-between"
+        >
+          <View
+            flex={1}
+            gap="$5"
+          >
+            <View
+              gap="$2"
+            >
+              <Text
+                fontSize="$8"
+                fontWeight="700"
+              >
+                Muse
+              </Text>
+              <Text
+                color="$textMuted"
+              >
+                Thoughtful connections, curated for your energy.
+              </Text>
+            </View>
+            <View
+              alignSelf="center"
+              backgroundColor="$backgroundStrong"
+              borderColor="$border"
+              borderRadius="$5"
+              borderWidth={1}
+              gap="$3"
+              maxWidth={420}
+              padding="$4"
+              width="100%"
+            >
+              <Text
+                fontWeight="700"
+              >
+                Start here
+              </Text>
+              <Text
+                color="$textMuted"
+                fontSize="$2"
+              >
+                Choose how you want to continue. You can always switch later.
+              </Text>
+              <View
+                accessibilityLabel="Log in"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Log in
+              </View>
+              <View
+                accessibilityLabel="Create account"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Create account
+              </View>
+              <View
+                accessibilityLabel="Explore as guest"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Explore as guest
+              </View>
+            </View>
+          </View>
+          <View
+            alignItems="center"
+            gap="$2"
+          >
+            <Image
+              source="test-file-stub"
+              style={
+                {
+                  "borderRadius": 18,
+                  "height": 54,
+                  "width": 54,
+                }
+              }
+            />
+            <Text
+              color="$textMuted"
+              fontSize="$1"
+            >
+              A safer way to date, built for real life.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 88,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          {
+            "flexGrow": 1,
+          },
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      scrollEnabled={true}
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={0}
+          gap="$3"
+          position="relative"
+        >
+          <View>
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+            >
+              Discover
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Curated by your Muse Cards.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              1 of 3 nearby
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            padding="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Today’s Spark
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Describe your vibe with three sensory details.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            onPress={[Function]}
+            padding="$3"
+            pressStyle={
+              {
+                "opacity": 0.95,
+              }
+            }
+          >
+            <View
+              alignItems="center"
+              gap="$3"
+              justifyContent="space-between"
+            >
+              <View
+                flex={1}
+                gap="$1"
+              >
+                <Text
+                  fontWeight="700"
+                >
+                  Vibe filter
+                </Text>
+                <Text
+                  color="$textMuted"
+                  fontSize="$2"
+                >
+                  Prefer profiles that share your vibes.
+                </Text>
+              </View>
+              <RCTSwitch
+                accessibilityRole="switch"
+                onChange={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                onTintColor="#0F3D52"
+                style={
+                  [
+                    {
+                      "alignSelf": "flex-start",
+                    },
+                    {
+                      "backgroundColor": "#DED7D4",
+                      "borderRadius": 16,
+                    },
+                  ]
+                }
+                thumbTintColor="#FFFFFF"
+                tintColor="#DED7D4"
+                value={false}
+              />
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Share your location
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Unlock nearby distance and “Nearby now” status.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Enable location
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Muse Now
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Want a spontaneous conversation? Jump into a random chat or call.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Start random chat
+            </View>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Explore Muse Now
+            </View>
+          </View>
+          <View
+            alignItems="center"
+            flex={1}
+            justifyContent="center"
+            minHeight={400}
+          >
+            <View
+              alignItems="center"
+              gap="$2"
+            >
+              <Text
+                color="$textMuted"
+                fontSize="$2"
+              >
+                Tip: swipe right to like, left to pass.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <View
+              gap="$2"
+            >
+              <View
+                accessibilityLabel="Nope"
+                disabled={false}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+                testID="discover-nope"
+              >
+                Nope
+              </View>
+              <View
+                accessibilityLabel="Like"
+                disabled={false}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+                testID="discover-like"
+              >
+                Like
+              </View>
+              <View
+                accessibilityLabel="Super Muse"
+                disabled={false}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+                testID="discover-super"
+              >
+                Super Muse
+              </View>
+              <View
+                accessibilityLabel="Undo last swipe"
+                disabled={true}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Undo
+              </View>
+              <View
+                accessibilityLabel="Toggle blind date"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Blind Date
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 88,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={1}
+          gap="$3"
+        >
+          <Text
+            fontSize="$7"
+            fontWeight="700"
+            testID="matches-title"
+          >
+            Matches
+          </Text>
+          <Text
+            color="$textMuted"
+          >
+            Guest mode doesn’t sync matches. Create an account to start chatting.
+          </Text>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Create account
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$4"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Muse Now
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Jump into a spontaneous chat or call with someone new.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Try random chat
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$4"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Demo match (QA)
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Preview chat + calls without signing up.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Open demo chat
+            </View>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Start demo video call
+            </View>
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Safety center
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 88,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          gap="$4"
+        >
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              You’re exploring as a guest
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Create an account to save your profile, chat, and book calls.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Create account
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Profile strength
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              44
+              % complete
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderRadius={999}
+              height={10}
+              overflow="hidden"
+            >
+              <View
+                backgroundColor="$primary"
+                borderRadius={999}
+                height="100%"
+                width="44%"
+              />
+            </View>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Complete your profile to get better matches.
+            </Text>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontSize="$8"
+              fontWeight="700"
+            >
+              Guest
+            </Text>
+            <Text
+              color="$textMuted"
+            />
+            <Text
+              color="$textMuted"
+            >
+              India
+            </Text>
+            <View
+              backgroundColor="$backgroundStrong"
+              borderColor="$border"
+              borderRadius="$5"
+              borderWidth={1}
+              padding="$4"
+            >
+              <Text>
+                Exploring Muse in guest mode.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Vibes
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderColor="$border"
+              borderRadius="$4"
+              borderWidth={1}
+              padding="$3"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Pick a few vibes to show your energy.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Photo reel
+            </Text>
+            <View
+              alignItems="center"
+              backgroundColor="$backgroundSoft"
+              borderRadius="$5"
+              height={525}
+              justifyContent="center"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Add photos to share your vibe.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Muse Cards
+            </Text>
+            <View
+              flexWrap="wrap"
+              gap="$2"
+            />
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Looking for
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderColor="$border"
+              borderRadius="$4"
+              borderWidth={1}
+              padding="$3"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Add what you’re looking for to guide matches.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Rapid questions
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderColor="$border"
+              borderRadius="$4"
+              borderWidth={1}
+              gap="$2"
+              padding="$3"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Answer quick questions to boost Blind Dates.
+              </Text>
+              <View
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Add quick answers
+              </View>
+            </View>
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Edit profile
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Edit photos
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Share profile
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+            testID="profile-settings"
+          >
+            Settings
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="600"
+            >
+              Support
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              support@muse.com
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Email support
+            </View>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          gap="$4"
+        >
+          <Text
+            fontSize="$7"
+            fontWeight="700"
+          >
+            Settings
+          </Text>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Safety center
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Quick access to emergency actions, live location sharing, and date plans.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Open safety center
+            </View>
+          </View>
+          <View
+            alignItems="center"
+            gap="$3"
+            justifyContent="space-between"
+          >
+            <Text
+              flex={1}
+              flexShrink={1}
+              minWidth={0}
+            >
+              Discoverable
+            </Text>
+            <RCTSwitch
+              accessibilityRole="switch"
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#0F3D52"
+              style={
+                [
+                  {
+                    "alignSelf": "flex-start",
+                  },
+                  {
+                    "backgroundColor": "#DED7D4",
+                    "borderRadius": 16,
+                  },
+                ]
+              }
+              thumbTintColor="#FFFFFF"
+              tintColor="#DED7D4"
+              value={false}
+            />
+          </View>
+          <View
+            alignItems="center"
+            gap="$3"
+            justifyContent="space-between"
+          >
+            <Text
+              flex={1}
+              flexShrink={1}
+              minWidth={0}
+            >
+              Share location
+            </Text>
+            <RCTSwitch
+              accessibilityRole="switch"
+              disabled={false}
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#0F3D52"
+              style={
+                [
+                  {
+                    "alignSelf": "flex-start",
+                  },
+                  {
+                    "backgroundColor": "#DED7D4",
+                    "borderRadius": 16,
+                  },
+                ]
+              }
+              thumbTintColor="#FFFFFF"
+              tintColor="#DED7D4"
+              value={false}
+            />
+          </View>
+          <View
+            alignItems="center"
+            gap="$3"
+            justifyContent="space-between"
+          >
+            <Text
+              flex={1}
+              flexShrink={1}
+              minWidth={0}
+            >
+              Push notifications
+            </Text>
+            <RCTSwitch
+              accessibilityRole="switch"
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#0F3D52"
+              style={
+                [
+                  {
+                    "alignSelf": "flex-start",
+                  },
+                  {
+                    "backgroundColor": "#DED7D4",
+                    "borderRadius": 16,
+                  },
+                ]
+              }
+              thumbTintColor="#FFFFFF"
+              tintColor="#DED7D4"
+              value={true}
+            />
+          </View>
+          <Text
+            color="$textMuted"
+            fontSize="$2"
+          >
+            Get notified for new matches and messages (device setting required).
+          </Text>
+          <View
+            gap="$2"
+          >
+            <View
+              alignItems="center"
+              gap="$3"
+              justifyContent="space-between"
+            >
+              <Text
+                fontWeight="600"
+              >
+                Distance radius
+              </Text>
+              <Text
+                color="$textMuted"
+              >
+                25
+                 km
+              </Text>
+            </View>
+            <View
+              disabled={true}
+              max={100}
+              min={5}
+              onValueChange={[Function]}
+              step={5}
+              value={
+                [
+                  25,
+                ]
+              }
+            >
+              <View>
+                <View />
+              </View>
+              <View
+                index={0}
+              />
+            </View>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Turn on location sharing to adjust your radius.
+            </Text>
+          </View>
+          <View
+            disabled={false}
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Save settings
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+            testID="settings-signout"
+          >
+            Exit guest mode
+          </View>
+          <View
+            disabled={true}
+            minHeight={72}
+            paddingVertical="$4"
+          >
+            Delete account
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          gap="$4"
+        >
+          <View
+            gap="$2"
+          >
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+            >
+              Safety center
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Tools tailored for dating safely in India — quick access, clear controls.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Emergency actions
+            </Text>
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Call 112
+              </View>
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Share live location
+              </View>
+            </View>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              112 is India’s national emergency number. Use if you feel unsafe.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Date plan
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Save a quick plan and share it with a trusted contact before you go.
+            </Text>
+            <View
+              onChangeText={[Function]}
+              placeholder="Location / venue"
+              value=""
+            />
+            <View
+              onChangeText={[Function]}
+              placeholder="Time / meetup window"
+              value=""
+            />
+            <View
+              onChangeText={[Function]}
+              placeholder="Notes (ride, companion, etc.)"
+              value=""
+            />
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                disabled={false}
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Save plan
+              </View>
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Share plan
+              </View>
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Check-in timer
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Set a reminder to check in after your date starts. (Local reminder stub.)
+            </Text>
+            <View
+              flexWrap="wrap"
+              gap="$2"
+            >
+              <View
+                backgroundColor="$backgroundSoft"
+                borderColor="$border"
+                onPress={[Function]}
+              >
+                <Text
+                  fontWeight="600"
+                >
+                  30
+                   min
+                </Text>
+              </View>
+              <View
+                backgroundColor="$primarySoft"
+                borderColor="$primary"
+                onPress={[Function]}
+              >
+                <Text
+                  fontWeight="600"
+                >
+                  60
+                   min
+                </Text>
+              </View>
+              <View
+                backgroundColor="$backgroundSoft"
+                borderColor="$border"
+                onPress={[Function]}
+              >
+                <Text
+                  fontWeight="600"
+                >
+                  90
+                   min
+                </Text>
+              </View>
+            </View>
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Start check-in
+              </View>
+              <View
+                disabled={true}
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Cancel
+              </View>
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundSoft"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Safety tips
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              • Meet in public first and prefer daytime.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              • Use in-app calls until you’re comfortable.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              • Share your plan with a friend or sibling.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          {
+            "flexGrow": 1,
+          },
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={1}
+          gap="$3"
+        >
+          <View
+            gap="$2"
+          >
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+            >
+              Muse Now
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Jump into a spontaneous chat or call with someone new who matches your vibe.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              How it works
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              We pair you with a nearby Muse for a quick hello. If it feels right, you can keep chatting or exchange a call link.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Your safety comes first. You can leave any time and report or block instantly.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Start with a Muse
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Guest, 
+              say hi and let the vibe guide you.
+            </Text>
+            <View
+              accessibilityLabel="Start random chat"
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Start random chat
+            </View>
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Random audio call
+              </View>
+              <View
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Random video call
+              </View>
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Safety reminders
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Meet in public, keep personal info private, and trust your instincts.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Safety center
+            </View>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+]
+`;
+
+exports[`layout snapshots across screen sizes renders Welcome and Discover on medium screens 1`] = `
+[
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          {
+            "flexGrow": 1,
+          },
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={1}
+          gap="$6"
+          justifyContent="space-between"
+        >
+          <View
+            flex={1}
+            gap="$5"
+          >
+            <View
+              gap="$2"
+            >
+              <Text
+                fontSize="$8"
+                fontWeight="700"
+              >
+                Muse
+              </Text>
+              <Text
+                color="$textMuted"
+              >
+                Thoughtful connections, curated for your energy.
+              </Text>
+            </View>
+            <View
+              alignSelf="center"
+              backgroundColor="$backgroundStrong"
+              borderColor="$border"
+              borderRadius="$5"
+              borderWidth={1}
+              gap="$3"
+              maxWidth={420}
+              padding="$4"
+              width="100%"
+            >
+              <Text
+                fontWeight="700"
+              >
+                Start here
+              </Text>
+              <Text
+                color="$textMuted"
+                fontSize="$2"
+              >
+                Choose how you want to continue. You can always switch later.
+              </Text>
+              <View
+                accessibilityLabel="Log in"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Log in
+              </View>
+              <View
+                accessibilityLabel="Create account"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Create account
+              </View>
+              <View
+                accessibilityLabel="Explore as guest"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Explore as guest
+              </View>
+            </View>
+          </View>
+          <View
+            alignItems="center"
+            gap="$2"
+          >
+            <Image
+              source="test-file-stub"
+              style={
+                {
+                  "borderRadius": 18,
+                  "height": 54,
+                  "width": 54,
+                }
+              }
+            />
+            <Text
+              color="$textMuted"
+              fontSize="$1"
+            >
+              A safer way to date, built for real life.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 88,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          {
+            "flexGrow": 1,
+          },
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      scrollEnabled={true}
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={0}
+          gap="$3"
+          position="relative"
+        >
+          <View>
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+            >
+              Discover
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Curated by your Muse Cards.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              1 of 3 nearby
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            padding="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Today’s Spark
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Describe your vibe with three sensory details.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            onPress={[Function]}
+            padding="$3"
+            pressStyle={
+              {
+                "opacity": 0.95,
+              }
+            }
+          >
+            <View
+              alignItems="center"
+              gap="$3"
+              justifyContent="space-between"
+            >
+              <View
+                flex={1}
+                gap="$1"
+              >
+                <Text
+                  fontWeight="700"
+                >
+                  Vibe filter
+                </Text>
+                <Text
+                  color="$textMuted"
+                  fontSize="$2"
+                >
+                  Prefer profiles that share your vibes.
+                </Text>
+              </View>
+              <RCTSwitch
+                accessibilityRole="switch"
+                onChange={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                onTintColor="#0F3D52"
+                style={
+                  [
+                    {
+                      "alignSelf": "flex-start",
+                    },
+                    {
+                      "backgroundColor": "#DED7D4",
+                      "borderRadius": 16,
+                    },
+                  ]
+                }
+                thumbTintColor="#FFFFFF"
+                tintColor="#DED7D4"
+                value={false}
+              />
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Share your location
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Unlock nearby distance and “Nearby now” status.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Enable location
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Muse Now
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Want a spontaneous conversation? Jump into a random chat or call.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Start random chat
+            </View>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Explore Muse Now
+            </View>
+          </View>
+          <View
+            alignItems="center"
+            flex={1}
+            justifyContent="center"
+            minHeight={400}
+          >
+            <View
+              alignItems="center"
+              gap="$2"
+            >
+              <Text
+                color="$textMuted"
+                fontSize="$2"
+              >
+                Tip: swipe right to like, left to pass.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <View
+              gap="$2"
+            >
+              <View
+                accessibilityLabel="Nope"
+                disabled={false}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+                testID="discover-nope"
+              >
+                Nope
+              </View>
+              <View
+                accessibilityLabel="Like"
+                disabled={false}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+                testID="discover-like"
+              >
+                Like
+              </View>
+              <View
+                accessibilityLabel="Super Muse"
+                disabled={false}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+                testID="discover-super"
+              >
+                Super Muse
+              </View>
+              <View
+                accessibilityLabel="Undo last swipe"
+                disabled={true}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Undo
+              </View>
+              <View
+                accessibilityLabel="Toggle blind date"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Blind Date
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 88,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={1}
+          gap="$3"
+        >
+          <Text
+            fontSize="$7"
+            fontWeight="700"
+            testID="matches-title"
+          >
+            Matches
+          </Text>
+          <Text
+            color="$textMuted"
+          >
+            Guest mode doesn’t sync matches. Create an account to start chatting.
+          </Text>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Create account
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$4"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Muse Now
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Jump into a spontaneous chat or call with someone new.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Try random chat
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$4"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Demo match (QA)
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Preview chat + calls without signing up.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Open demo chat
+            </View>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Start demo video call
+            </View>
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Safety center
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 88,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          gap="$4"
+        >
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              You’re exploring as a guest
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Create an account to save your profile, chat, and book calls.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Create account
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Profile strength
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              44
+              % complete
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderRadius={999}
+              height={10}
+              overflow="hidden"
+            >
+              <View
+                backgroundColor="$primary"
+                borderRadius={999}
+                height="100%"
+                width="44%"
+              />
+            </View>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Complete your profile to get better matches.
+            </Text>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontSize="$8"
+              fontWeight="700"
+            >
+              Guest
+            </Text>
+            <Text
+              color="$textMuted"
+            />
+            <Text
+              color="$textMuted"
+            >
+              India
+            </Text>
+            <View
+              backgroundColor="$backgroundStrong"
+              borderColor="$border"
+              borderRadius="$5"
+              borderWidth={1}
+              padding="$4"
+            >
+              <Text>
+                Exploring Muse in guest mode.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Vibes
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderColor="$border"
+              borderRadius="$4"
+              borderWidth={1}
+              padding="$3"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Pick a few vibes to show your energy.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Photo reel
+            </Text>
+            <View
+              alignItems="center"
+              backgroundColor="$backgroundSoft"
+              borderRadius="$5"
+              height={525}
+              justifyContent="center"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Add photos to share your vibe.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Muse Cards
+            </Text>
+            <View
+              flexWrap="wrap"
+              gap="$2"
+            />
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Looking for
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderColor="$border"
+              borderRadius="$4"
+              borderWidth={1}
+              padding="$3"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Add what you’re looking for to guide matches.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Rapid questions
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderColor="$border"
+              borderRadius="$4"
+              borderWidth={1}
+              gap="$2"
+              padding="$3"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Answer quick questions to boost Blind Dates.
+              </Text>
+              <View
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Add quick answers
+              </View>
+            </View>
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Edit profile
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Edit photos
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Share profile
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+            testID="profile-settings"
+          >
+            Settings
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="600"
+            >
+              Support
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              support@muse.com
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Email support
+            </View>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          gap="$4"
+        >
+          <Text
+            fontSize="$7"
+            fontWeight="700"
+          >
+            Settings
+          </Text>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Safety center
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Quick access to emergency actions, live location sharing, and date plans.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Open safety center
+            </View>
+          </View>
+          <View
+            alignItems="center"
+            gap="$3"
+            justifyContent="space-between"
+          >
+            <Text
+              flex={1}
+              flexShrink={1}
+              minWidth={0}
+            >
+              Discoverable
+            </Text>
+            <RCTSwitch
+              accessibilityRole="switch"
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#0F3D52"
+              style={
+                [
+                  {
+                    "alignSelf": "flex-start",
+                  },
+                  {
+                    "backgroundColor": "#DED7D4",
+                    "borderRadius": 16,
+                  },
+                ]
+              }
+              thumbTintColor="#FFFFFF"
+              tintColor="#DED7D4"
+              value={false}
+            />
+          </View>
+          <View
+            alignItems="center"
+            gap="$3"
+            justifyContent="space-between"
+          >
+            <Text
+              flex={1}
+              flexShrink={1}
+              minWidth={0}
+            >
+              Share location
+            </Text>
+            <RCTSwitch
+              accessibilityRole="switch"
+              disabled={false}
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#0F3D52"
+              style={
+                [
+                  {
+                    "alignSelf": "flex-start",
+                  },
+                  {
+                    "backgroundColor": "#DED7D4",
+                    "borderRadius": 16,
+                  },
+                ]
+              }
+              thumbTintColor="#FFFFFF"
+              tintColor="#DED7D4"
+              value={false}
+            />
+          </View>
+          <View
+            alignItems="center"
+            gap="$3"
+            justifyContent="space-between"
+          >
+            <Text
+              flex={1}
+              flexShrink={1}
+              minWidth={0}
+            >
+              Push notifications
+            </Text>
+            <RCTSwitch
+              accessibilityRole="switch"
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#0F3D52"
+              style={
+                [
+                  {
+                    "alignSelf": "flex-start",
+                  },
+                  {
+                    "backgroundColor": "#DED7D4",
+                    "borderRadius": 16,
+                  },
+                ]
+              }
+              thumbTintColor="#FFFFFF"
+              tintColor="#DED7D4"
+              value={true}
+            />
+          </View>
+          <Text
+            color="$textMuted"
+            fontSize="$2"
+          >
+            Get notified for new matches and messages (device setting required).
+          </Text>
+          <View
+            gap="$2"
+          >
+            <View
+              alignItems="center"
+              gap="$3"
+              justifyContent="space-between"
+            >
+              <Text
+                fontWeight="600"
+              >
+                Distance radius
+              </Text>
+              <Text
+                color="$textMuted"
+              >
+                25
+                 km
+              </Text>
+            </View>
+            <View
+              disabled={true}
+              max={100}
+              min={5}
+              onValueChange={[Function]}
+              step={5}
+              value={
+                [
+                  25,
+                ]
+              }
+            >
+              <View>
+                <View />
+              </View>
+              <View
+                index={0}
+              />
+            </View>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Turn on location sharing to adjust your radius.
+            </Text>
+          </View>
+          <View
+            disabled={false}
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Save settings
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+            testID="settings-signout"
+          >
+            Exit guest mode
+          </View>
+          <View
+            disabled={true}
+            minHeight={72}
+            paddingVertical="$4"
+          >
+            Delete account
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          gap="$4"
+        >
+          <View
+            gap="$2"
+          >
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+            >
+              Safety center
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Tools tailored for dating safely in India — quick access, clear controls.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Emergency actions
+            </Text>
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Call 112
+              </View>
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Share live location
+              </View>
+            </View>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              112 is India’s national emergency number. Use if you feel unsafe.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Date plan
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Save a quick plan and share it with a trusted contact before you go.
+            </Text>
+            <View
+              onChangeText={[Function]}
+              placeholder="Location / venue"
+              value=""
+            />
+            <View
+              onChangeText={[Function]}
+              placeholder="Time / meetup window"
+              value=""
+            />
+            <View
+              onChangeText={[Function]}
+              placeholder="Notes (ride, companion, etc.)"
+              value=""
+            />
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                disabled={false}
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Save plan
+              </View>
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Share plan
+              </View>
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Check-in timer
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Set a reminder to check in after your date starts. (Local reminder stub.)
+            </Text>
+            <View
+              flexWrap="wrap"
+              gap="$2"
+            >
+              <View
+                backgroundColor="$backgroundSoft"
+                borderColor="$border"
+                onPress={[Function]}
+              >
+                <Text
+                  fontWeight="600"
+                >
+                  30
+                   min
+                </Text>
+              </View>
+              <View
+                backgroundColor="$primarySoft"
+                borderColor="$primary"
+                onPress={[Function]}
+              >
+                <Text
+                  fontWeight="600"
+                >
+                  60
+                   min
+                </Text>
+              </View>
+              <View
+                backgroundColor="$backgroundSoft"
+                borderColor="$border"
+                onPress={[Function]}
+              >
+                <Text
+                  fontWeight="600"
+                >
+                  90
+                   min
+                </Text>
+              </View>
+            </View>
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Start check-in
+              </View>
+              <View
+                disabled={true}
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Cancel
+              </View>
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundSoft"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Safety tips
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              • Meet in public first and prefer daytime.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              • Use in-app calls until you’re comfortable.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              • Share your plan with a friend or sibling.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          {
+            "flexGrow": 1,
+          },
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={1}
+          gap="$3"
+        >
+          <View
+            gap="$2"
+          >
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+            >
+              Muse Now
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Jump into a spontaneous chat or call with someone new who matches your vibe.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              How it works
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              We pair you with a nearby Muse for a quick hello. If it feels right, you can keep chatting or exchange a call link.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Your safety comes first. You can leave any time and report or block instantly.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Start with a Muse
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Guest, 
+              say hi and let the vibe guide you.
+            </Text>
+            <View
+              accessibilityLabel="Start random chat"
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Start random chat
+            </View>
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Random audio call
+              </View>
+              <View
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Random video call
+              </View>
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Safety reminders
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Meet in public, keep personal info private, and trust your instincts.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Safety center
+            </View>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+]
+`;
+
+exports[`layout snapshots across screen sizes renders Welcome and Discover on small screens 1`] = `
+[
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          {
+            "flexGrow": 1,
+          },
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={1}
+          gap="$6"
+          justifyContent="space-between"
+        >
+          <View
+            flex={1}
+            gap="$5"
+          >
+            <View
+              gap="$2"
+            >
+              <Text
+                fontSize="$8"
+                fontWeight="700"
+              >
+                Muse
+              </Text>
+              <Text
+                color="$textMuted"
+              >
+                Thoughtful connections, curated for your energy.
+              </Text>
+            </View>
+            <View
+              alignSelf="center"
+              backgroundColor="$backgroundStrong"
+              borderColor="$border"
+              borderRadius="$5"
+              borderWidth={1}
+              gap="$3"
+              maxWidth={420}
+              padding="$4"
+              width="100%"
+            >
+              <Text
+                fontWeight="700"
+              >
+                Start here
+              </Text>
+              <Text
+                color="$textMuted"
+                fontSize="$2"
+              >
+                Choose how you want to continue. You can always switch later.
+              </Text>
+              <View
+                accessibilityLabel="Log in"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Log in
+              </View>
+              <View
+                accessibilityLabel="Create account"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Create account
+              </View>
+              <View
+                accessibilityLabel="Explore as guest"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Explore as guest
+              </View>
+            </View>
+          </View>
+          <View
+            alignItems="center"
+            gap="$2"
+          >
+            <Image
+              source="test-file-stub"
+              style={
+                {
+                  "borderRadius": 18,
+                  "height": 54,
+                  "width": 54,
+                }
+              }
+            />
+            <Text
+              color="$textMuted"
+              fontSize="$1"
+            >
+              A safer way to date, built for real life.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 88,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          {
+            "flexGrow": 1,
+          },
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      scrollEnabled={true}
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={0}
+          gap="$3"
+          position="relative"
+        >
+          <View>
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+            >
+              Discover
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Curated by your Muse Cards.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              1 of 3 nearby
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            padding="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Today’s Spark
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Describe your vibe with three sensory details.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            onPress={[Function]}
+            padding="$3"
+            pressStyle={
+              {
+                "opacity": 0.95,
+              }
+            }
+          >
+            <View
+              alignItems="center"
+              gap="$3"
+              justifyContent="space-between"
+            >
+              <View
+                flex={1}
+                gap="$1"
+              >
+                <Text
+                  fontWeight="700"
+                >
+                  Vibe filter
+                </Text>
+                <Text
+                  color="$textMuted"
+                  fontSize="$2"
+                >
+                  Prefer profiles that share your vibes.
+                </Text>
+              </View>
+              <RCTSwitch
+                accessibilityRole="switch"
+                onChange={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                onTintColor="#0F3D52"
+                style={
+                  [
+                    {
+                      "alignSelf": "flex-start",
+                    },
+                    {
+                      "backgroundColor": "#DED7D4",
+                      "borderRadius": 16,
+                    },
+                  ]
+                }
+                thumbTintColor="#FFFFFF"
+                tintColor="#DED7D4"
+                value={false}
+              />
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Share your location
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Unlock nearby distance and “Nearby now” status.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Enable location
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Muse Now
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Want a spontaneous conversation? Jump into a random chat or call.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Start random chat
+            </View>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Explore Muse Now
+            </View>
+          </View>
+          <View
+            alignItems="center"
+            flex={1}
+            justifyContent="center"
+            minHeight={400}
+          >
+            <View
+              alignItems="center"
+              gap="$2"
+            >
+              <Text
+                color="$textMuted"
+                fontSize="$2"
+              >
+                Tip: swipe right to like, left to pass.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <View
+              gap="$2"
+            >
+              <View
+                accessibilityLabel="Nope"
+                disabled={false}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+                testID="discover-nope"
+              >
+                Nope
+              </View>
+              <View
+                accessibilityLabel="Like"
+                disabled={false}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+                testID="discover-like"
+              >
+                Like
+              </View>
+              <View
+                accessibilityLabel="Super Muse"
+                disabled={false}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+                testID="discover-super"
+              >
+                Super Muse
+              </View>
+              <View
+                accessibilityLabel="Undo last swipe"
+                disabled={true}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Undo
+              </View>
+              <View
+                accessibilityLabel="Toggle blind date"
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Blind Date
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 88,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={1}
+          gap="$3"
+        >
+          <Text
+            fontSize="$7"
+            fontWeight="700"
+            testID="matches-title"
+          >
+            Matches
+          </Text>
+          <Text
+            color="$textMuted"
+          >
+            Guest mode doesn’t sync matches. Create an account to start chatting.
+          </Text>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Create account
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$4"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Muse Now
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Jump into a spontaneous chat or call with someone new.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Try random chat
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$4"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Demo match (QA)
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Preview chat + calls without signing up.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Open demo chat
+            </View>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Start demo video call
+            </View>
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Safety center
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 88,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          gap="$4"
+        >
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              You’re exploring as a guest
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Create an account to save your profile, chat, and book calls.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Create account
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Profile strength
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              44
+              % complete
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderRadius={999}
+              height={10}
+              overflow="hidden"
+            >
+              <View
+                backgroundColor="$primary"
+                borderRadius={999}
+                height="100%"
+                width="44%"
+              />
+            </View>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Complete your profile to get better matches.
+            </Text>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontSize="$8"
+              fontWeight="700"
+            >
+              Guest
+            </Text>
+            <Text
+              color="$textMuted"
+            />
+            <Text
+              color="$textMuted"
+            >
+              India
+            </Text>
+            <View
+              backgroundColor="$backgroundStrong"
+              borderColor="$border"
+              borderRadius="$5"
+              borderWidth={1}
+              padding="$4"
+            >
+              <Text>
+                Exploring Muse in guest mode.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Vibes
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderColor="$border"
+              borderRadius="$4"
+              borderWidth={1}
+              padding="$3"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Pick a few vibes to show your energy.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$3"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Photo reel
+            </Text>
+            <View
+              alignItems="center"
+              backgroundColor="$backgroundSoft"
+              borderRadius="$5"
+              height={525}
+              justifyContent="center"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Add photos to share your vibe.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Muse Cards
+            </Text>
+            <View
+              flexWrap="wrap"
+              gap="$2"
+            />
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Looking for
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderColor="$border"
+              borderRadius="$4"
+              borderWidth={1}
+              padding="$3"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Add what you’re looking for to guide matches.
+              </Text>
+            </View>
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Rapid questions
+            </Text>
+            <View
+              backgroundColor="$backgroundSoft"
+              borderColor="$border"
+              borderRadius="$4"
+              borderWidth={1}
+              gap="$2"
+              padding="$3"
+            >
+              <Text
+                color="$textMuted"
+              >
+                Answer quick questions to boost Blind Dates.
+              </Text>
+              <View
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Add quick answers
+              </View>
+            </View>
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Edit profile
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Edit photos
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Share profile
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+            testID="profile-settings"
+          >
+            Settings
+          </View>
+          <View
+            gap="$2"
+          >
+            <Text
+              fontWeight="600"
+            >
+              Support
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              support@muse.com
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Email support
+            </View>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          gap="$4"
+        >
+          <Text
+            fontSize="$7"
+            fontWeight="700"
+          >
+            Settings
+          </Text>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Safety center
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Quick access to emergency actions, live location sharing, and date plans.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Open safety center
+            </View>
+          </View>
+          <View
+            alignItems="center"
+            gap="$3"
+            justifyContent="space-between"
+          >
+            <Text
+              flex={1}
+              flexShrink={1}
+              minWidth={0}
+            >
+              Discoverable
+            </Text>
+            <RCTSwitch
+              accessibilityRole="switch"
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#0F3D52"
+              style={
+                [
+                  {
+                    "alignSelf": "flex-start",
+                  },
+                  {
+                    "backgroundColor": "#DED7D4",
+                    "borderRadius": 16,
+                  },
+                ]
+              }
+              thumbTintColor="#FFFFFF"
+              tintColor="#DED7D4"
+              value={false}
+            />
+          </View>
+          <View
+            alignItems="center"
+            gap="$3"
+            justifyContent="space-between"
+          >
+            <Text
+              flex={1}
+              flexShrink={1}
+              minWidth={0}
+            >
+              Share location
+            </Text>
+            <RCTSwitch
+              accessibilityRole="switch"
+              disabled={false}
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#0F3D52"
+              style={
+                [
+                  {
+                    "alignSelf": "flex-start",
+                  },
+                  {
+                    "backgroundColor": "#DED7D4",
+                    "borderRadius": 16,
+                  },
+                ]
+              }
+              thumbTintColor="#FFFFFF"
+              tintColor="#DED7D4"
+              value={false}
+            />
+          </View>
+          <View
+            alignItems="center"
+            gap="$3"
+            justifyContent="space-between"
+          >
+            <Text
+              flex={1}
+              flexShrink={1}
+              minWidth={0}
+            >
+              Push notifications
+            </Text>
+            <RCTSwitch
+              accessibilityRole="switch"
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#0F3D52"
+              style={
+                [
+                  {
+                    "alignSelf": "flex-start",
+                  },
+                  {
+                    "backgroundColor": "#DED7D4",
+                    "borderRadius": 16,
+                  },
+                ]
+              }
+              thumbTintColor="#FFFFFF"
+              tintColor="#DED7D4"
+              value={true}
+            />
+          </View>
+          <Text
+            color="$textMuted"
+            fontSize="$2"
+          >
+            Get notified for new matches and messages (device setting required).
+          </Text>
+          <View
+            gap="$2"
+          >
+            <View
+              alignItems="center"
+              gap="$3"
+              justifyContent="space-between"
+            >
+              <Text
+                fontWeight="600"
+              >
+                Distance radius
+              </Text>
+              <Text
+                color="$textMuted"
+              >
+                25
+                 km
+              </Text>
+            </View>
+            <View
+              disabled={true}
+              max={100}
+              min={5}
+              onValueChange={[Function]}
+              step={5}
+              value={
+                [
+                  25,
+                ]
+              }
+            >
+              <View>
+                <View />
+              </View>
+              <View
+                index={0}
+              />
+            </View>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Turn on location sharing to adjust your radius.
+            </Text>
+          </View>
+          <View
+            disabled={false}
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+          >
+            Save settings
+          </View>
+          <View
+            minHeight={72}
+            onPress={[Function]}
+            paddingVertical="$4"
+            testID="settings-signout"
+          >
+            Exit guest mode
+          </View>
+          <View
+            disabled={true}
+            minHeight={72}
+            paddingVertical="$4"
+          >
+            Delete account
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          undefined,
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          gap="$4"
+        >
+          <View
+            gap="$2"
+          >
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+            >
+              Safety center
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Tools tailored for dating safely in India — quick access, clear controls.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Emergency actions
+            </Text>
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Call 112
+              </View>
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Share live location
+              </View>
+            </View>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              112 is India’s national emergency number. Use if you feel unsafe.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Date plan
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Save a quick plan and share it with a trusted contact before you go.
+            </Text>
+            <View
+              onChangeText={[Function]}
+              placeholder="Location / venue"
+              value=""
+            />
+            <View
+              onChangeText={[Function]}
+              placeholder="Time / meetup window"
+              value=""
+            />
+            <View
+              onChangeText={[Function]}
+              placeholder="Notes (ride, companion, etc.)"
+              value=""
+            />
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                disabled={false}
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Save plan
+              </View>
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Share plan
+              </View>
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Check-in timer
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Set a reminder to check in after your date starts. (Local reminder stub.)
+            </Text>
+            <View
+              flexWrap="wrap"
+              gap="$2"
+            >
+              <View
+                backgroundColor="$backgroundSoft"
+                borderColor="$border"
+                onPress={[Function]}
+              >
+                <Text
+                  fontWeight="600"
+                >
+                  30
+                   min
+                </Text>
+              </View>
+              <View
+                backgroundColor="$primarySoft"
+                borderColor="$primary"
+                onPress={[Function]}
+              >
+                <Text
+                  fontWeight="600"
+                >
+                  60
+                   min
+                </Text>
+              </View>
+              <View
+                backgroundColor="$backgroundSoft"
+                borderColor="$border"
+                onPress={[Function]}
+              >
+                <Text
+                  fontWeight="600"
+                >
+                  90
+                   min
+                </Text>
+              </View>
+            </View>
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Start check-in
+              </View>
+              <View
+                disabled={true}
+                flex={1}
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Cancel
+              </View>
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundSoft"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Safety tips
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              • Meet in public first and prefer daytime.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              • Use in-app calls until you’re comfortable.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              • Share your plan with a friend or sibling.
+            </Text>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+  <View
+    backgroundColor="$background"
+    flex={1}
+  >
+    <RCTScrollView
+      contentContainerStyle={
+        [
+          {
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+            "paddingTop": 16,
+          },
+          {
+            "flexGrow": 1,
+          },
+        ]
+      }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <View>
+        <View
+          flex={1}
+          gap="$3"
+        >
+          <View
+            gap="$2"
+          >
+            <Text
+              fontSize="$7"
+              fontWeight="700"
+            >
+              Muse Now
+            </Text>
+            <Text
+              color="$textMuted"
+            >
+              Jump into a spontaneous chat or call with someone new who matches your vibe.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              How it works
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              We pair you with a nearby Muse for a quick hello. If it feels right, you can keep chatting or exchange a call link.
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Your safety comes first. You can leave any time and report or block instantly.
+            </Text>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$3"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Start with a Muse
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Guest, 
+              say hi and let the vibe guide you.
+            </Text>
+            <View
+              accessibilityLabel="Start random chat"
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Start random chat
+            </View>
+            <View
+              flexWrap="wrap"
+              gap="$3"
+            >
+              <View
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Random audio call
+              </View>
+              <View
+                minHeight={72}
+                onPress={[Function]}
+                paddingVertical="$4"
+              >
+                Random video call
+              </View>
+            </View>
+          </View>
+          <View
+            backgroundColor="$backgroundStrong"
+            borderColor="$border"
+            borderRadius="$5"
+            borderWidth={1}
+            gap="$2"
+            padding="$4"
+          >
+            <Text
+              fontWeight="700"
+            >
+              Safety reminders
+            </Text>
+            <Text
+              color="$textMuted"
+              fontSize="$2"
+            >
+              Meet in public, keep personal info private, and trust your instincts.
+            </Text>
+            <View
+              minHeight={72}
+              onPress={[Function]}
+              paddingVertical="$4"
+            >
+              Safety center
+            </View>
+          </View>
+        </View>
+      </View>
+    </RCTScrollView>
+  </View>,
+]
+`;

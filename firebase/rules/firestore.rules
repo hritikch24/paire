@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function matchDoc(matchId) {
+      return get(/databases/$(database)/documents/matches/$(matchId));
+    }
+
+    function isMatchParticipant(matchId) {
+      return isSignedIn() &&
+        matchDoc(matchId).data.participants.hasAny([request.auth.uid]);
+    }
+
+    function isMatchResourceParticipant() {
+      return isSignedIn() &&
+        resource.data.participants.hasAny([request.auth.uid]);
+    }
+
+    function swipeDoc(uid, targetUid) {
+      return get(/databases/$(database)/documents/swipes/$(uid)/outgoing/$(targetUid));
+    }
+
+    function isPositiveSwipe(uid, targetUid) {
+      return swipeDoc(uid, targetUid).data.type == "like" ||
+        swipeDoc(uid, targetUid).data.type == "super";
+    }
+
+    function hasMutualSwipe(uidA, uidB) {
+      return isPositiveSwipe(uidA, uidB) && isPositiveSwipe(uidB, uidA);
+    }
+
+    function isValidMatchCreate(matchId) {
+      return request.resource.data.keys().hasOnly([
+          "id",
+          "participants",
+          "createdAt",
+          "updatedAt",
+          "unreadCounts",
+          "lastMessage",
+          "lastMessageAt"
+        ]) &&
+        request.resource.data.id == matchId &&
+        request.resource.data.participants.size() == 2 &&
+        request.resource.data.participants.hasAny([request.auth.uid]) &&
+        hasMutualSwipe(
+          request.resource.data.participants[0],
+          request.resource.data.participants[1]
+        );
+    }
+
+    function isAllowedMatchUpdate() {
+      return request.resource.data.participants == resource.data.participants &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "lastMessage",
+          "lastMessageAt",
+          "updatedAt",
+          "unreadCounts",
+          "typing",
+          "typingAt"
+        ]);
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isUser(uid);
+      allow delete: if false;
+
+      match /private/{docId} {
+        allow read, write: if isUser(uid);
+      }
+    }
+
+    match /swipes/{uid}/outgoing/{targetUid} {
+      allow read, write: if isUser(uid);
+    }
+
+    match /matches/{matchId} {
+      allow read: if isMatchResourceParticipant();
+      allow update: if isMatchParticipant(matchId) && isAllowedMatchUpdate();
+      allow create: if isValidMatchCreate(matchId);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read, create, update: if isMatchParticipant(matchId);
+        allow delete: if false;
+      }
+    }
+
+    match /blocks/{uid}/blocked/{targetUid} {
+      allow read, write: if isUser(uid);
+    }
+
+    match /reports/{reportId} {
+      allow create: if isSignedIn() && request.resource.data.reporterId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.reporterId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /limits/{uid}/daily/{dayId} {
+      allow read, write: if false;
+    }
+  }
+}

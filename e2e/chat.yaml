@@ -1,0 +1,37 @@
+appId: com.muse.app
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Welcome back"
+- tapOn:
+    id: "auth-email"
+- inputText: "muse+alexa@example.com"
+- tapOn:
+    id: "auth-password"
+- inputText: "Password123!"
+- tapOn:
+    id: "auth-continue"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- tapOn:
+    id: "tab-matches"
+- tapOn:
+    text: "Matches"
+    optional: true
+- assertVisible:
+    id: "matches-title"
+- tapOn:
+    id: "match-chat-muse_alexa_muse_jules"
+- assertVisible:
+    id: "chat-input"
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello from Maestro"
+- tapOn:
+    id: "chat-send"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- assertVisible:
+    text: "Hello from Maestro"

@@ -1,0 +1,22 @@
+appId: com.muse.app
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "auth-email"
+- inputText: "muse+alexa@example.com"
+- tapOn:
+    id: "auth-password"
+- inputText: "Password123!"
+- tapOn:
+    id: "auth-continue"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- assertVisible: "Discover"
+- tapOn:
+    id: "discover-like"
+- tapOn:
+    id: "discover-nope"
+- tapOn:
+    id: "discover-super"
