@@ -1,0 +1,69 @@
+# Real-feed regression coverage for vibe reveal, free limits and unavailable purchases.
+appId: com.muse.app
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+- assertVisible:
+    id: "welcome-sign-in"
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/01-welcome
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "muse+dev@example.com"
+- extendedWaitUntil:
+    visible:
+      id: "discover-mode-vibe"
+    timeout: 60000
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/02-people
+- tapOn:
+    id: "discover-mode-vibe"
+- assertVisible:
+    id: "vibe-reveal"
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/03-vibe-first
+- tapOn:
+    id: "vibe-reveal"
+- assertNotVisible:
+    id: "vibe-reveal"
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/04-vibe-revealed
+- tapOn:
+    id: "discover-nope"
+- assertVisible:
+    id: "vibe-reveal"
+- tapOn:
+    id: "discover-undo"
+- assertVisible:
+    id: "vibe-reveal"
+- tapOn:
+    id: "discover-premium"
+- assertVisible:
+    id: "premium-plan-day"
+- tapOn:
+    id: "premium-plan-week"
+- assertVisible: "₹119 for 7 days · no auto-renewal"
+- scrollUntilVisible:
+    element:
+      id: "premium-plan-month"
+    direction: DOWN
+- tapOn:
+    id: "premium-plan-month"
+- assertVisible: "₹399 for 30 days · no auto-renewal"
+- assertVisible:
+    id: "premium-purchase"
+    enabled: false
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/05-premium
+- tapOn:
+    id: "header-back"
+- tapOn:
+    id: "tab-profile"
+- runFlow: subflows/dismiss-dev-warning.yaml
+- scrollUntilVisible:
+    element:
+      id: "profile-verification"
+    direction: DOWN
+- tapOn:
+    id: "profile-verification"
+- extendedWaitUntil:
+    visible: "Let’s build a little trust."
+    timeout: 30000
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/06-verification

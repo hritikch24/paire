@@ -13,8 +13,9 @@ module.exports = [
       "**/.tamagui/**",
       "**/node_modules/**",
       "**/.expo/**",
-      "**/android/**/build/**",
-      "**/ios/**/build/**"
+      "android/**",
+      "ios/**",
+      "coverage/**"
     ]
   },
   {
@@ -44,10 +45,40 @@ module.exports = [
     },
     rules: {
       "no-unused-vars": "off",
+      "no-undef": "off",
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "react/react-in-jsx-scope": "off",
       "react-native/no-inline-styles": "off",
-      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
+      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      // Runtime Firebase imports must use the CJS builds (see src/services/firebase.ts).
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            "@firebase/app",
+            "@firebase/auth",
+            "@firebase/firestore",
+            "@firebase/functions",
+            "@firebase/storage",
+            "firebase/app",
+            "firebase/auth",
+            "firebase/firestore",
+            "firebase/functions",
+            "firebase/storage"
+          ].map((name) => ({
+            name,
+            allowTypeImports: true,
+            message: "Import Firebase from its CJS build path (e.g. @firebase/firestore/dist/index.cjs.js) to avoid duplicate SDK instances."
+          }))
+        }
+      ]
     }
+  },
+  {
+    // Type declarations only map module names to typings.
+    files: ["**/*.d.ts"],
+    rules: { "@typescript-eslint/no-restricted-imports": "off" }
   },
   {
     files: ["**/__tests__/**/*.{ts,tsx}"],

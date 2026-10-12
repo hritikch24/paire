@@ -1,0 +1,24 @@
+# Upload only what the web build needs: apps/web, the apps/muse-mobile sources and root config.
+node_modules
+/apps/muse-mobile/android
+/apps/muse-mobile/ios
+/apps/muse-mobile/.expo
+/apps/muse-site
+/apps/web/dist
+/artifacts
+/codex-artifacts
+/dist
+/.brew-cache
+/.test-backend
+/.idea
+/firebase
+/store
+/tools
+/e2e
+*.log
+.env
+.env.*
+*.jks
+*.keystore
+keystore.properties
+service-account*.json

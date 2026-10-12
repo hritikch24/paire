@@ -1,7 +1,12 @@
 {
-  "functions": {
-    "source": "firebase/functions"
-  },
+  "functions": [
+    {
+      "source": "firebase/functions",
+      "codebase": "default",
+      "ignore": ["node_modules", ".git", "test", "*.log", "*.local"],
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+    }
+  ],
   "firestore": {
     "rules": "firebase/rules/firestore.rules",
     "indexes": "firebase/rules/firestore.indexes.json"
@@ -9,26 +14,28 @@
   "storage": {
     "rules": "firebase/rules/storage.rules"
   },
+  "hosting": {
+    "public": "firebase/hosting",
+    "ignore": ["**/.*"],
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        ]
+      }
+    ]
+  },
   "emulators": {
-    "auth": {
-      "host": "0.0.0.0",
-      "port": 9099
-    },
-    "firestore": {
-      "host": "0.0.0.0",
-      "port": 8080
-    },
-    "functions": {
-      "host": "0.0.0.0",
-      "port": 5001
-    },
-    "storage": {
-      "host": "0.0.0.0",
-      "port": 9199
-    },
-    "ui": {
-      "enabled": true,
-      "port": 4000
-    }
+    "auth": { "host": "0.0.0.0", "port": 9099 },
+    "firestore": { "host": "0.0.0.0", "port": 8080 },
+    "functions": { "host": "0.0.0.0", "port": 5001 },
+    "storage": { "host": "0.0.0.0", "port": 9199 },
+    "hosting": { "host": "0.0.0.0", "port": 5050 },
+    "ui": { "enabled": true, "port": 4000 },
+    "singleProjectMode": true
   }
 }

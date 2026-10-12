@@ -1,113 +1,89 @@
-import { useState } from "react";
-import { useWindowDimensions } from "react-native";
-import { Text, YStack, XStack, Card } from "tamagui";
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { doc, setDoc } from "@firebase/firestore/dist/index.cjs.js";
-import { Screen } from "../../components/Screen";
+import { useState } from "react";
+import { Linking } from "react-native";
+import { Text, YStack } from "tamagui";
+import { ChipGroup } from "../../components/Chip";
 import { PrimaryButton } from "../../components/MuseButton";
-import { museCards } from "../../data/museCards";
-import { OnboardingStackParamList } from "../../navigation/stacks/OnboardingStack";
+import { OnboardingLayout } from "../../components/OnboardingLayout";
+import { MAX_INTENTIONS, MuseCardPicker, toggleLimited } from "../../components/ProfileEditors";
+import { SettingsSection, ToggleRow } from "../../components/SettingsRow";
+import { showToast } from "../../components/Toast";
+import { legal } from "../../config/legal";
+import { datingIntentions } from "../../data/datingIntentions";
+import { friendlyError } from "../../services/errors";
+import { updateProfile, updateSettings } from "../../services/profileService";
 import { useAuthStore } from "../../store/authStore";
-import { db } from "../../services/firebase";
+import { CASUAL_DESCRIPTION, CASUAL_LABEL, ONBOARDING_STEPS } from "../../utils/profile";
 
+/** Last sign-up step: what you're into and what you're looking for. */
 export function InterestsScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<OnboardingStackParamList>>();
-  const user = useAuthStore((state) => state.user);
+  const navigation = useNavigation();
+  const uid = useAuthStore((state) => state.user?.uid);
   const profile = useAuthStore((state) => state.profile);
-  const setProfile = useAuthStore((state) => state.setProfile);
-  const { width } = useWindowDimensions();
-  const [selected, setSelected] = useState<string[]>([]);
+  const settings = useAuthStore((state) => state.settings);
+  const [interests, setInterests] = useState<string[]>(profile?.interests ?? []);
+  const [intentions, setIntentions] = useState<string[]>(profile?.intentions ?? []);
+  const [casual, setCasual] = useState(Boolean(settings?.openToCasual));
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const cardWidth = Math.max(150, Math.floor((width - 44) / 2));
-  const isE2E =
-    process.env.EXPO_PUBLIC_E2E === "true" ||
-    process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATOR === "true";
 
-  const toggle = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const handleNext = async () => {
-    if (!user) return;
-    if (isE2E) {
-      const updatedAt = Date.now();
-      if (profile) {
-        setProfile({ ...profile, interests: selected, updatedAt });
-      }
-      navigation.navigate("RapidQuestions");
-      return;
-    }
+  const handleStart = async () => {
+    if (!uid || !interests.length || saving) return;
     setSaving(true);
-    setError(null);
     try {
-      const updatedAt = Date.now();
-      await setDoc(
-        doc(db, "users", user.uid),
-        {
-          interests: selected,
-          updatedAt
-        },
-        { merge: true }
-      );
-      if (profile) {
-        setProfile({ ...profile, interests: selected, updatedAt });
-      }
-      navigation.navigate("RapidQuestions");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to save interests.";
-      setError(message);
-    } finally {
+      await updateSettings(uid, { openToCasual: casual });
+      // Completing onboarding switches the navigator to the main app.
+      await updateProfile(uid, { interests, intentions, safetyConfirmed: true, onboardingComplete: true });
+    } catch (error) {
+      showToast(friendlyError(error, "We couldn't save that. Please try again."), "error");
       setSaving(false);
     }
   };
 
   return (
-    <Screen scrollable>
-      <YStack gap="$4">
-        <Text fontSize="$7" fontWeight="700">
-          Pick your Muse Cards
-        </Text>
-        <Text color="$textMuted">
-          Choose a few to guide your discovery feed.
-        </Text>
-        <XStack gap="$3" flexWrap="wrap">
-          {museCards.map((card) => {
-            const active = selected.includes(card.id);
-            return (
-              <Card
-                key={card.id}
-                testID={`interest-${card.id}`}
-                width={cardWidth}
-                padding="$3"
-                borderRadius="$4"
-                backgroundColor={active ? "$primarySoft" : "$card"}
-                borderColor={active ? "$primary" : "$border"}
-                borderWidth={1}
-                shadowColor="#000000"
-                shadowOpacity={active ? 0.2 : 0.08}
-                shadowRadius={active ? 14 : 10}
-                shadowOffset={{ width: 0, height: 6 }}
-                elevation={active ? 5 : 2}
-                onPress={() => toggle(card.id)}
-              >
-                <Text fontSize="$6">{card.emoji}</Text>
-                <Text fontWeight="700">{card.title}</Text>
-                <Text fontSize="$2" color="$textMuted">
-                  {card.description}
-                </Text>
-              </Card>
-            );
-          })}
-        </XStack>
-        {error ? <Text color="$error">{error}</Text> : null}
-        <PrimaryButton testID="onboarding-interests-continue" disabled={saving} onPress={handleNext}>
-          Continue
+    <OnboardingLayout
+      step={2}
+      total={ONBOARDING_STEPS}
+      title="What are you into?"
+      subtitle="Pick a few. Paire AI uses them to find people you'll click with."
+      onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+      footer={
+        <PrimaryButton testID="interests-continue" onPress={handleStart} disabled={!interests.length} loading={saving}>
+          {interests.length ? "Start matching" : "Pick at least one"}
         </PrimaryButton>
+      }
+    >
+      <MuseCardPicker selected={interests} onChange={setInterests} />
+
+      <YStack gap="$2">
+        <Text fontWeight="700" fontSize="$4">
+          Looking for
+        </Text>
+        <ChipGroup
+          testIDPrefix="intention"
+          options={datingIntentions}
+          selected={intentions}
+          onToggle={(id) => setIntentions(toggleLimited(intentions, id, MAX_INTENTIONS))}
+        />
       </YStack>
-    </Screen>
+
+      <SettingsSection>
+        <ToggleRow
+          testID="onboarding-casual"
+          icon="moon-outline"
+          label={CASUAL_LABEL}
+          description={CASUAL_DESCRIPTION}
+          value={casual}
+          onValueChange={setCasual}
+          showDivider={false}
+        />
+      </SettingsSection>
+
+      <Text color="$textMuted" fontSize="$2">
+        By starting, you agree to be real, be kind and take no for an answer.{" "}
+        <Text color="$primary" fontSize="$2" fontWeight="600" onPress={() => void Linking.openURL(legal.guidelinesUrl)}>
+          Community Guidelines
+        </Text>
+      </Text>
+    </OnboardingLayout>
   );
 }

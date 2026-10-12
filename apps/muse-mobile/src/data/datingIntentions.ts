@@ -5,7 +5,8 @@ export type DatingIntention = {
 };
 
 export const datingIntentions: DatingIntention[] = [
-  { id: "long-term", label: "Long-term", emoji: "💍" },
+  { id: "marriage", label: "Marriage-minded", emoji: "💍" },
+  { id: "long-term", label: "Long-term", emoji: "❤️" },
   { id: "short-term", label: "Short-term", emoji: "💫" },
   { id: "new-friends", label: "New friends", emoji: "🤝" },
   { id: "still-figuring", label: "Still figuring it out", emoji: "✨" }

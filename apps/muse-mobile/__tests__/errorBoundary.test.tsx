@@ -14,10 +14,6 @@ jest.mock("tamagui", () => {
   };
 });
 
-jest.mock("../src/components/Screen", () => ({
-  Screen: ({ children }: { children: React.ReactNode }) => children
-}));
-
 jest.mock("../src/components/MuseButton", () => ({
   PrimaryButton: ({ children, ...props }: { children?: React.ReactNode }) => {
     const React = require("react");
@@ -36,7 +32,6 @@ jest.mock("react-native", () => {
   const Text = ({ children, ...props }: { children?: React.ReactNode }) =>
     React.createElement("Text", props, children);
   return {
-    DevSettings: { reload: jest.fn() },
     View,
     Text
   };
@@ -57,9 +52,11 @@ describe("ErrorBoundary", () => {
     });
     const root = tree!.root;
     const hasText = root.findAll(
-      (node) => typeof node.props?.children === "string" && node.props.children.includes("snag")
+      (node) => typeof node.props?.children === "string" && node.props.children.includes("Something went wrong")
     );
     expect(hasText.length).toBeGreaterThan(0);
+    const retry = root.findAll((node) => (node.type as unknown) === "PrimaryButton");
+    expect(retry.length).toBe(1);
     consoleSpy.mockRestore();
   });
 });

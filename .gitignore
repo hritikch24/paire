@@ -21,6 +21,7 @@ firebase/functions/lib/
 firebase/emulator-data/
 
 # Secrets and signing material (never commit these)
+.secret.local
 .env
 .env.*
 !.env.example
@@ -33,3 +34,17 @@ service-account*.json
 *.p12
 *.pem
 *.mobileprovision
+
+# Release output
+dist/
+
+# Test server state (emulator data, logs, token registry)
+.test-backend/
+
+# Web build output and Vercel local state
+apps/web/dist/
+apps/web/.browser-export/
+.vercel/
+
+# Superseded site preview (its own git repo; apps/web is the live site)
+apps/muse-site/

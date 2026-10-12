@@ -1,308 +1,126 @@
-import { useState } from "react";
-import { Image, Linking, ScrollView, Share, useWindowDimensions } from "react-native";
-import { Text, XStack, YStack } from "tamagui";
-import { Screen } from "../components/Screen";
-import { PrimaryButton, SecondaryButton } from "../components/MuseButton";
-import { useAuthStore } from "../store/authStore";
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { AppStackParamList } from "../navigation/stacks/AppStack";
-import { museCards } from "../data/museCards";
-import { rapidQuestionMap } from "../data/rapidQuestions";
-import { datingIntentionMap } from "../data/datingIntentions";
-import { vibeMap } from "../data/vibes";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Linking, Pressable } from "react-native";
+import { Text, XStack, YStack } from "tamagui";
+import { Avatar } from "../components/Avatar";
+import { Icon } from "../components/Icon";
+import { IconButton } from "../components/IconButton";
+import { PrimaryButton, SecondaryButton } from "../components/MuseButton";
+import { Screen } from "../components/Screen";
+import { SettingsRow, SettingsSection } from "../components/SettingsRow";
+import { LoadingView } from "../components/States";
+import { legal } from "../config/legal";
+import { useAuthStore } from "../store/authStore";
+import { profileCompleteness } from "../utils/profile";
+import type { AppStackParamList } from "../navigation/types";
 
 export function ProfileScreen() {
-  const profile = useAuthStore((state) => state.profile);
-  const isGuest = useAuthStore((state) => state.isGuest);
-  const resetAuth = useAuthStore((state) => state.resetAuth);
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const { width } = useWindowDimensions();
-  const photoWidth = Math.min(width - 32, 420);
-  const photoHeight = Math.round(photoWidth * 1.25);
-  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
-  const tabBarHeight = useBottomTabBarHeight();
-  const insets = useSafeAreaInsets();
-  const extraBottomPadding = Math.max(0, tabBarHeight - insets.bottom);
+  const profile = useAuthStore((state) => state.profile);
 
   if (!profile) {
     return (
-      <Screen>
-        <Text color="$textMuted">Profile loading...</Text>
+      <Screen edges={["top"]}>
+        <LoadingView />
       </Screen>
     );
   }
 
-  const interestMap = new Map(museCards.map((card) => [card.id, card]));
-  const photos = profile.photoUrls ?? [];
-  const quickAnswers = profile.quickAnswers ?? [];
-  const quickAnswerItems = quickAnswers.map((entry) => ({
-    question: rapidQuestionMap.get(entry.questionId)?.question ?? "Quick take",
-    answer: entry.answer
-  }));
-  const intentionItems = (profile.intentions ?? [])
-    .map((id) => datingIntentionMap.get(id))
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  const vibeItems = (profile.vibes ?? [])
-    .map((id) => vibeMap.get(id))
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  const completionItems = [
-    profile.displayName,
-    profile.age,
-    profile.city,
-    profile.bio,
-    photos.length > 0,
-    profile.interests?.length,
-    profile.intentions?.length,
-    profile.vibes?.length,
-    quickAnswerItems.length
-  ];
-  const completedCount = completionItems.filter(Boolean).length;
-  const totalCount = completionItems.length;
-  const completionPercent = Math.round((completedCount / totalCount) * 100);
-  const handleShareProfile = async () => {
-    const link = `muse://profile/${profile.uid}`;
-    await Share.share({
-      message: `Check out my Muse profile: ${link}`
-    });
-  };
+  const { percent, missing } = profileCompleteness(profile);
 
   return (
-    <Screen scrollable extraBottomPadding={extraBottomPadding}>
-      <YStack gap="$4">
-        {isGuest ? (
-          <YStack
-            backgroundColor="$backgroundStrong"
-            padding="$4"
-            borderRadius="$5"
-            borderWidth={1}
-            borderColor="$border"
-            gap="$3"
-          >
-            <Text fontWeight="700">You’re exploring as a guest</Text>
-            <Text color="$textMuted">
-              Create an account to save your profile, chat, and book calls.
+    <Screen scroll edges={["top"]}>
+      <XStack alignItems="center" justifyContent="space-between" marginBottom="$4">
+        <Text fontSize="$8" fontWeight="700" accessibilityRole="header">
+          Profile
+        </Text>
+        <IconButton testID="profile-settings" icon="settings-outline" accessibilityLabel="Settings" onPress={() => navigation.navigate("Settings")} />
+      </XStack>
+
+      <YStack alignItems="center" gap="$3" marginBottom="$5">
+        <Pressable accessibilityRole="button" accessibilityLabel="Edit photos" onPress={() => navigation.navigate("EditPhotos")}>
+          <Avatar uri={profile.photoUrls[0]} name={profile.displayName} size={128} ring />
+          <YStack position="absolute" right={4} bottom={4} width={34} height={34} borderRadius={17} backgroundColor="$primary" alignItems="center" justifyContent="center" borderWidth={3} borderColor="$background">
+            <Icon name="camera-outline" size={16} color="primaryForeground" />
+          </YStack>
+        </Pressable>
+        <Text fontSize="$7" fontWeight="700">
+          {profile.displayName}, {profile.age}
+        </Text>
+        <XStack gap="$3" width="100%">
+          <YStack flex={1}>
+            <PrimaryButton testID="profile-edit" onPress={() => navigation.navigate("EditProfile")}>
+              Edit profile
+            </PrimaryButton>
+          </YStack>
+          <YStack flex={1}>
+            <SecondaryButton testID="profile-preview" onPress={() => navigation.navigate("ProfileView", { source: "self" })}>
+              Preview
+            </SecondaryButton>
+          </YStack>
+        </XStack>
+      </YStack>
+
+      {percent < 100 ? (
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate("EditProfile")}>
+          <YStack gap="$2" padding="$4" borderRadius="$5" backgroundColor="$primarySoft" marginBottom="$5">
+            <XStack justifyContent="space-between" alignItems="center">
+              <Text fontWeight="700">Profile strength</Text>
+              <Text fontWeight="700" color="$primary">
+                {percent}%
+              </Text>
+            </XStack>
+            <YStack height={8} borderRadius={4} backgroundColor="$backgroundStrong" overflow="hidden">
+              <YStack height={8} width={`${percent}%`} backgroundColor="$primary" borderRadius={4} />
+            </YStack>
+            <Text color="$textMuted" fontSize="$2">
+              Next: {missing[0]}. Complete profiles get more matches.
             </Text>
-            <PrimaryButton onPress={resetAuth}>Create account</PrimaryButton>
           </YStack>
-        ) : null}
-        <YStack
-          backgroundColor="$backgroundStrong"
-          padding="$4"
-          borderRadius="$5"
-          borderWidth={1}
-          borderColor="$border"
-          gap="$2"
-        >
-          <Text fontWeight="700">Profile strength</Text>
-          <Text color="$textMuted">{completionPercent}% complete</Text>
-          <YStack height={10} borderRadius={999} backgroundColor="$backgroundSoft" overflow="hidden">
-            <YStack
-              height="100%"
-              width={`${completionPercent}%`}
-              backgroundColor="$primary"
-              borderRadius={999}
-            />
-          </YStack>
-          <Text fontSize="$2" color="$textMuted">
-            Complete your profile to get better matches.
-          </Text>
-        </YStack>
-        <YStack gap="$2">
-          <Text fontSize="$8" fontWeight="700">
-            {profile.displayName}
-          </Text>
-          <Text color="$textMuted">{profile.pronouns}</Text>
-          {profile.city ? <Text color="$textMuted">{profile.city}</Text> : null}
-          <YStack
-            backgroundColor="$backgroundStrong"
-            padding="$4"
-            borderRadius="$5"
-            borderWidth={1}
-            borderColor="$border"
-          >
-            <Text>{profile.bio}</Text>
-          </YStack>
-        </YStack>
+        </Pressable>
+      ) : null}
 
-        <YStack gap="$2">
-          <Text fontWeight="700">Vibes</Text>
-          {vibeItems.length ? (
-            <XStack gap="$2" flexWrap="wrap">
-              {vibeItems.map((item) => (
-                <Text
-                  key={item.id}
-                  paddingHorizontal="$3"
-                  paddingVertical="$2"
-                  backgroundColor="$backgroundSoft"
-                  borderRadius="$5"
-                  fontSize="$2"
-                >
-                  {item.emoji} {item.label}
-                </Text>
-              ))}
-            </XStack>
-          ) : (
-            <YStack
-              backgroundColor="$backgroundSoft"
-              padding="$3"
-              borderRadius="$4"
-              borderWidth={1}
-              borderColor="$border"
-            >
-              <Text color="$textMuted">Pick a few vibes to show your energy.</Text>
-            </YStack>
-          )}
-        </YStack>
-
-        <YStack gap="$3">
-          <Text fontWeight="700">Photo reel</Text>
-          {photos.length ? (
-            <>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(event) => {
-                  const index = Math.round(event.nativeEvent.contentOffset.x / photoWidth);
-                  setActivePhotoIndex(index);
-                }}
-              >
-                {photos.map((uri) => (
-                  <Image
-                    key={uri}
-                    source={{ uri }}
-                    style={{ width: photoWidth, height: photoHeight, borderRadius: 22, marginRight: 12 }}
-                  />
-                ))}
-              </ScrollView>
-              <XStack justifyContent="center" gap="$2">
-                {photos.map((_, index) => (
-                  <YStack
-                    key={`photo-dot-${index}`}
-                    width={8}
-                    height={8}
-                    borderRadius={999}
-                    backgroundColor={index === activePhotoIndex ? "$primary" : "$border"}
-                  />
-                ))}
-              </XStack>
-            </>
-          ) : (
-            <YStack
-              height={photoHeight}
-              borderRadius="$5"
-              backgroundColor="$backgroundSoft"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Text color="$textMuted">Add photos to share your vibe.</Text>
-            </YStack>
-          )}
-        </YStack>
-
-        <YStack gap="$2">
-          <Text fontWeight="700">Muse Cards</Text>
-          <XStack gap="$2" flexWrap="wrap">
-            {profile.interests.map((interest) => {
-              const card = interestMap.get(interest);
-              const label = card ? `${card.emoji} ${card.title}` : interest;
-              return (
-                <Text
-                  key={interest}
-                  paddingHorizontal="$3"
-                  paddingVertical="$2"
-                  backgroundColor="$backgroundSoft"
-                  borderRadius="$5"
-                  fontSize="$2"
-                >
-                  {label}
-                </Text>
-              );
-            })}
+      <YStack gap="$5">
+        <Pressable testID="profile-verification" accessibilityRole="button" accessibilityLabel="View photo verification status" onPress={() => navigation.navigate("Verification")}>
+          <XStack padding="$4" borderRadius={24} backgroundColor="$backgroundStrong" borderColor="$border" borderWidth={1} gap="$3" alignItems="center">
+            <YStack width={48} height={48} borderRadius={16} backgroundColor="$primarySoft" alignItems="center" justifyContent="center"><Icon name="scan-outline" color="primary" size={25} /></YStack>
+            <YStack flex={1} gap={3}><Text fontWeight="700" fontSize="$4">A more trusted beginning</Text><Text fontSize="$2" color="$textMuted">Photo verification · check your status</Text></YStack>
+            <Icon name="chevron-forward" size={18} color="textMuted" />
           </XStack>
-        </YStack>
-
-        <YStack gap="$2">
-          <Text fontWeight="700">Looking for</Text>
-          {intentionItems.length ? (
-            <XStack gap="$2" flexWrap="wrap">
-              {intentionItems.map((item) => (
-                <Text
-                  key={item.id}
-                  paddingHorizontal="$3"
-                  paddingVertical="$2"
-                  backgroundColor="$backgroundSoft"
-                  borderRadius="$5"
-                  fontSize="$2"
-                >
-                  {item.emoji} {item.label}
-                </Text>
-              ))}
-            </XStack>
-          ) : (
-            <YStack
-              backgroundColor="$backgroundSoft"
-              padding="$3"
-              borderRadius="$4"
-              borderWidth={1}
-              borderColor="$border"
-            >
-              <Text color="$textMuted">Add what you’re looking for to guide matches.</Text>
-            </YStack>
-          )}
-        </YStack>
-
-        <YStack gap="$2">
-          <Text fontWeight="700">Rapid questions</Text>
-          {quickAnswerItems.length ? (
-            <YStack gap="$2">
-              {quickAnswerItems.map((item, index) => (
-                <YStack
-                  key={`${item.question}-${index}`}
-                  backgroundColor="$backgroundStrong"
-                  padding="$3"
-                  borderRadius="$4"
-                  borderWidth={1}
-                  borderColor="$border"
-                >
-                  <Text fontWeight="600">{item.question}</Text>
-                  <Text color="$textMuted">{item.answer}</Text>
-                </YStack>
-              ))}
-            </YStack>
-          ) : (
-            <YStack
-              backgroundColor="$backgroundSoft"
-              padding="$3"
-              borderRadius="$4"
-              borderWidth={1}
-              borderColor="$border"
-              gap="$2"
-            >
-              <Text color="$textMuted">Answer quick questions to boost Blind Dates.</Text>
-              <SecondaryButton onPress={() => navigation.navigate("EditProfile")}>
-                Add quick answers
-              </SecondaryButton>
-            </YStack>
-          )}
-        </YStack>
-
-        <PrimaryButton onPress={() => navigation.navigate("EditProfile")}>Edit profile</PrimaryButton>
-        <SecondaryButton onPress={() => navigation.navigate("EditPhotos")}>Edit photos</SecondaryButton>
-        <SecondaryButton onPress={handleShareProfile}>Share profile</SecondaryButton>
-        <SecondaryButton testID="profile-settings" onPress={() => navigation.navigate("Settings")}>
-          Settings
-        </SecondaryButton>
-        <YStack gap="$2">
-          <Text fontWeight="600">Support</Text>
-          <Text color="$textMuted">support@muse.com</Text>
-          <SecondaryButton onPress={() => Linking.openURL("mailto:support@muse.com")}>
-            Email support
-          </SecondaryButton>
-        </YStack>
+        </Pressable>
+        <Pressable testID="profile-premium" accessibilityRole="button" accessibilityLabel="Explore Paire Plus from 20 rupees" onPress={() => navigation.navigate("Premium")}>
+          <YStack gap="$3" padding="$5" backgroundColor="$primarySoft" borderRadius={24}>
+            <XStack alignItems="center" justifyContent="space-between"><Text color="$primary" fontWeight="700" fontSize="$2" letterSpacing={1}>PAIRE PLUS</Text><Icon name="sparkles-outline" color="primary" /></XStack>
+            <Text fontSize={26} lineHeight={32} fontWeight="700">A little more possibility.</Text>
+            <Text color="$textMuted" fontSize="$3">₹20 a day, ₹99 a week or ₹299 a month. No auto-renewal.</Text>
+            <XStack alignItems="center" gap="$1"><Text color="$primary" fontWeight="700">Explore plans</Text><Icon name="arrow-forward" size={17} color="primary" /></XStack>
+          </YStack>
+        </Pressable>
+        <SettingsSection>
+          <SettingsRow icon="images-outline" label="Photos" value={`${profile.photoUrls.length}/6`} onPress={() => navigation.navigate("EditPhotos")} showDivider={false} />
+          <SettingsRow icon="options-outline" label="Discovery preferences" onPress={() => navigation.navigate("Settings")} />
+          <SettingsRow testID="profile-privacy" icon="lock-closed-outline" label="Privacy & control" description="Incognito, private photos, notes only, I'll message first" onPress={() => navigation.navigate("Settings")} />
+          <SettingsRow testID="profile-safety" icon="shield-checkmark-outline" label="Safety center" onPress={() => navigation.navigate("SafetyCenter")} />
+          <SettingsRow icon="sparkles-outline" label="How vibe matching works" onPress={() => navigation.navigate("VibeGuide")} />
+          <SettingsRow testID="profile-appearance" icon="color-palette-outline" label="Themes" onPress={() => navigation.navigate("Appearance")} />
+        </SettingsSection>
+        <SettingsSection>
+          {legal.supportEmail ? (
+            <SettingsRow
+              icon="mail-outline"
+              label="Contact support"
+              value={legal.supportEmail}
+              showDivider={false}
+              onPress={() => void Linking.openURL(`mailto:${legal.supportEmail}?subject=Paire%20support`)}
+            />
+          ) : null}
+          <SettingsRow
+            icon="help-circle-outline"
+            label="Safety tips"
+            showDivider={Boolean(legal.supportEmail)}
+            onPress={() => void Linking.openURL(legal.safetyUrl)}
+          />
+        </SettingsSection>
       </YStack>
     </Screen>
   );

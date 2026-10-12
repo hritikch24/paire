@@ -1,4 +1,4 @@
-import { useWindowDimensions } from "react-native";
+import { useAppDimensions } from "../utils/useAppDimensions";
 
 type ResponsiveFlags = {
   width: number;
@@ -11,7 +11,7 @@ type ResponsiveFlags = {
 };
 
 export function useResponsiveFlags(): ResponsiveFlags {
-  const { width, height, fontScale } = useWindowDimensions();
+  const { width, height, fontScale } = useAppDimensions();
   const isSmallWidth = width <= 360;
   const isShort = height <= 760;
   const isLargeText = fontScale >= 1.1;

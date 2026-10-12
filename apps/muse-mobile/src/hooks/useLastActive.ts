@@ -1,47 +1,37 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
-import { doc, setDoc } from "@firebase/firestore/dist/index.cjs.js";
-import { db } from "../services/firebase";
+import { refreshAgeIfNeeded, touchLastActive } from "../services/profileService";
 import { useAuthStore } from "../store/authStore";
+import { needsOnboarding } from "../utils/profile";
 
-const UPDATE_WINDOW_MS = 2 * 60 * 1000;
+const MIN_INTERVAL_MS = 5 * 60 * 1000;
 
+/**
+ * Updates lastActiveAt when the app comes to the foreground (at most every
+ * five minutes), which keeps active members near the top of feeds. Also keeps
+ * the public age current after a birthday.
+ */
 export function useLastActive() {
-  const user = useAuthStore((state) => state.user);
-  const profile = useAuthStore((state) => state.profile);
-  const setProfile = useAuthStore((state) => state.setProfile);
-  const isGuest = useAuthStore((state) => state.isGuest);
-  const lastUpdatedRef = useRef(0);
-
-  const updateLastActive = useCallback(async () => {
-    if (!user || isGuest) return;
-    const now = Date.now();
-    if (now - lastUpdatedRef.current < UPDATE_WINDOW_MS) return;
-    lastUpdatedRef.current = now;
-    if (profile) {
-      setProfile({ ...profile, lastActiveAt: now, updatedAt: now });
-    }
-    try {
-      await setDoc(
-        doc(db, "users", user.uid),
-        { lastActiveAt: now, updatedAt: now },
-        { merge: true }
-      );
-    } catch {
-      // Best-effort update.
-    }
-  }, [isGuest, profile, setProfile, user]);
+  const uid = useAuthStore((state) => state.user?.uid);
+  const ready = useAuthStore((state) => !needsOnboarding(state.profile));
+  const lastRun = useRef(0);
 
   useEffect(() => {
-    if (!user || isGuest) return;
-    void updateLastActive();
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        void updateLastActive();
-      }
-    });
-    return () => {
-      subscription.remove();
+    if (!uid || !ready) return;
+
+    const heartbeat = () => {
+      const now = Date.now();
+      if (now - lastRun.current < MIN_INTERVAL_MS) return;
+      lastRun.current = now;
+      const { profile, info } = useAuthStore.getState();
+      void touchLastActive(uid).catch(() => undefined);
+      if (profile) void refreshAgeIfNeeded(uid, profile, info).catch(() => undefined);
     };
-  }, [isGuest, updateLastActive, user]);
+
+    heartbeat();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") heartbeat();
+    });
+    return () => subscription.remove();
+  }, [ready, uid]);
 }

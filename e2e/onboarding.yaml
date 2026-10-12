@@ -1,17 +1,65 @@
+# New member signs in (seeded account without a profile) and completes the two-step sign-up.
 appId: com.muse.app
 ---
 - launchApp:
     clearState: true
-- assertVisible: "Welcome back"
+- waitForAnimationToEnd
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "muse+onboard@example.com"
+- extendedWaitUntil:
+    visible: "The basics"
+    timeout: 30000
 - tapOn:
-    id: "auth-email"
-- inputText: "muse+alexa@example.com"
+    id: "basics-name"
+- inputText: "Riley"
+- hideKeyboard
 - tapOn:
-    id: "auth-password"
-- inputText: "Password123!"
+    id: "basics-birthday"
+- inputText: "02041998"
+# iOS number-pad has no Return/Done key; tap form background to dismiss it.
+- tapOn: "The basics"
+- scrollUntilVisible:
+    element:
+      id: "gender-woman"
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/14-onboarding-basics
 - tapOn:
-    id: "auth-continue"
+    id: "gender-woman"
+- scrollUntilVisible:
+    element:
+      id: "showme-everyone"
+    direction: DOWN
+    centerElement: true
 - tapOn:
-    text: "Not Now"
-    optional: true
-- assertVisible: "Discover"
+    id: "showme-everyone"
+- tapOn:
+    id: "basics-continue"
+- extendedWaitUntil:
+    visible: "What are you into?"
+    timeout: 30000
+- tapOn:
+    id: "interest-soundscape"
+- tapOn:
+    id: "interest-frame"
+- scrollUntilVisible:
+    element:
+      id: "intention-long-term"
+    direction: DOWN
+- tapOn:
+    id: "intention-long-term"
+- scrollUntilVisible:
+    element:
+      id: "onboarding-casual"
+    direction: DOWN
+- tapOn:
+    id: "onboarding-casual"
+- tapOn:
+    id: "interests-continue"
+- extendedWaitUntil:
+    visible:
+      id: "tab-discover"
+    timeout: 30000
+- assertVisible: "A little spark starts here."

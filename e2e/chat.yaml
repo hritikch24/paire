@@ -1,37 +1,45 @@
+# Alexa opens her seeded match with Jules and sends a message.
 appId: com.muse.app
 ---
 - launchApp:
     clearState: true
-- assertVisible: "Welcome back"
-- tapOn:
-    id: "auth-email"
-- inputText: "muse+alexa@example.com"
-- tapOn:
-    id: "auth-password"
-- inputText: "Password123!"
-- tapOn:
-    id: "auth-continue"
-- tapOn:
-    text: "Not Now"
-    optional: true
+- waitForAnimationToEnd
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "muse+alexa@example.com"
+- extendedWaitUntil:
+    visible:
+      id: "tab-matches"
+    timeout: 60000
 - tapOn:
     id: "tab-matches"
 - tapOn:
-    text: "Matches"
-    optional: true
-- assertVisible:
-    id: "matches-title"
-- tapOn:
-    id: "match-chat-muse_alexa_muse_jules"
-- assertVisible:
-    id: "chat-input"
+    id: "match-row-muse_alexa_muse_jules"
+- extendedWaitUntil:
+    visible:
+      id: "chat-input"
+    timeout: 20000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "chat-message-latest"
+    timeout: 20000
+- runFlow: subflows/dismiss-dev-warning.yaml
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/11-chat-ready
 - tapOn:
     id: "chat-input"
 - inputText: "Hello from Maestro"
+- extendedWaitUntil:
+    visible:
+      id: "chat-send"
+      enabled: true
+    timeout: 10000
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/12-chat-composer
 - tapOn:
     id: "chat-send"
-- tapOn:
-    text: "Not Now"
-    optional: true
-- assertVisible:
-    text: "Hello from Maestro"
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Hello from Maestro"
+    timeout: 20000
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/13-chat-sent

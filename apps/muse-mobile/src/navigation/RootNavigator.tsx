@@ -1,37 +1,27 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuthStore } from "../store/authStore";
-import { AuthStack } from "./stacks/AuthStack";
-import { OnboardingStack } from "./stacks/OnboardingStack";
-import { AppStack } from "./stacks/AppStack";
-import { ReportBlockScreen } from "../screens/ReportBlockScreen";
-
-export type RootStackParamList = {
-  Auth: undefined;
-  Onboarding: undefined;
-  App: undefined;
-  ReportBlock: { targetUid: string };
-};
+import { needsOnboarding } from "../utils/profile";
+import { AppStack } from "./AppStack";
+import { AuthStack } from "./AuthStack";
+import { OnboardingStack } from "./OnboardingStack";
+import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+/** Signed out → Auth; signed in with an incomplete profile → Onboarding; otherwise the app. */
 export function RootNavigator() {
-  const { user, profile } = useAuthStore();
-  const onboardingComplete = Boolean(profile?.onboardingComplete);
+  const signedIn = useAuthStore((state) => state.status === "signedIn");
+  const onboarding = useAuthStore((state) => needsOnboarding(state.profile));
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!user ? (
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+      {!signedIn ? (
         <Stack.Screen name="Auth" component={AuthStack} />
-      ) : !onboardingComplete ? (
+      ) : onboarding ? (
         <Stack.Screen name="Onboarding" component={OnboardingStack} />
       ) : (
         <Stack.Screen name="App" component={AppStack} />
       )}
-      <Stack.Screen
-        name="ReportBlock"
-        component={ReportBlockScreen}
-        options={{ presentation: "modal" }}
-      />
     </Stack.Navigator>
   );
 }

@@ -1,22 +1,31 @@
+# Dev likes profiles in Discover. Casey liked Dev in the seed data, so liking her back is a real match.
 appId: com.muse.app
 ---
 - launchApp:
     clearState: true
-- tapOn:
-    id: "auth-email"
-- inputText: "muse+alexa@example.com"
-- tapOn:
-    id: "auth-password"
-- inputText: "Password123!"
-- tapOn:
-    id: "auth-continue"
-- tapOn:
-    text: "Not Now"
-    optional: true
-- assertVisible: "Discover"
+- waitForAnimationToEnd
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "muse+dev@example.com"
+- extendedWaitUntil:
+    visible:
+      id: "discover-like"
+    timeout: 60000
 - tapOn:
     id: "discover-like"
 - tapOn:
-    id: "discover-nope"
+    id: "match-keep-swiping"
+    optional: true
 - tapOn:
-    id: "discover-super"
+    id: "discover-like"
+    optional: true
+- extendedWaitUntil:
+    visible: "It's a match!"
+    timeout: 20000
+- tapOn:
+    id: "match-message"
+- extendedWaitUntil:
+    visible:
+      id: "chat-input"
+    timeout: 20000

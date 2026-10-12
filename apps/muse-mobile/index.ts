@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import "./tamagui.config";
-import "@firebase/auth/dist/rn";
+import "./src/services/authSdk";
 import { registerRootComponent } from 'expo';
 
 import App from './App';

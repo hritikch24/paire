@@ -1,29 +1,35 @@
 import { createFont, createTamagui, createTokens } from "tamagui";
 import { animations } from "@tamagui/config";
+import { DEFAULT_PALETTE, PALETTE_IDS, PALETTES, PaletteId, Scheme, themeFor } from "./src/theme/palettes";
 
+// One typeface and one scale for the whole app. Every <Text> uses it through
+// `defaultFont` below; without that, plain Text fell back to the system font.
 const spaceGrotesk = createFont({
-  family: "SpaceGrotesk",
+  // Android only knows the per-weight font names, so the default must be one of them.
+  family: "SpaceGrotesk_400Regular",
   size: {
-    1: 12,
-    2: 14,
-    3: 16,
-    4: 18,
-    5: 20,
-    6: 24,
-    7: 28,
-    8: 34,
-    9: 40
+    1: 13, // captions, timestamps, footnotes
+    2: 14, // secondary text, chips
+    3: 16, // body
+    true: 16,
+    4: 17, // row labels, emphasised body
+    5: 20, // section titles
+    6: 22, // card titles
+    7: 26, // screen titles (compact)
+    8: 30, // screen titles
+    9: 34 // display
   },
   lineHeight: {
-    1: 16,
-    2: 18,
-    3: 20,
-    4: 22,
+    1: 18,
+    2: 20,
+    3: 22,
+    true: 22,
+    4: 24,
     5: 26,
-    6: 30,
-    7: 34,
-    8: 40,
-    9: 48
+    6: 28,
+    7: 32,
+    8: 36,
+    9: 40
   },
   weight: {
     3: "400",
@@ -31,11 +37,12 @@ const spaceGrotesk = createFont({
     5: "600",
     6: "700"
   },
+  // No negative tracking: Android clips the last glyph of tightly tracked bold text.
   letterSpacing: {
     3: 0,
-    4: -0.2,
-    5: -0.4,
-    6: -0.6
+    4: 0,
+    5: 0,
+    6: 0
   },
   face: {
     400: { normal: "SpaceGrotesk_400Regular" },
@@ -47,19 +54,21 @@ const spaceGrotesk = createFont({
 
 const tokens = createTokens({
   color: {
-    ink: "#1C1B22",
-    fog: "#F5F2EF",
-    sand: "#E8E2DD",
-    blush: "#D7E5E1",
-    ember: "#0F3D52",
-    night: "#0B1018",
-    smoke: "#151B25",
-    moon: "#F1F4F8",
-    mint: "#8CC9BC",
-    sky: "#7E9BD0",
+    ink: "#1F1A24",
+    cream: "#FBF8F6",
+    sand: "#F3ECE9",
+    rose: "#B83A5E",
+    roseDeep: "#9E2F4F",
+    roseSoft: "#F8E4EA",
+    night: "#141016",
+    plum: "#1D171F",
+    moon: "#F3EEF2",
+    like: "#2E9E6B",
+    nope: "#E0564F",
+    superLike: "#4F6BED",
     warning: "#C78B4A",
-    success: "#4EA988",
-    error: "#D36D6D"
+    success: "#2E9E6B",
+    error: "#C8453D"
   },
   space: {
     1: 4,
@@ -114,35 +123,17 @@ const shorthands = {
   h: "height"
 } as const;
 
-const lightTheme = {
-  background: tokens.color.fog,
-  backgroundStrong: "#FFFFFF",
-  backgroundSoft: tokens.color.sand,
-  text: tokens.color.ink,
-  textMuted: "#6D6672",
-  primary: tokens.color.ember,
-  primarySoft: tokens.color.blush,
-  primaryForeground: "#FFFFFF",
-  border: "#DED7D4",
-  card: "#FFFFFF",
-  overlay: "rgba(16, 18, 26, 0.45)"
-};
-
-const darkTheme = {
-  background: tokens.color.night,
-  backgroundStrong: tokens.color.smoke,
-  backgroundSoft: "#1D2531",
-  text: tokens.color.moon,
-  textMuted: "#A5ACB8",
-  primary: "#4FB3A3",
-  primarySoft: "#1F3437",
-  primaryForeground: "#FFFFFF",
-  border: "#2A3340",
-  card: "#111720",
-  overlay: "rgba(6, 9, 14, 0.65)"
-};
+// Every palette (src/theme/palettes.ts) as light_<id> / dark_<id>; the app picks
+// one with <Theme name={paletteId}>. Plain light/dark are the signature palette.
+const paletteThemes = Object.fromEntries(
+  PALETTE_IDS.flatMap((id) => [
+    [`light_${id}`, themeFor(PALETTES[id], "light")],
+    [`dark_${id}`, themeFor(PALETTES[id], "dark")]
+  ])
+) as Record<`${Scheme}_${PaletteId}`, ReturnType<typeof themeFor>>;
 
 const config = createTamagui({
+  defaultFont: "body",
   defaultTheme: "light",
   themeClassNameOnRoot: false,
   shorthands,
@@ -153,8 +144,9 @@ const config = createTamagui({
   },
   tokens,
   themes: {
-    light: lightTheme,
-    dark: darkTheme
+    light: themeFor(PALETTES[DEFAULT_PALETTE], "light"),
+    dark: themeFor(PALETTES[DEFAULT_PALETTE], "dark"),
+    ...paletteThemes
   }
 });
 

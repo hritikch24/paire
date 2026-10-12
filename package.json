@@ -2,30 +2,13 @@
   "name": "muse-monorepo",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "firebase/functions"
-  ],
+  "description": "Muse dating app. The mobile app (apps/muse-mobile) and Cloud Functions (firebase/functions) are standalone npm projects with their own lockfiles.",
   "scripts": {
     "doctor": "./scripts/doctor-macos.sh",
     "bootstrap": "./scripts/bootstrap-macos.sh",
     "verify": "./scripts/verify.sh"
   },
-  "devDependencies": {
-    "babel-preset-expo": "^54.0.9",
-    "lru-cache": "^11.0.0",
-    "metro": "0.83.3",
-    "metro-resolver": "0.83.3",
-    "node-int64": "^0.4.0",
-    "pretty-format": "^30.2.0",
-    "require-directory": "^2.1.1",
-    "simple-swizzle": "^0.2.2",
-    "tamagui": "1.142.0",
-    "xmlbuilder": "~11.0.0"
-  },
-  "overrides": {
-    "path-scurry": {
-      "lru-cache": "^11.0.0"
-    }
+  "engines": {
+    "node": ">=20.11"
   }
 }

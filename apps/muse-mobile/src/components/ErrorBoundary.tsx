@@ -1,61 +1,39 @@
 import React from "react";
-import { DevSettings } from "react-native";
-import { Screen } from "./Screen";
-import { PrimaryButton, SecondaryButton } from "./MuseButton";
 import { Text, YStack } from "tamagui";
+import { PrimaryButton } from "./MuseButton";
 
-type ErrorBoundaryProps = {
-  children: React.ReactNode;
-};
+type ErrorBoundaryProps = { children: React.ReactNode };
+type ErrorBoundaryState = { hasError: boolean; message?: string };
 
-type ErrorBoundaryState = {
-  hasError: boolean;
-  message?: string;
-};
-
+/** Last-resort screen for render errors, so a bug never leaves a blank app. */
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = {
-    hasError: false,
-    message: undefined
-  };
+  state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, message: error.message };
   }
 
-  componentDidCatch(error: Error) {
-    console.error("Muse ErrorBoundary", error);
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("Paire render error", error, info.componentStack);
   }
 
   render() {
-    if (!this.state.hasError) {
-      return this.props.children;
-    }
-
+    if (!this.state.hasError) return this.props.children;
     return (
-      <Screen scrollable>
-        <YStack gap="$3">
-          <Text fontSize="$7" fontWeight="700">
-            We hit a snag
+      <YStack flex={1} backgroundColor="$background" alignItems="center" justifyContent="center" padding="$6" gap="$3">
+        <Text fontSize="$7" fontWeight="700" textAlign="center">
+          Something went wrong
+        </Text>
+        <Text color="$textMuted" textAlign="center">
+          Sorry about that. Try again, and if it keeps happening, restart the app.
+        </Text>
+        {__DEV__ && this.state.message ? (
+          <Text fontSize="$2" color="$error" textAlign="center">
+            {this.state.message}
           </Text>
-          <Text color="$textMuted">
-            Something went wrong. Try reloading the app.
-          </Text>
-          {this.state.message ? (
-            <Text fontSize="$2" color="$textMuted">
-              {this.state.message}
-            </Text>
-          ) : null}
-          {__DEV__ ? (
-            <PrimaryButton onPress={() => DevSettings.reload()}>Reload</PrimaryButton>
-          ) : null}
-          <SecondaryButton
-            onPress={() => this.setState({ hasError: false, message: undefined })}
-          >
-            Try again
-          </SecondaryButton>
-        </YStack>
-      </Screen>
+        ) : null}
+        <PrimaryButton onPress={() => this.setState({ hasError: false, message: undefined })}>Try again</PrimaryButton>
+      </YStack>
     );
   }
 }

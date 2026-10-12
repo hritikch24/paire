@@ -1,0 +1,30 @@
+# Signs in from the Welcome screen. Usage: runFlow with env EMAIL.
+appId: com.muse.app
+---
+- extendedWaitUntil:
+    visible:
+      id: "welcome-sign-in"
+    timeout: 60000
+- tapOn:
+    id: "welcome-sign-in"
+- tapOn:
+    id: "signin-email"
+- inputText: ${EMAIL}
+- hideKeyboard
+- tapOn:
+    id: "signin-password"
+- inputText: "Password123!"
+- hideKeyboard
+# On iOS, dismissing the password keyboard may activate its submit action.
+- runFlow:
+    when:
+      visible:
+        id: "signin-submit"
+    commands:
+      - tapOn:
+          id: "signin-submit"
+# The system password prompt may arrive after the auth transition.
+- waitForAnimationToEnd
+- tapOn:
+    text: "Not Now"
+    optional: true

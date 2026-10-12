@@ -1,128 +1,148 @@
 import {
-  addDoc,
   collection,
-  getDocs,
-  getDoc,
-  increment,
+  doc,
+  DocumentData,
+  limit,
+  onSnapshot,
   orderBy,
   query,
-  doc,
+  serverTimestamp,
+  Unsubscribe,
   updateDoc,
   where
 } from "@firebase/firestore/dist/index.cjs.js";
+import { Match } from "../types/models";
+import { toMillis } from "../utils/time";
 import { db } from "./firebase";
-import { MatchSummary, UserProfile } from "../types/models";
 
-export async function fetchMatches(uid: string) {
-  const fetchSnapshot = async () => {
-    try {
-      const matchesQuery = query(
-        collection(db, "matches"),
-        where("participants", "array-contains", uid),
-        orderBy("updatedAt", "desc")
-      );
-      return await getDocs(matchesQuery);
-    } catch {
-      const fallbackQuery = query(
-        collection(db, "matches"),
-        where("participants", "array-contains", uid)
-      );
-      return await getDocs(fallbackQuery);
-    }
+export function normalizeMatch(id: string, data: DocumentData): Match {
+  const lastReadAt = (data.lastReadAt ?? {}) as Record<string, unknown>;
+  return {
+    id,
+    kind: data.kind === "duo" ? "duo" : "pair",
+    sides: data.kind === "duo" && data.sides && typeof data.sides === "object" ? data.sides : {},
+    participants: Array.isArray(data.participants) ? data.participants : [],
+    active: data.active !== false,
+    createdAt: toMillis(data.createdAt),
+    lastActivityAt: toMillis(data.lastActivityAt),
+    profiles: data.profiles ?? {},
+    lastMessage: data.lastMessage
+      ? {
+          text: String(data.lastMessage.text ?? ""),
+          senderId: String(data.lastMessage.senderId ?? ""),
+          createdAt: toMillis(data.lastMessage.createdAt)
+        }
+      : null,
+    unread: data.unread ?? {},
+    lastReadAt: Object.fromEntries(
+      Object.entries(lastReadAt).map(([uid, value]) => [uid, toMillis(value, 0)])
+    ),
+    superLikedBy: Array.isArray(data.superLikedBy) ? data.superLikedBy : [],
+    sparks:
+      data.sparks && typeof data.sparks === "object"
+        ? Object.fromEntries(
+            Object.entries(data.sparks as Record<string, unknown>).filter(
+              (entry): entry is [string, string] => typeof entry[1] === "string"
+            )
+          )
+        : {},
+    firstMoveBy: typeof data.firstMoveBy === "string" ? data.firstMoveBy : null,
+    endReason: data.endReason
   };
-
-  const snapshot = await fetchSnapshot();
-  const matches: MatchSummary[] = snapshot.docs.map(
-    (docSnap: { data: () => MatchSummary; id: string }) => {
-    const data = docSnap.data() as MatchSummary;
-    return { ...data, id: docSnap.id };
-    }
-  );
-
-  const otherIds = Array.from(
-    new Set(
-      matches
-        .map((match) => match.participants?.find((participantId) => participantId !== uid))
-        .filter((id): id is string => Boolean(id))
-    )
-  );
-
-  const otherProfiles = await Promise.all(
-    otherIds.map(async (otherId) => {
-      try {
-        const profileSnap = await getDoc(doc(db, "users", otherId));
-        if (!profileSnap.exists()) return null;
-        return { id: otherId, profile: profileSnap.data() as UserProfile };
-      } catch {
-        return null;
-      }
-    })
-  );
-
-  const profileMap = new Map(
-    otherProfiles.filter(Boolean).map((entry) => [entry!.id, entry!.profile])
-  );
-
-  return matches
-    .filter((match) => match.active !== false)
-    .map((match) => {
-      const otherUserId = match.participants?.find((participantId) => participantId !== uid);
-      const otherUser = otherUserId ? profileMap.get(otherUserId) : undefined;
-      return { ...match, otherUserId, otherUser };
-    });
 }
 
-export async function sendMessage(params: {
-  matchId: string;
-  senderId: string;
-  text: string;
-}) {
-  const { matchId, senderId, text } = params;
-  const messageRef = await addDoc(collection(db, "matches", matchId, "messages"), {
-    matchId,
-    senderId,
-    text,
-    createdAt: Date.now(),
-    readBy: [senderId]
-  });
-
-  try {
-    const matchRef = doc(db, "matches", matchId);
-    const matchSnap = await getDoc(matchRef);
-    if (matchSnap.exists()) {
-      const match = matchSnap.data() as MatchSummary;
-      const updates: Record<string, unknown> = {
-        lastMessage: text,
-        lastMessageAt: Date.now(),
-        updatedAt: Date.now()
-      };
-
-      if (Array.isArray(match.participants)) {
-        match.participants.forEach((participantId) => {
-          if (participantId === senderId) {
-            updates[`unreadCounts.${participantId}`] = 0;
-          } else {
-            updates[`unreadCounts.${participantId}`] = increment(1);
-          }
-        });
-      }
-
-      await updateDoc(matchRef, updates);
-    }
-  } catch {
-    // Message creation should still succeed if match metadata updates fail.
-  }
-
-  return messageRef;
+export function otherParticipant(match: Match, uid: string): string {
+  return match.participants.find((participant) => participant !== uid) ?? "";
 }
 
-export async function endMatch(params: { matchId: string; endedBy: string; reason?: string }) {
-  const { matchId, endedBy, reason } = params;
-  const matchRef = doc(db, "matches", matchId);
-  await updateDoc(matchRef, {
+/** Everyone in the chat but you. */
+export function otherParticipants(match: Match, uid: string): string[] {
+  return match.participants.filter((participant) => participant !== uid);
+}
+
+/** In a Duo chat: the other pair's members still in the chat. */
+export function otherSide(match: Match, uid: string): string[] {
+  const theirs = Object.values(match.sides).find((members) => !members.includes(uid));
+  return theirs ?? otherParticipants(match, uid);
+}
+
+/** In a Duo chat: your friend, if they're still in it. */
+export function partnerIn(match: Match, uid: string): string | null {
+  const mine = Object.values(match.sides).find((members) => members.includes(uid));
+  return mine?.find((member) => member !== uid) ?? null;
+}
+
+const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
+
+/** What a chat is called in lists and headers: their name, or "Arjun & Kabir" for a Duo chat. */
+export function chatTitle(match: Match, uid: string): string {
+  if (match.kind !== "duo") return match.profiles[otherParticipant(match, uid)]?.displayName ?? "Your match";
+  const names = otherSide(match, uid).map((member) => firstName(match.profiles[member]?.displayName ?? "Paire member"));
+  return names.length ? names.join(" & ") : "Duo chat";
+}
+
+/** Live list of your active matches, most recent activity first. */
+export function subscribeToMatches(
+  uid: string,
+  onData: (matches: Match[]) => void,
+  onError: (error: Error) => void
+): Unsubscribe {
+  const matchesQuery = query(
+    collection(db, "matches"),
+    where("participants", "array-contains", uid),
+    where("active", "==", true),
+    orderBy("lastActivityAt", "desc"),
+    limit(200)
+  );
+  return onSnapshot(
+    matchesQuery,
+    (snapshot) =>
+      onData(
+        snapshot.docs.map((snap) => normalizeMatch(snap.id, snap.data({ serverTimestamps: "estimate" })))
+      ),
+    onError
+  );
+}
+
+export function subscribeToMatch(
+  matchId: string,
+  onData: (match: Match | null) => void,
+  onError: (error: Error) => void
+): Unsubscribe {
+  return onSnapshot(
+    doc(db, "matches", matchId),
+    (snapshot) =>
+      onData(
+        snapshot.exists()
+          ? normalizeMatch(snapshot.id, snapshot.data({ serverTimestamps: "estimate" }))
+          : null
+      ),
+    onError
+  );
+}
+
+export async function unmatch(matchId: string, uid: string) {
+  await updateDoc(doc(db, "matches", matchId), {
     active: false,
-    endedAt: Date.now(),
-    endedBy,
-    endReason: reason ?? "unmatch"
+    endedAt: serverTimestamp(),
+    endedBy: uid,
+    endReason: "unmatch"
+  });
+}
+
+/**
+ * "I'll message first": while nobody has written yet, the member waiting for the
+ * other to open. Returns the uid of whoever must go first, or null when anyone may.
+ */
+export function waitingForFirstMove(match: Match, uid: string): string | null {
+  if (match.kind === "duo" || match.lastMessage || !match.firstMoveBy || match.firstMoveBy === uid) return null;
+  return match.firstMoveBy;
+}
+
+/** Clears your unread badge and lets the other person see "Seen". */
+export async function markMatchRead(matchId: string, uid: string) {
+  await updateDoc(doc(db, "matches", matchId), {
+    [`unread.${uid}`]: 0,
+    [`lastReadAt.${uid}`]: serverTimestamp()
   });
 }

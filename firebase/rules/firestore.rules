@@ -1,109 +1,399 @@
 rules_version = '2';
+
+// Muse data access model
+// - users/{uid}: public profile. Readable by the owner and by people they have an
+//   active match with. Discovery never reads it from clients; it goes through the
+//   getDiscoverFeed Cloud Function.
+// - users/{uid}/private/*, users/{uid}/devices/*: owner only (email, birth date,
+//   preferences, precise location, push tokens).
+// - swipes, matches (create), blocks, discovery, moderation, limits, superLikes:
+//   written only by Cloud Functions (Admin SDK bypasses these rules).
+// - matches/{id}: participants may send messages, mark read, or unmatch.
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() {
+
+    function signedIn() {
       return request.auth != null;
     }
 
     function isUser(uid) {
-      return isSignedIn() && request.auth.uid == uid;
+      return signedIn() && request.auth.uid == uid;
     }
 
-    function matchDoc(matchId) {
-      return get(/databases/$(database)/documents/matches/$(matchId));
+    function previewMode() {
+      // A missing policy never opts anyone out. Fully verified chats need no policy lookup.
+      return get(/databases/$(database)/documents/runtime/trust).data.requireVerification == false;
     }
 
-    function isMatchParticipant(matchId) {
-      return isSignedIn() &&
-        matchDoc(matchId).data.participants.hasAny([request.auth.uid]);
+    function approvedPhotos(uid, approval) {
+      let photos = get(/databases/$(database)/documents/users/$(uid)).data.photoUrls;
+      let now = request.time.toMillis();
+      return approval.schemaVersion == 2 && approval.storageBound == true
+        && photos.size() > 0 && photos.size() <= 6 && photos == approval.photoUrls
+        && approval.verifiedAt is int && approval.expiresAt is int
+        && approval.verifiedAt > 0 && approval.verifiedAt <= now && approval.expiresAt > now;
     }
 
-    function isMatchResourceParticipant() {
-      return isSignedIn() &&
-        resource.data.participants.hasAny([request.auth.uid]);
+    function verified(uid) {
+      let moderation = get(/databases/$(database)/documents/moderation/$(uid)).data;
+      return moderation.get('status', 'ok') != 'banned'
+        && moderation.get('verification', {}).get('status', '') == 'verified'
+        && approvedPhotos(uid, moderation.verification);
     }
 
-    function swipeDoc(uid, targetUid) {
-      return get(/databases/$(database)/documents/swipes/$(uid)/outgoing/$(targetUid));
+    function previewContactAllowed(uid) {
+      let path = /databases/$(database)/documents/moderation/$(uid);
+      return !exists(path) || get(path).data.get('status', 'ok') != 'banned';
     }
 
-    function isPositiveSwipe(uid, targetUid) {
-      return swipeDoc(uid, targetUid).data.type == "like" ||
-        swipeDoc(uid, targetUid).data.type == "super";
+    function checkedMember(members, index) {
+      return members.size() <= index || verified(members[index]);
     }
 
-    function hasMutualSwipe(uidA, uidB) {
-      return isPositiveSwipe(uidA, uidB) && isPositiveSwipe(uidB, uidA);
+    function checkedPreviewMember(members, index) {
+      return members.size() <= index || previewContactAllowed(members[index]);
     }
 
-    function isValidMatchCreate(matchId) {
-      return request.resource.data.keys().hasOnly([
-          "id",
-          "participants",
-          "createdAt",
-          "updatedAt",
-          "unreadCounts",
-          "lastMessage",
-          "lastMessageAt"
-        ]) &&
-        request.resource.data.id == matchId &&
-        request.resource.data.participants.size() == 2 &&
-        request.resource.data.participants.hasAny([request.auth.uid]) &&
-        hasMutualSwipe(
-          request.resource.data.participants[0],
-          request.resource.data.participants[1]
-        );
+    function verifiedParticipants(members) {
+      return members.size() >= 2 && members.size() <= 4 && (
+        (checkedMember(members, 0) && checkedMember(members, 1)
+          && checkedMember(members, 2) && checkedMember(members, 3))
+        || (previewMode() && checkedPreviewMember(members, 0) && checkedPreviewMember(members, 1)
+          && checkedPreviewMember(members, 2) && checkedPreviewMember(members, 3)));
     }
 
-    function isAllowedMatchUpdate() {
-      return request.resource.data.participants == resource.data.participants &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "lastMessage",
-          "lastMessageAt",
-          "updatedAt",
-          "unreadCounts",
-          "typing",
-          "typingAt"
-        ]);
+    function pairId(a, b) {
+      return a < b ? a + '_' + b : b + '_' + a;
+    }
+
+    function matchPath(matchId) {
+      return /databases/$(database)/documents/matches/$(matchId);
+    }
+
+    function hasActiveMatchWith(uid) {
+      let path = matchPath(pairId(request.auth.uid, uid));
+      return exists(path) && get(path).data.active == true;
+    }
+
+    function isStr(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
+    }
+
+    function optStr(data, key, max) {
+      return !(key in data) || isStr(data[key], 0, max);
+    }
+
+    function optList(data, key, max) {
+      return !(key in data) || (data[key] is list && data[key].size() <= max);
+    }
+
+    function optNumber(data, key) {
+      return !(key in data) || data[key] is number;
+    }
+
+    // Muse is for men and women.
+    function isGender(value) {
+      return value in ['woman', 'man'];
+    }
+
+    function optBool(data, key) {
+      return !(key in data) || data[key] is bool;
+    }
+
+    function optBasicText(data, key) {
+      return !(key in data) || isStr(data[key], 1, 60);
+    }
+
+    // Optional Indian "basics". Never caste: there is deliberately no field for it.
+    function validBasics(b) {
+      return b is map
+        && b.keys().hasOnly(['heightCm', 'education', 'work', 'religion', 'diet', 'drinking', 'smoking'])
+        && (!('heightCm' in b) || (b.heightCm is number && b.heightCm >= 120 && b.heightCm <= 230))
+        && optBasicText(b, 'education') && optBasicText(b, 'work') && optBasicText(b, 'religion')
+        && optBasicText(b, 'diet') && optBasicText(b, 'drinking') && optBasicText(b, 'smoking');
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // ---------------------------------------------------------------- users
+
+    function validProfile(d, uid) {
+      return d.keys().hasOnly([
+          'uid', 'displayName', 'age', 'gender', 'pronouns', 'city', 'bio', 'photoUrls',
+          'interests', 'intentions', 'vibes', 'quickAnswers', 'languages', 'basics', 'isDiscoverable',
+          'onboardingComplete', 'safetyConfirmed', 'createdAt', 'updatedAt', 'lastActiveAt'
+        ])
+        && d.keys().hasAll([
+          'uid', 'displayName', 'age', 'gender', 'photoUrls', 'interests',
+          'isDiscoverable', 'onboardingComplete'
+        ])
+        && d.uid == uid
+        && isStr(d.displayName, 1, 40)
+        && d.age is number && d.age >= 18 && d.age <= 100
+        && isGender(d.gender)
+        && optStr(d, 'pronouns', 30)
+        && optStr(d, 'city', 60)
+        && optStr(d, 'bio', 500)
+        && d.photoUrls is list && d.photoUrls.size() <= 6
+        && d.interests is list && d.interests.size() <= 10
+        && optList(d, 'intentions', 4)
+        && optList(d, 'vibes', 3)
+        && optList(d, 'quickAnswers', 6)
+        && optList(d, 'languages', 6)
+        && (!('basics' in d) || validBasics(d.basics))
+        && d.isDiscoverable is bool
+        && d.onboardingComplete is bool
+        && (!('safetyConfirmed' in d) || d.safetyConfirmed is bool)
+        && optNumber(d, 'createdAt')
+        && optNumber(d, 'updatedAt')
+        && optNumber(d, 'lastActiveAt');
+    }
+
+    function validInfo(d) {
+      return d.keys().hasOnly(['email', 'birthDate', 'termsAcceptedAt', 'termsVersion', 'updatedAt'])
+        && optStr(d, 'email', 320)
+        && (!('birthDate' in d) || (d.birthDate is string && d.birthDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+        && optNumber(d, 'termsAcceptedAt')
+        && optStr(d, 'termsVersion', 40)
+        && optNumber(d, 'updatedAt');
+    }
+
+    // Garba Nights: up to 4 "YYYY-MM-DD" dates (the server checks they're real nights).
+    function garbaNight(l, i) {
+      return l.size() <= i || (l[i] is string && l[i].matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'));
+    }
+    function validGarbaNights(l) {
+      return l is list && l.size() <= 4 && garbaNight(l, 0) && garbaNight(l, 1) && garbaNight(l, 2) && garbaNight(l, 3);
+    }
+
+    function validSettings(d) {
+      return d.keys().hasOnly([
+          'showMe', 'ageMin', 'ageMax', 'maxDistanceKm', 'locationEnabled', 'location',
+          'sharedVibesOnly', 'aiVibeMatching', 'openToCasual', 'notifications', 'updatedAt',
+          'requireNote', 'firstMove', 'incognito', 'privatePhotos', 'sameIntentOnly', 'sharedLanguageOnly',
+          'ageGap', 'garbaNights'
+        ])
+        && (!('showMe' in d) || (d.showMe is list && d.showMe.size() >= 1 && d.showMe.size() <= 2
+            && d.showMe.hasOnly(['woman', 'man'])))
+        && (!('ageMin' in d) || (d.ageMin is number && d.ageMin >= 18 && d.ageMin <= 100))
+        && (!('ageMax' in d) || (d.ageMax is number && d.ageMax >= 18 && d.ageMax <= 100))
+        && (!('maxDistanceKm' in d) || d.maxDistanceKm == null
+            || (d.maxDistanceKm is number && d.maxDistanceKm >= 1 && d.maxDistanceKm <= 500))
+        && (!('locationEnabled' in d) || d.locationEnabled is bool)
+        && (!('location' in d) || d.location == null
+            || (d.location is map && d.location.keys().hasOnly(['lat', 'lng', 'accuracy', 'updatedAt'])
+                && d.location.lat is number && d.location.lng is number))
+        && (!('aiVibeMatching' in d) || d.aiVibeMatching is bool)
+        && (!('sharedVibesOnly' in d) || d.sharedVibesOnly is bool)
+        && (!('openToCasual' in d) || d.openToCasual is bool)
+        && optBool(d, 'requireNote') && optBool(d, 'firstMove') && optBool(d, 'incognito')
+        && optBool(d, 'privatePhotos') && optBool(d, 'sameIntentOnly') && optBool(d, 'sharedLanguageOnly')
+        && (!('ageGap' in d) || d.ageGap == null || d.ageGap in ['older', 'intoOlder'])
+        && (!('garbaNights' in d) || d.garbaNights == null || validGarbaNights(d.garbaNights))
+        && (!('notifications' in d) || (d.notifications is map
+            && d.notifications.keys().hasOnly(['matches', 'messages', 'previews'])
+            && (!('previews' in d.notifications) || d.notifications.previews is bool)))
+        && optNumber(d, 'updatedAt');
+    }
+
+    function validSafetyPlan(d) {
+      return d.keys().hasOnly(['dateLocation', 'dateTime', 'notes', 'updatedAt'])
+        && optStr(d, 'dateLocation', 200)
+        && optStr(d, 'dateTime', 100)
+        && optStr(d, 'notes', 500)
+        && optNumber(d, 'updatedAt');
+    }
+
+    function validPrivate(docId, d) {
+      return (docId == 'info' && validInfo(d))
+        || (docId == 'settings' && validSettings(d))
+        || (docId == 'safetyPlan' && validSafetyPlan(d));
     }
 
     match /users/{uid} {
-      allow read: if isSignedIn();
-      allow create, update: if isUser(uid);
+      allow read: if isUser(uid) || (signedIn() && hasActiveMatchWith(uid));
+      allow create: if isUser(uid) && validProfile(request.resource.data, uid);
+      allow update: if isUser(uid)
+        && validProfile(request.resource.data, uid)
+        && !changedKeys().hasAny(['uid', 'createdAt']);
+      // Accounts are deleted by the deleteAccount Cloud Function.
       allow delete: if false;
 
       match /private/{docId} {
-        allow read, write: if isUser(uid);
+        allow read, delete: if isUser(uid);
+        allow create, update: if isUser(uid) && validPrivate(docId, request.resource.data);
+      }
+
+      match /devices/{deviceId} {
+        allow read, delete: if isUser(uid);
+        allow create, update: if isUser(uid)
+          && request.resource.data.keys().hasOnly(['token', 'platform', 'updatedAt'])
+          && isStr(request.resource.data.token, 1, 4096)
+          && request.resource.data.platform in ['android', 'ios'];
       }
     }
+
+    // ------------------------------------------------ server-written collections
 
     match /swipes/{uid}/outgoing/{targetUid} {
-      allow read, write: if isUser(uid);
-    }
-
-    match /matches/{matchId} {
-      allow read: if isMatchResourceParticipant();
-      allow update: if isMatchParticipant(matchId) && isAllowedMatchUpdate();
-      allow create: if isValidMatchCreate(matchId);
-      allow delete: if false;
-
-      match /messages/{messageId} {
-        allow read, create, update: if isMatchParticipant(matchId);
-        allow delete: if false;
-      }
+      allow read: if isUser(uid);
+      allow write: if false;
     }
 
     match /blocks/{uid}/blocked/{targetUid} {
-      allow read, write: if isUser(uid);
+      allow read: if isUser(uid);
+      allow write: if false;
     }
+
+    match /discovery/{uid} {
+      allow read, write: if false;
+    }
+
+    match /moderation/{uid} {
+      allow read, write: if false;
+    }
+
+    match /limits/{uid}/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /superLikes/{uid}/{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------- matches
+
+    function isParticipant(data) {
+      return signedIn() && request.auth.uid in data.participants;
+    }
+
+    // A chat has 2 people, or up to 4 in a Duo chat.
+    function othersIn(data) {
+      return data.participants.removeAll([request.auth.uid]);
+    }
+
+    function bumpedOnce(others, i, before, after) {
+      return others.size() <= i || after.get(others[i], 0) == before.get(others[i], 0) + 1;
+    }
+
+    // "I'll message first": until the first message, only the member who chose it may write.
+    function mayOpen(chat) {
+      return chat.get('lastMessage', null) != null
+        || chat.get('firstMoveBy', null) == null
+        || chat.get('firstMoveBy', null) == request.auth.uid;
+    }
+
+    // Sender's half of the "send message" batch: preview, activity time, and +1 unread for everyone else.
+    function isSendUpdate() {
+      let others = othersIn(resource.data);
+      let unreadBefore = resource.data.get('unread', {});
+      let unreadAfter = request.resource.data.get('unread', {});
+      let preview = request.resource.data.lastMessage;
+      return resource.data.active == true
+        && mayOpen(resource.data)
+        && changedKeys().hasOnly(['lastMessage', 'lastActivityAt', 'unread'])
+        && request.resource.data.lastActivityAt == request.time
+        && preview is map
+        && preview.keys().hasOnly(['text', 'senderId', 'createdAt'])
+        && preview.senderId == request.auth.uid
+        && isStr(preview.text, 1, 1000)
+        && preview.createdAt == request.time
+        && others.size() >= 1 && others.size() <= 3
+        && unreadAfter.diff(unreadBefore).affectedKeys().hasOnly(others)
+        && bumpedOnce(others, 0, unreadBefore, unreadAfter)
+        && bumpedOnce(others, 1, unreadBefore, unreadAfter)
+        && bumpedOnce(others, 2, unreadBefore, unreadAfter);
+    }
+
+    // Reader clears only their own unread count and stamps their own read time.
+    function isReadUpdate() {
+      let me = request.auth.uid;
+      let unreadAfter = request.resource.data.get('unread', {});
+      let readAfter = request.resource.data.get('lastReadAt', {});
+      return changedKeys().hasOnly(['unread', 'lastReadAt'])
+        && unreadAfter.diff(resource.data.get('unread', {})).affectedKeys().hasOnly([me])
+        && unreadAfter.get(me, 0) == 0
+        && readAfter.diff(resource.data.get('lastReadAt', {})).affectedKeys().hasOnly([me])
+        && readAfter.get(me, null) == request.time;
+    }
+
+    // One-to-one only: people leave a Duo chat through the leaveChat function.
+    function isUnmatch() {
+      return resource.data.active == true
+        && resource.data.get('kind', 'pair') != 'duo'
+        && changedKeys().hasOnly(['active', 'endedAt', 'endedBy', 'endReason'])
+        && request.resource.data.active == false
+        && request.resource.data.endedBy == request.auth.uid
+        && request.resource.data.endedAt == request.time
+        && request.resource.data.endReason == 'unmatch';
+    }
+
+    match /matches/{matchId} {
+      allow read: if isParticipant(resource.data);
+      // Matches are created only by the swipe Cloud Function after a mutual like.
+      allow create, delete: if false;
+      allow update: if isParticipant(resource.data)
+        && ((verifiedParticipants(resource.data.participants) && isSendUpdate()) || isReadUpdate() || isUnmatch());
+
+      match /messages/{messageId} {
+        function parentMatch() {
+          return get(matchPath(matchId)).data;
+        }
+
+        allow read: if signedIn() && request.auth.uid in parentMatch().participants;
+        allow create: if signedIn()
+          && request.auth.uid in parentMatch().participants
+          && parentMatch().active == true
+          && mayOpen(parentMatch())
+          && verifiedParticipants(parentMatch().participants)
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && isStr(request.resource.data.text, 1, 1000)
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+
+      // Muse AI warnings on messages, written by Cloud Functions. Only the
+      // person who received the message can read them, never the sender.
+      match /safety/{messageId} {
+        allow read: if signedIn() && request.auth.uid in resource.data.recipientIds;
+        allow write: if false;
+      }
+    }
+
+    // -------------------------------------------------------------- reports
 
     match /reports/{reportId} {
-      allow create: if isSignedIn() && request.resource.data.reporterId == request.auth.uid;
-      allow read: if isSignedIn() && resource.data.reporterId == request.auth.uid;
-      allow update, delete: if false;
+      // Authenticated callables validate evidence/quotas and expose only own progress.
+      allow read, write: if false;
     }
 
-    match /limits/{uid}/daily/{dayId} {
+    // ---------------------------------------------------------------- duos
+
+    // Two friends dating together; created and changed only by Cloud Functions.
+    // Only while the duo lasts: ex-partners can't keep reading it.
+    match /duos/{duoId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members && resource.data.status == 'active';
+      allow write: if false;
+    }
+
+    // Likes and passes of a duo: both members can see them (and undo via a function).
+    match /duoSwipes/{duoId}/outgoing/{targetDuoId} {
+      allow read: if signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/duos/$(duoId)).data.members
+        && get(/databases/$(database)/documents/duos/$(duoId)).data.status == 'active';
+      allow write: if false;
+    }
+
+    match /duoInvites/{code} {
+      allow read, write: if false;
+    }
+
+    // Messages the chat-safety check flagged. Written by Cloud Functions only;
+    // reviewed by moderators in the Firebase console.
+    match /chatFlags/{flagId} {
       allow read, write: if false;
     }
   }

@@ -1,21 +1,28 @@
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Text, YStack } from "tamagui";
+import { ActivityIndicator } from "react-native";
+import { YStack } from "tamagui";
+import { useThemeColors } from "../theme/useThemeColors";
 
+/** Shown while fonts load and the session is restored. */
 export function SplashScreen() {
+  const { gradient } = useThemeColors();
   return (
-    <LinearGradient
-      colors={["#0B1018", "#0F3D52", "#F5F2EF"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ flex: 1 }}
-    >
-      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4">
-        <Text fontSize="$8" fontWeight="700" color="$text">
-          Muse
-        </Text>
-        <Text fontSize="$4" color="$textMuted">
-          Spark through creativity
-        </Text>
+    <LinearGradient colors={gradient} style={{ flex: 1 }}>
+      <YStack flex={1} justifyContent="center" alignItems="center" gap="$5">
+        <Image
+          source={require("../../assets/icon.png")}
+          style={{ width: 96, height: 96, borderRadius: 28 }}
+          accessibilityIgnoresInvertColors
+        />
+        {/* An image, not text: it's shown before the app's font has loaded. */}
+        <Image
+          source={require("../../assets/wordmark.png")}
+          style={{ width: 136, height: 30 }}
+          contentFit="contain"
+          accessibilityLabel="Paire"
+        />
+        <ActivityIndicator color="#FFFFFF" />
       </YStack>
     </LinearGradient>
   );

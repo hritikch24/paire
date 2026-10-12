@@ -1,103 +1,91 @@
-# Muse — Project State (Single Source of Truth)
+# Muse: project state
 
-Last updated: 2026-01-06
+Last updated: 2026-10-12
 
-## What This Repo Is
-- **App type:** Expo React Native (not native Compose/XML UI)
-- **Mobile app:** `apps/muse-mobile/`
-- **Backend:** Firebase (Auth, Firestore, Storage) + optional Functions
-- **E2E:** Maestro flows in `e2e/`
+## Paire and Garba Nights (2026-10-12)
+- **Name: Paire** (domain **paire.in**), formerly Chitthi. Tagline "Find your Paire." (the hero line under it: "Every love story starts with a note."). Logo: a paper aeroplane folded from a love note, with a heart cut out of its top wing (`tools/generate_brand_assets.py` makes every icon, the splash wordmark, the site icons, the link preview and the Play graphic). Feature names: Super Like, Paire AI, Paire Plus, Interests; a like can carry a note. Internal IDs are unchanged. Website variables are now `PAIRE_*` (the old `CHITTHI_*` names still work as a fallback).
+- **Garba Nights**, a free Discover edition for Navratri (open 1–20 October 2026). Members pick the nights they're going to Garba or Dandiya (Settings, or the sheet behind the "🪔 Garba Nights" chip). Up to 4 nights each; the edition needs location and shows only people within 50 km going on at least one of the same nights. Cards say how many nights you share ("Going on 2 of your Garba nights"), never which ones, so nobody can read a schedule. Paire AI openers mention a shared Garba night. The landing page has a Garba section that hides itself after Dussehra. Next year: add the season to `firebase/functions/src/lib/garba.ts` and `apps/muse-mobile/src/data/garba.ts`.
 
-## Dependency Stack (High Level)
-- Expo SDK `~54` + React Native `0.81`
-- Navigation: `@react-navigation/*`
-- UI: Tamagui (`tamagui`, `@tamagui/*`)
-- State: Zustand
-- Data fetching: TanStack React Query
-- Backend SDK: Firebase JS SDK (`firebase` / `@firebase/*`)
+## Rename and web payments (2026-10-11)
+- **Razorpay web checkout for Paire Plus.** The server prices the order, Checkout opens, the signature is verified and the payment re-read from Razorpay, then the pass is granted once. A signed webhook handles late captures and refunds, and passes queue instead of overlapping. Store and web passes combine in `billing/{uid}`.
+- **Website ready for payment-gateway review:** Refund & cancellation and Contact pages, a payments section in the Terms, business details filled from `PAIRE_*` variables, a web manifest and icons, a social share image, and a sitemap when indexing is on.
+- `scripts/set-trust-policy.mjs` sets the verification policy for launch (Didit isn't configured yet).
+- **Launch steps and every variable:** `docs/launch-web.md`. Validation: `verify.sh` passes (app 72, functions 146, rules 33, end-to-end 32).
 
-## APKs (Local Output)
-- Production (standalone): `~/Downloads/Muse-android-production.apk`
-- E2E/Emulators (standalone): `~/Downloads/Muse-android-e2e-emulator.apk`
+## India v2 (2026-10-11)
+Product review and build: Indian dating-app problems → solutions → pricing, in `docs/product/india-v2-plan.md`.
+- **Men and women only.** "Show me" is Men, Women or Both, defaulting to the opposite gender.
+- **Sparks:** likes can carry a screened note, which opens the chat on a match. Notes and Super Muses lead "Likes you".
+- **Privacy & control (free):** notes-only likes, "I'll message first", incognito, private photos until match, same intentions only, "Speaks my language". All enforced on the server or in the rules.
+- **Indian basics:** height, languages, education, work, religion (optional, never caste), diet, drinking, smoking. Plus a "Marriage-minded" intention.
+- **Close kindly** instead of ghosting.
+- **Fair limits and pricing:** free 25 likes and 1 Super Muse a day, the same for everyone. Muse Plus is ₹20/day, ₹99/week or ₹299/month (100 likes, 5 Supers, priority likes; never auto-renews).
+- **Web on Vercel:** `apps/web` plus root `vercel.json`. Setup is in `docs/vercel.md`.
+- **Validation:** `verify.sh` passes (app 72, functions 140, rules 33, emulator end-to-end 32), including fixes from an independent review. The browser flow (notes-only → note → likes gallery → like back → spark in chat → first move) was checked in Chrome against the emulators.
+- **Still needs you:** a Vercel account (import the repo), adding the Vercel domain to Firebase Auth authorized domains, deploying the Firebase backend (Blaze), store prices in Play Console, and, for web payments, a Razorpay merchant account.
 
-## Build + Test Commands (Repeatable)
-- Full pipeline: `./tools/run_all.sh`
-- Start emulator + install debug + capture logcat: `./tools/run_emulator_and_smoke.sh`
-- Start emulator + install release + capture logcat: `MUSE_SMOKE_USE_RELEASE=true ./tools/run_emulator_and_smoke.sh`
-- E2E (Firebase emulators + Maestro): `./scripts/test-e2e.sh android`
-  - Note: `./tools/run_all.sh` intentionally skips `clean` unless `MUSE_CLEAN=true` to avoid RN codegen cleanup errors.
-  - Note: `./scripts/test-e2e.sh` temporarily forces `EXPO_PUBLIC_E2E=true` by backing up and restoring `.env`.
+## Summary
+The India-first UI and server integration paths are implemented and locally tested. Live provider setup and acceptance testing are still required before public launch. See [production integration setup](docs/production-integrations.md).
 
-## Environment Model (Important)
-### Production (standalone release APK)
-- **Must NOT use Firebase emulators.**
-- Release builds now force emulator usage off (emulator gating is `__DEV__` only).
-- Firebase config falls back to hardcoded production config if no env vars are embedded.
-- Storage bucket should be `muse-352ba.appspot.com` in production env/config.
+## Delhi NCR product iteration (2026-10-10)
+- Muse remains the working name. Miltaa, Aarzo and Roohio remain suggestions subject to clearance; see `docs/product/brand-shortlist.md`.
+- Redesigned welcome/discovery, deliberate Vibe-first reveal, safety entry points and notification privacy by default. NCR emulator fixtures now use Delhi, Gurugram, Noida and Faridabad; the app remains open to other locations.
+- Didit hosted live check, signed callback, immutable photo generations, mandatory server/rules gates and moderator review endpoints/tool are implemented. Every photo needs human review after liveness; changing photos or approval expiry requires a new check. Live capture stays unavailable without provider configuration. Automated biometric erasure and account deletion paths need live-provider QA.
+- RevenueCat native purchase + server validation, signed reconciliation and fixed-duration pass expiry are implemented. Free limits remain 100 likes/3 Super Muses per day; valid Premium increases these to 300/10 without resetting spent usage. ₹20/day is requested; ₹119/week and ₹399/month remain proposals. Live checkout stays unavailable without store/provider setup.
+- AI vibe matching is an explicit opt-in for both people. Only fixed catalog choices are sent to Claude, with mutual preferences/safety filtering first and rules fallback. Vibe scores are sorting hints, not probabilities. Live model output still needs evaluation.
+- Calls now require an authenticated active match and a room-specific, five-minute JaaS token; anonymous predictable room access is removed.
+- Local validation details are in `docs/testing.md`. Android and iOS simulator builds are verified; live verification, store checkout and call-provider sessions remain untested.
 
-### Dev/Debug builds
-- `.env` in `apps/muse-mobile/.env` is configured for local Firebase emulators (`demo-muse`).
-- Debug builds (`__DEV__=true`) only use emulators when `EXPO_PUBLIC_USE_FIREBASE_EMULATOR=true` or the projectId is `demo-muse`.
-- **New Architecture stays enabled** (required by `react-native-worklets`).
+## Done
+- **Backend (Cloud Functions):** server-side discovery with mutual gender/age/distance preferences, swipes and matching (a match only on a real mutual like), daily limits, blocking, report auto-moderation, account-deletion cleanup, including provider erasure requests, push notifications for matches and messages, and test cohorts for Play review/QA.
+- **Security rules:** validated profiles (18+), private data owner-only, profiles visible only to active matches, messages can't be forged or edited, nothing can be sent after an unmatch or block, photo uploads limited to images under 10 MB.
+- **App:**
+  - Redesigned auth with password reset and terms consent.
+  - Six-step onboarding: 18+ birthday check, gender and Show me, photos, about, Muse Cards, rapid questions, pledge.
+  - Swipe deck, real match moment, live matches and chat with read receipts.
+  - Report/block/unmatch, settings with discovery preferences, working account deletion.
+  - Safety Center with a real check-in reminder, and dark mode.
+- **Engagement features:**
+  - Two-step sign-up (name, birthday, gender/show me → interests), with photos, location and notifications offered afterwards one tap at a time.
+  - Muse AI: a compatibility score and reasons ("You both love Soundscape and Frame") on every card and profile, icebreakers in new chats, bio ideas. Free built-in writer by default; Claude when an API key is configured.
+  - Free "Likes you" list with instant match on like-back, "Your turn" on stalled chats, and an invite flow when the feed runs dry.
+  - Private "open to a one-night stand" flag, revealed only on a mutual opt-in and used for matching.
+  - Message and match notifications: server push via FCM, plus in-app alerts when push isn't set up.
+  - New logo and brand ("There's a muse for everyone."), one typeface and type scale across the app.
+  - Muse AI chat safety: scam, abuse, threat and under-18 warnings in chat, hidden abusive messages, and server-only flags for moderators with auto-hide for repeat offenders (see `docs/safety.md`).
+  - 7 colour themes in light and dark, plus a System/Light/Dark mode (Settings → Appearance).
+  - Duos: double dates with a friend (Discover → Duos). You invite with a code and confirm your friend, match with another pair, then chat as four in a group chat. The casual flag is never used there.
+  - Likes gallery: "See everyone who likes you" opens a full-screen photo gallery with one-tap like-back.
+- **Play policy:** no fake profiles or fake matches; photo picker with no media permission; approximate location only; no background location; backups disabled; privacy policy, terms, community guidelines and account-deletion pages (Firebase Hosting).
+- **Build:**
+  - Native config lives in `app.config.js` (`android/` is generated).
+  - Release builds are signed with the upload key (`plugins/withAndroidReleaseSigning.js`).
+  - Dependencies match Expo SDK 54 (`expo-doctor`: 18/18).
+  - A signed `.aab` and `.apk` built and verified on 2026-09-26 (upload-key signature, versionCode 4, targetSdk 36, no restricted permissions).
+- **Group testing without Firebase billing:** "Muse Test" (a separate app that installs beside the Play version) talks to Firebase emulators on your Mac through a free Cloudflare tunnel. A gateway blocks the emulators' admin keys and forged tokens, and the invite page offers the app download and a one-tap connect. See `docs/test-backend.md`.
+  - Verified on an Android emulator through a real tunnel: connect by link and by paste, sign in, discover, a real match, chat, photo upload and display. When the tunnel restarted with a new link, the app reconnected without signing in again. `tools/test-backend/check.js` passes all 28 security and function checks.
+- **Validation (2026-10-10):** 67 app unit tests, 127 backend unit tests, 29 security-rule tests and 28 emulator integration tests (251 total). App/backend static checks, functions compilation and Android/iOS simulator builds pass. Marketing and browser account/chat/report/photo/verification checks pass in Chrome; native regression results and launch limits are in `docs/qa-2026-10-10.md`. Live providers remain untested.
 
-## Current Status
-### Working
-- Release APK builds via Gradle and runs without Metro.
-- Auth signup + onboarding works in production APK on Android emulator with working DNS.
-- Photo picker + upload shows preview (tested on emulator with injected sample images).
-- Chat UI fixed for safe area/keyboard; tab bar now clickable on Android.
-- E2E automation (Firebase emulators + Maestro) completes onboarding, discovery, match, and chat flows.
-- Interests screen now scrolls on small devices so “Continue” remains reachable.
-- Profile now includes an "Edit photos" screen so users can add images after onboarding.
-- Photo upload REST path now avoids `BINARY_CONTENT` runtime errors (needs device re-verify).
-- Matches list now resolves other participant names/avatars instead of placeholder text.
-- Chat header now shows matched user name/avatar.
-- Swipe deck scales to screen height and interest cards are responsive.
-- Profile photo grid and inputs now adapt better to small screens; tabs use new warm accent styling.
-- Auth + profile setup now use carded forms for a more polished onboarding feel.
-- E2E script now forces Maestro to use an emulator unless `MUSE_E2E_DEVICE` is set.
-- E2E script now reverse-forwards Firebase emulator ports to the device to prevent auth/network failures.
-- E2E script now uninstalls the release app on emulators before installing debug to avoid signature mismatch.
-- E2E script supports `MUSE_E2E_FLOW` to run single flows (useful for long suites).
-- Chat E2E flow now asserts on the input field since header shows the matched user name.
-- Support email is now visible in Auth Help and Settings.
-- Support email is now visible in Auth Help and Profile (outside Settings).
-- Swipe cards and interest chips are styled for a more premium dating UI.
-- Launch flicker reduced by waiting on auth state before rendering navigation.
-- Discover now shows a “Today’s Spark” prompt and a Blind Date toggle.
-- Profile includes swipeable photo reel and polished bio/interest cards.
-- Added Rapid Questions for Blind Date: onboarding step, profile editing, and blind card display.
-- Added “Looking for” intentions in onboarding, profile edit, swipe cards, and public profiles.
-- Edit Profile now uses scroll + keyboard avoidance to keep Save/Cancel visible on small screens.
-- App icon + splash mark refreshed via `tools/generate_logo.py`.
-- Android versionCode bumped to 2 to force launcher icon refresh.
-- Launcher icon assets regenerated in Android mipmap folders; iconBackground updated to a wine tone; versionCode bumped to 3.
-- Bottom tab now includes custom icons for Discover, Matches, and Profile.
-- Release build now ignores emulator flags even if `.env` is present (prod auth should no longer hit emulators).
-- Production Storage bucket corrected to `muse-352ba.appspot.com`.
-- Auth screen now shows a diagnostic alert with network probe + Firebase config details on failure (temporary to capture device errors).
-- Auth buttons are no longer disabled when fields are empty; pressing shows an inline alert to ensure taps register on device.
-- Auth now uses dedicated Sign In and Sign Up forms with validation and confirm password.
-- Profile Setup auto-skips only when profile data already exists.
-- Photo upload now uses `expo-file-system` (supported module path) with Firebase Storage REST uploads.
-- Onboarding + profile screens now scroll on small devices to keep CTA buttons visible.
-- Discover swipe card height now scales down for compact screens.
-- Chat header now flexes to avoid text overflow; message list fills available space.
-- Matches list now uses full height and scrolls cleanly.
-- App theme updated to a plum/rose palette (no yellow) and Android resources now match.
-- E2E onboarding flows now bypass Firestore writes to avoid emulator flakiness; production behavior unchanged.
-- Full pipeline run (typecheck + unit tests + debug build + connected tests) passed on 2026-01-06; emulator smoke + E2E suite pass recorded.
+## Before launch (needs you)
+0. Choose the public app name before the first Play upload (`docs/product/naming.md`), and answer the open product decisions in `docs/PRODUCT_BACKLOG.md`.
+1. Firebase: Blaze plan, Email/Password sign-in, confirm the Firestore region, add `google-services.json`, then run `firebase deploy`.
+2. Replace the `[PLACEHOLDERS]` on the legal pages and set `EXPO_PUBLIC_SUPPORT_EMAIL`.
+3. Create the upload key: `./scripts/android/create-upload-keystore.sh`.
+4. Play Console: listing, data safety, content rating, 18+ audience, a reviewer account in the test cohort, and a closed test with 12 testers for 14 days.
 
-### Known Risks / Open Items
-- **Match + chat in production** needs a dedicated automated smoke flow to verify end-to-end reliably.
-- Emulator(s) may have **DNS issues** (some AVDs cannot resolve `google.com`); use a working AVD/device for prod smoke.
-- Photo upload should be re-verified on a physical Android device against production Firebase to confirm Storage permissions/config.
-- Release APK rebuilt and installed to physical device with prod Firebase config; device smoke for signup/login, photo upload, match/chat still pending.
-- Rapid Questions step adds a new onboarding screen; verify navigation order and saving to Firestore.
-- “Looking for” intentions are optional; verify saving/editing and rendering on cards.
-- Bumble-level UI polish is in progress; additional screen-by-screen refinement may still be needed.
+Full steps: `docs/RELEASE.md`. Run `./scripts/release-preflight.sh` to see what's left.
 
-## Where to Look First When Something Breaks
-- Build issues: `apps/muse-mobile/android/` Gradle output.
-- Runtime issues: `artifacts/**/logcat.txt`
-- Firebase config/emulators: `apps/muse-mobile/src/config/env.ts`, `apps/muse-mobile/src/services/firebase.ts`
+## Known limitations and next steps
+- **iOS:** simulator build, onboarding and discovery/matching are verified. Full chat automation is unresolved; Vibe First, reports and verification gating still need iOS acceptance testing. Production signing/push and real-device testing remain pending. Generate/update native config with Expo prebuild and CocoaPods.
+- **In-app calls:** off until 8x8 JaaS credentials and server-issued tokens are configured and tested (`EXPO_PUBLIC_CALL_DOMAIN=8x8.vc`).
+- **Muse Now (random chat):** removed. Building it for real needs matchmaking and moderation.
+- **Suggested next:** crash reporting (Sentry or Crashlytics), App Check, live photo-verification acceptance testing, automated content screening, a moderator dashboard/appeals, and geohash-based discovery once the user base is large.
+
+## Product docs
+Market strategy, costs, the Duos PRD and the naming review are in `docs/product/`. The current backlog is `docs/PRODUCT_BACKLOG.md`.
+
+## Web and moderation follow-up (10 October 2026)
+
+Marketing and the shared browser dating app are published owner-private through Sites at https://muse-delhi-ncr.soundlemon8.chatgpt.site . See `docs/web-preview.md` and `docs/product/marketing-launch.md`. Muse is retained until a brand decision. Miltaa/Aarzo/Roohio are research finalists, with clearance still pending. Developer legal drafts use Hritik Chaudhary; the eventual owned domain/inbox/address have not been invented.
+
+Reports now use authenticated submission, server snapshots, stable retries, private member progress and a moderator-claim CLI with immutable audited decisions. Auto-moderation preserves bans/reviews. QA uses isolated emulator copies and never overwrites developer environment/secrets. Compatible dependency updates remove critical findings; residual high/moderate advisories are recorded in the QA report and remain a launch review item.

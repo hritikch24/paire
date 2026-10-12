@@ -1,4 +1,6 @@
-# Muse Product Backlog (A→Z)
+# Muse product backlog (A→Z, January 2026 archive)
+
+This is the original long-range feature map, kept for reference. The current backlog and open decisions are in `docs/PRODUCT_BACKLOG.md`.
 
 This backlog captures end-to-end product functionality and acceptance criteria. We ship in small increments.
 

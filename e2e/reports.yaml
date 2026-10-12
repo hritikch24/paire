@@ -1,0 +1,64 @@
+# Submits a real report and block, checks private progress, and returns via Safety center.
+appId: com.muse.app
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "muse+alexa@example.com"
+- extendedWaitUntil:
+    visible:
+      id: "tab-matches"
+    timeout: 60000
+- tapOn:
+    id: "tab-matches"
+- runFlow: subflows/dismiss-dev-warning.yaml
+- tapOn:
+    id: "match-row-muse_alexa_muse_jules"
+- extendedWaitUntil:
+    visible:
+      id: "chat-menu"
+    timeout: 20000
+- tapOn:
+    id: "chat-menu"
+- tapOn: "Report Jules"
+- tapOn:
+    id: "report-reason-harassment"
+- tapOn:
+    id: "report-details"
+- inputText: "QA report using fictional emulator members"
+- hideKeyboard
+- tapOn:
+    id: "report-submit"
+- extendedWaitUntil:
+    visible: "Received"
+    timeout: 30000
+- assertVisible: "My reports"
+- assertVisible: "About Jules.*"
+- assertVisible: "Blocked on Paire"
+- assertVisible: "Your report is saved and waiting for review.*"
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/10-my-reports
+- tapOn:
+    id: "header-back"
+- extendedWaitUntil:
+    visible:
+      id: "tab-profile"
+    timeout: 20000
+- assertNotVisible:
+    id: "match-row-muse_alexa_muse_jules"
+- tapOn:
+    id: "tab-profile"
+- runFlow: subflows/dismiss-dev-warning.yaml
+- scrollUntilVisible:
+    element:
+      id: "profile-safety"
+    direction: DOWN
+- tapOn:
+    id: "profile-safety"
+- tapOn:
+    id: "safety-my-reports"
+- extendedWaitUntil:
+    visible: "Received"
+    timeout: 30000

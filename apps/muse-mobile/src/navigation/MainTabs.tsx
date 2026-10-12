@@ -1,0 +1,62 @@
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "tamagui";
+import { Icon, IconName } from "../components/Icon";
+import { useUnreadTotal } from "../hooks/useAppServices";
+import { DiscoverScreen } from "../screens/DiscoverScreen";
+import { MatchesScreen } from "../screens/MatchesScreen";
+import { ProfileScreen } from "../screens/ProfileScreen";
+import type { MainTabsParamList } from "./types";
+
+const Tab = createBottomTabNavigator<MainTabsParamList>();
+
+const tabIcon =
+  (active: IconName, inactive: IconName) =>
+  ({ focused, color }: { focused: boolean; color: string }) => (
+    <Icon name={focused ? active : inactive} size={25} color={color} />
+  );
+
+export function MainTabs() {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const unread = useUnreadTotal();
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: theme.primary?.val,
+        tabBarInactiveTintColor: theme.textMuted?.val,
+        tabBarLabelStyle: { fontSize: 12, fontFamily: "SpaceGrotesk_500Medium" },
+        tabBarStyle: {
+          backgroundColor: theme.backgroundStrong?.val,
+          borderTopColor: theme.border?.val,
+          height: 62 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: Math.max(insets.bottom, 8)
+        }
+      }}
+    >
+      <Tab.Screen
+        name="Discover"
+        component={DiscoverScreen}
+        options={{ tabBarButtonTestID: "tab-discover", tabBarIcon: tabIcon("flame", "flame-outline") }}
+      />
+      <Tab.Screen
+        name="Matches"
+        component={MatchesScreen}
+        options={{
+          tabBarButtonTestID: "tab-matches",
+          tabBarIcon: tabIcon("chatbubbles", "chatbubbles-outline"),
+          tabBarBadge: unread > 0 ? (unread > 99 ? "99+" : unread) : undefined,
+          tabBarBadgeStyle: { backgroundColor: theme.primary?.val, fontSize: 11 }
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ tabBarButtonTestID: "tab-profile", tabBarIcon: tabIcon("person", "person-outline") }}
+      />
+    </Tab.Navigator>
+  );
+}

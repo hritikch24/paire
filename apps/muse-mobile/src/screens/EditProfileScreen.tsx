@@ -1,208 +1,201 @@
-import { useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { Card, Text, XStack, YStack, styled } from "tamagui";
-import { Screen } from "../components/Screen";
-import { MuseInput } from "../components/MuseInput";
-import { PrimaryButton, SecondaryButton } from "../components/MuseButton";
-import { useAuthStore } from "../store/authStore";
-import { doc, setDoc } from "@firebase/firestore/dist/index.cjs.js";
-import { db } from "../services/firebase";
 import { useNavigation } from "@react-navigation/native";
-import { getRapidQuestionSet, rapidQuestionMap } from "../data/rapidQuestions";
+import { useMemo, useState, type ReactNode } from "react";
+import { Keyboard } from "react-native";
+import { Text, YStack } from "tamagui";
+import { ChipGroup } from "../components/Chip";
+import { AiSuggestions } from "../components/AiSuggestions";
+import { Icon } from "../components/Icon";
+import { GhostButton, PrimaryButton } from "../components/MuseButton";
+import { TextField } from "../components/MuseInput";
+import {
+  answersToRecord,
+  BasicsEditor,
+  BIO_MAX,
+  LanguagePicker,
+  MuseCardPicker,
+  RapidQuestionPicker,
+  recordToAnswers,
+  toggleLimited
+} from "../components/ProfileEditors";
+import { Screen } from "../components/Screen";
+import { ScreenHeader } from "../components/ScreenHeader";
+import { showToast } from "../components/Toast";
 import { datingIntentions } from "../data/datingIntentions";
-import { QuickAnswer } from "../types/models";
 import { vibeOptions } from "../data/vibes";
+import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
+import { fetchBioSuggestions } from "../services/aiService";
+import { friendlyError } from "../services/errors";
+import { updateProfile } from "../services/profileService";
+import { useAuthStore } from "../store/authStore";
+import { GENDERS, Gender, ProfileBasics } from "../types/models";
+import { GENDER_LABELS } from "../utils/profile";
+
+/** Work is free text: trim it, and drop it when blank (the rules reject empty strings). */
+function withTrimmedWork(basics: ProfileBasics): ProfileBasics {
+  const { work, ...rest } = basics;
+  return work?.trim() ? { ...rest, work: work.trim() } : rest;
+}
+
+function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <YStack gap="$2">
+      <Text fontWeight="700" fontSize="$4">
+        {title}
+      </Text>
+      {hint ? (
+        <Text color="$textMuted" fontSize="$2">
+          {hint}
+        </Text>
+      ) : null}
+      {children}
+    </YStack>
+  );
+}
 
 export function EditProfileScreen() {
   const navigation = useNavigation();
+  const uid = useAuthStore((state) => state.user?.uid);
   const profile = useAuthStore((state) => state.profile);
-  const setProfile = useAuthStore((state) => state.setProfile);
-  const [bio, setBio] = useState(profile?.bio ?? "");
-  const [city, setCity] = useState(profile?.city ?? "");
-  const [intentions, setIntentions] = useState<string[]>(profile?.intentions ?? []);
-  const [vibes, setVibes] = useState<string[]>(profile?.vibes ?? []);
+
+  const initial = useMemo(
+    () => ({
+      displayName: profile?.displayName ?? "",
+      gender: profile?.gender ?? ("woman" as Gender),
+      city: profile?.city ?? "",
+      bio: profile?.bio ?? "",
+      intentions: profile?.intentions ?? [],
+      vibes: profile?.vibes ?? [],
+      interests: profile?.interests ?? [],
+      languages: profile?.languages ?? [],
+      basics: profile?.basics ?? {},
+      answers: answersToRecord(profile?.quickAnswers)
+    }),
+    // Snapshot once: later profile updates shouldn't reset the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const questions = useMemo(() => getRapidQuestionSet(), []);
-  const initialQuickAnswers = useMemo(() => {
-    const existing = profile?.quickAnswers ?? [];
-    return existing.reduce<Record<string, string>>((acc, entry) => {
-      if (rapidQuestionMap.has(entry.questionId)) {
-        acc[entry.questionId] = entry.answer;
-      }
-      return acc;
-    }, {});
-  }, [profile]);
-  const [quickAnswers, setQuickAnswers] = useState<Record<string, string>>(initialQuickAnswers);
+  const [bioIdeas, setBioIdeas] = useState<string[] | null>(null);
+  const [bioLoading, setBioLoading] = useState(false);
 
-  const handleSelect = (questionId: string, option: string) => {
-    setQuickAnswers((prev) => ({ ...prev, [questionId]: option }));
+  const writeBio = async () => {
+    setBioLoading(true);
+    try {
+      setBioIdeas((await fetchBioSuggestions()).suggestions);
+    } catch (error) {
+      showToast(friendlyError(error, "Paire AI couldn't write ideas right now. Try again later."), "error");
+    } finally {
+      setBioLoading(false);
+    }
   };
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+  const valid = Boolean(form.displayName.trim()) && form.interests.length > 0;
+  useUnsavedChangesGuard(dirty && !saving);
 
-  const toggleIntention = (id: string) => {
-    setIntentions((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const toggleVibe = (id: string) => {
-    setVibes((prev) => {
-      if (prev.includes(id)) {
-        return prev.filter((item) => item !== id);
-      }
-      if (prev.length >= 3) {
-        return prev;
-      }
-      return [...prev, id];
-    });
-  };
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
 
   const handleSave = async () => {
-    if (!profile) return;
+    if (!uid || !valid || saving) return;
+    Keyboard.dismiss();
     setSaving(true);
-    setError(null);
     try {
-      const rapidAnswers: QuickAnswer[] = questions
-        .filter((question) => quickAnswers[question.id])
-        .map((question) => ({
-          questionId: question.id,
-          answer: quickAnswers[question.id]
-        }));
-      const updatedAt = Date.now();
-      await setDoc(
-        doc(db, "users", profile.uid),
-        {
-          bio,
-          city,
-          intentions,
-          vibes,
-          quickAnswers: rapidAnswers,
-          updatedAt
-        },
-        { merge: true }
-      );
-      setProfile({
-        ...profile,
-        bio,
-        city,
-        intentions,
-        vibes,
-        quickAnswers: rapidAnswers,
-        updatedAt
+      await updateProfile(uid, {
+        displayName: form.displayName.trim(),
+        gender: form.gender,
+        city: form.city.trim(),
+        bio: form.bio.trim(),
+        intentions: form.intentions,
+        vibes: form.vibes,
+        interests: form.interests,
+        languages: form.languages,
+        basics: withTrimmedWork(form.basics),
+        quickAnswers: recordToAnswers(form.answers)
       });
+      showToast("Profile saved.", "success");
       navigation.goBack();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to save profile.";
-      setError(message);
-    } finally {
+    } catch (error) {
       setSaving(false);
+      showToast(friendlyError(error, "We couldn't save your profile. Please try again."), "error");
     }
   };
 
   return (
-    <Screen>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: 120 }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-        >
-          <YStack gap="$4">
-            <Text fontSize="$7" fontWeight="700">
-              Edit profile
+    <Screen
+      scroll
+      footer={
+        <PrimaryButton testID="edit-profile-save" onPress={handleSave} disabled={!dirty || !valid} loading={saving}>
+          Save changes
+        </PrimaryButton>
+      }
+    >
+      <ScreenHeader title="Edit profile" />
+      <YStack gap="$6">
+        <YStack gap="$3">
+          <TextField label="First name" value={form.displayName} maxLength={40} autoCapitalize="words" onChangeText={(value) => set("displayName", value)} />
+          <YStack gap="$1">
+            <Text fontWeight="600" fontSize="$2">
+              Age
             </Text>
-            <MuseInput placeholder="City" value={city} onChangeText={setCity} />
-            <MuseInput placeholder="Bio" value={bio} onChangeText={setBio} />
-            <YStack gap="$2">
-              <Text fontWeight="700">Your vibe</Text>
-              <Text color="$textMuted">Choose up to three to set your tone.</Text>
-              <XStack gap="$2" flexWrap="wrap">
-                {vibeOptions.map((vibe) => {
-                  const active = vibes.includes(vibe.id);
-                  return (
-                    <AnswerPill
-                      key={vibe.id}
-                      onPress={() => toggleVibe(vibe.id)}
-                      backgroundColor={active ? "$primarySoft" : "$backgroundSoft"}
-                      borderColor={active ? "$primary" : "$border"}
-                    >
-                      <Text color={active ? "$text" : "$textMuted"}>
-                        {vibe.emoji} {vibe.label}
-                      </Text>
-                    </AnswerPill>
-                  );
-                })}
-              </XStack>
-            </YStack>
-            <YStack gap="$2">
-              <Text fontWeight="700">Looking for</Text>
-              <Text color="$textMuted">Keep your intentions clear.</Text>
-              <XStack gap="$2" flexWrap="wrap">
-                {datingIntentions.map((intention) => {
-                  const active = intentions.includes(intention.id);
-                  return (
-                    <AnswerPill
-                      key={intention.id}
-                      onPress={() => toggleIntention(intention.id)}
-                      backgroundColor={active ? "$primarySoft" : "$backgroundSoft"}
-                      borderColor={active ? "$primary" : "$border"}
-                    >
-                      <Text color={active ? "$text" : "$textMuted"}>
-                        {intention.emoji} {intention.label}
-                      </Text>
-                    </AnswerPill>
-                  );
-                })}
-              </XStack>
-            </YStack>
-            <YStack gap="$3">
-              <Text fontWeight="700">Rapid questions</Text>
-              <Text color="$textMuted">Pick quick answers to share in Blind Date mode.</Text>
-              <YStack gap="$3">
-                {questions.map((question) => (
-                  <YStack key={question.id} gap="$2">
-                    <Text fontWeight="600">{question.question}</Text>
-                    <XStack gap="$2" flexWrap="wrap">
-                      {question.options.map((option) => {
-                        const selected = quickAnswers[question.id] === option;
-                        return (
-                          <AnswerPill
-                            key={`${question.id}-${option}`}
-                            onPress={() => handleSelect(question.id, option)}
-                            backgroundColor={selected ? "$primarySoft" : "$backgroundSoft"}
-                            borderColor={selected ? "$primary" : "$border"}
-                          >
-                            <Text color={selected ? "$text" : "$textMuted"}>{option}</Text>
-                          </AnswerPill>
-                        );
-                      })}
-                    </XStack>
-                  </YStack>
-                ))}
-              </YStack>
-            </YStack>
-            {error ? <Text color="$error">{error}</Text> : null}
-            <PrimaryButton onPress={handleSave} disabled={saving}>
-              Save
-            </PrimaryButton>
-            <SecondaryButton onPress={() => navigation.goBack()}>Cancel</SecondaryButton>
+            <Text color="$textMuted">
+              {profile?.age}. Your age comes from your birthday, which can't be changed in the app. Contact support if it's wrong.
+            </Text>
           </YStack>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <TextField label="Bio" value={form.bio} multiline textAlignVertical="top" minHeight={110} paddingTop="$3" maxLength={BIO_MAX} showCount onChangeText={(value) => set("bio", value)} />
+          {bioIdeas ? (
+            <AiSuggestions
+              testID="bio-ideas"
+              title="Paire AI ideas"
+              suggestions={bioIdeas}
+              onPick={(text) => set("bio", text.slice(0, BIO_MAX))}
+            />
+          ) : (
+            <GhostButton
+              alignSelf="flex-start"
+              testID="bio-write-ai"
+              loading={bioLoading}
+              leftIcon={<Icon name="sparkles" size={16} color="primary" />}
+              onPress={() => void writeBio()}
+            >
+              Write it with Paire AI
+            </GhostButton>
+          )}
+          <TextField label="City" value={form.city} maxLength={60} autoCapitalize="words" onChangeText={(value) => set("city", value)} />
+        </YStack>
+
+        <Section title="Gender">
+          <ChipGroup
+            options={GENDERS.map((id) => ({ id, label: GENDER_LABELS[id] }))}
+            selected={[form.gender]}
+            onToggle={(id) => set("gender", id)}
+          />
+        </Section>
+
+        <Section title="Languages I speak" hint="Up to 6. People who speak your language see it first.">
+          <LanguagePicker selected={form.languages} onChange={(next) => set("languages", next)} />
+        </Section>
+
+        <Section title="Basics" hint="All optional. Shown on your profile so the right people find you.">
+          <BasicsEditor value={form.basics} onChange={(next) => set("basics", next)} />
+        </Section>
+
+        <Section title="Looking for" hint="Up to 2">
+          <ChipGroup options={datingIntentions} selected={form.intentions} onToggle={(id) => set("intentions", toggleLimited(form.intentions, id, 2))} />
+        </Section>
+
+        <Section title="Your vibe" hint="Up to 3">
+          <ChipGroup options={vibeOptions} selected={form.vibes} onToggle={(id) => set("vibes", toggleLimited(form.vibes, id, 3))} />
+        </Section>
+
+        <Section title="Interests" hint="Pick at least one">
+          <MuseCardPicker selected={form.interests} onChange={(next) => set("interests", next)} />
+        </Section>
+
+        <Section title="Rapid questions">
+          <RapidQuestionPicker answers={form.answers} onChange={(next) => set("answers", next)} />
+        </Section>
+      </YStack>
     </Screen>
   );
 }
-
-const AnswerPill = styled(Card, {
-  paddingHorizontal: "$3",
-  paddingVertical: "$2",
-  borderRadius: "$5",
-  borderWidth: 1,
-  backgroundColor: "$backgroundSoft",
-  borderColor: "$border",
-  pressStyle: { opacity: 0.85, scale: 0.98 }
-});

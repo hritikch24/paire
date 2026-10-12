@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require("fs");
 const { getDefaultConfig } = require("expo/metro-config");
 const { withTamagui } = require("@tamagui/metro-plugin");
 
@@ -10,41 +11,44 @@ config = withTamagui(config, {
   outputCSS: "./.tamagui/tamagui.css"
 });
 
+const localModule = (name) => path.dirname(require.resolve(`${name}/package.json`, {
+  paths: [path.dirname(require.resolve("firebase/package.json")), __dirname]
+}));
+
 config.resolver = {
   ...config.resolver,
   resolverMainFields: ["react-native", "main", "browser"],
-  nodeModulesPaths: [
-    path.resolve(__dirname, "node_modules"),
-    path.resolve(__dirname, "../../node_modules")
-  ],
+  resolveRequest(context, moduleName, platform) {
+    if (moduleName.startsWith("@firebase/")) {
+      const parts = moduleName.split("/");
+      const name = parts.slice(0, 2).join("/");
+      const root = localModule(name);
+      // Explicit CJS imports must share the registry even if npm nests auth.
+      const entry = name === "@firebase/auth"
+        ? (platform === "web" ? "dist/browser-cjs/index.js" : "dist/rn/index.js")
+        : name === "@firebase/firestore" && platform !== "web" ? "dist/index.rn.js"
+        : JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).main;
+      // RN fetch has no streaming response body. The SDK's RN entry disables
+      // Fetch streams, which the browser entry enables even with long-polling.
+      const subpath = name === "@firebase/firestore" && platform !== "web" && parts.slice(2).join("/") === "dist/index.cjs.js"
+        ? ["dist/index.rn.js"] : parts.slice(2);
+      const target = path.join(root, ...(parts.length > 2 ? subpath : [entry]));
+      return context.resolveRequest(context, target, platform);
+    }
+    return context.resolveRequest(context, moduleName, platform);
+  },
+  // The app is a standalone npm project; never resolve from a parent node_modules.
+  nodeModulesPaths: [path.resolve(__dirname, "node_modules")],
   extraNodeModules: {
     ...(config.resolver && config.resolver.extraNodeModules),
-    "@firebase/app": path.resolve(__dirname, "node_modules/@firebase/app"),
-    "@firebase/auth": path.resolve(__dirname, "node_modules/@firebase/auth"),
-    "@firebase/firestore": path.resolve(__dirname, "node_modules/@firebase/firestore"),
-    "@firebase/storage": path.resolve(__dirname, "node_modules/@firebase/storage"),
-    "@firebase/functions": path.resolve(__dirname, "node_modules/@firebase/functions"),
-    "@react-native-async-storage/async-storage": path.resolve(
-      __dirname,
-      "../../node_modules/@react-native-async-storage/async-storage/lib/commonjs/index.js"
-    ),
-    "tamagui": path.resolve(__dirname, "../../node_modules/tamagui"),
-    "@tamagui/config": path.resolve(__dirname, "../../node_modules/@tamagui/config"),
-    "@tamagui/animations-react-native": path.resolve(
-      __dirname,
-      "../../node_modules/@tamagui/animations-react-native"
-    ),
-    "@tamagui/compose-refs": path.resolve(__dirname, "../../node_modules/@tamagui/compose-refs"),
-    "@tamagui/constants": path.resolve(__dirname, "../../node_modules/@tamagui/constants"),
-    "@tamagui/helpers": path.resolve(__dirname, "../../node_modules/@tamagui/helpers"),
-    "@tamagui/use-did-finish-ssr": path.resolve(
-      __dirname,
-      "../../node_modules/@tamagui/use-did-finish-ssr"
-    ),
-    "@tamagui/use-event": path.resolve(__dirname, "../../node_modules/@tamagui/use-event"),
-    "@tamagui/use-presence": path.resolve(__dirname, "../../node_modules/@tamagui/use-presence"),
-    "@tamagui/core": path.resolve(__dirname, "../../node_modules/@tamagui/core"),
-    "@tamagui/web": path.resolve(__dirname, "../../node_modules/@tamagui/web")
+    // Pin each Firebase package to one instance so auth, firestore, storage and
+    // functions share a single component registry.
+    "@firebase/app": localModule("@firebase/app"),
+    "@firebase/auth": localModule("@firebase/auth"),
+    "@firebase/firestore": localModule("@firebase/firestore"),
+    "@firebase/storage": localModule("@firebase/storage"),
+    "@firebase/functions": localModule("@firebase/functions"),
+    "@react-native-async-storage/async-storage": require.resolve("@react-native-async-storage/async-storage/lib/commonjs/index.js")
   }
 };
 

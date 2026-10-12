@@ -1,54 +1,49 @@
-import { User } from "@firebase/auth/dist/rn";
+import type { User } from "firebase/auth";
 import { create } from "zustand";
-import { UserProfile } from "../types/models";
+import { PrivateInfo, UserProfile, UserSettings } from "../types/models";
+
+export type SessionStatus = "initializing" | "signedOut" | "signedIn";
 
 type AuthState = {
+  status: SessionStatus;
   user: User | null;
   profile: UserProfile | null;
-  loading: boolean;
-  isGuest: boolean;
-  isDemo: boolean;
+  profileLoaded: boolean;
+  settings: UserSettings | null;
+  settingsLoaded: boolean;
+  info: PrivateInfo | null;
+  infoLoaded: boolean;
   setUser: (user: User | null) => void;
   setProfile: (profile: UserProfile | null) => void;
-  setLoading: (loading: boolean) => void;
-  setGuest: (profile: UserProfile) => void;
-  setDemo: (profile: UserProfile) => void;
-  resetAuth: () => void;
+  setSettings: (settings: UserSettings | null) => void;
+  setInfo: (info: PrivateInfo | null) => void;
+  reset: () => void;
+};
+
+const signedOutState = {
+  user: null,
+  profile: null,
+  profileLoaded: false,
+  settings: null,
+  settingsLoaded: false,
+  info: null,
+  infoLoaded: false
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  profile: null,
-  loading: true,
-  isGuest: false,
-  isDemo: false,
-  setUser: (user) => set({ user }),
-  setProfile: (profile) => set({ profile }),
-  setLoading: (loading) => set({ loading }),
-  setGuest: (profile) =>
-    set({
-      user: ({
-        uid: profile.uid,
-        email: "guest@muse.app",
-        getIdToken: async () => "guest-token"
-      } as unknown as User),
-      profile,
-      loading: false,
-      isGuest: true,
-      isDemo: false
-    }),
-  setDemo: (profile) =>
-    set({
-      user: ({
-        uid: profile.uid,
-        email: "demo@muse.app",
-        getIdToken: async () => "demo-token"
-      } as unknown as User),
-      profile,
-      loading: false,
-      isGuest: false,
-      isDemo: true
-    }),
-  resetAuth: () =>
-    set({ user: null, profile: null, loading: false, isGuest: false, isDemo: false })
+  status: "initializing",
+  ...signedOutState,
+  setUser: (user) =>
+    set(user ? { user, status: "signedIn" } : { ...signedOutState, status: "signedOut" }),
+  setProfile: (profile) => set({ profile, profileLoaded: true }),
+  setSettings: (settings) => set({ settings, settingsLoaded: true }),
+  setInfo: (info) => set({ info, infoLoaded: true }),
+  reset: () => set({ ...signedOutState, status: "signedOut" })
 }));
+
+/** The signed-in uid, or throws: for use in actions that require a session. */
+export function requireUid(): string {
+  const uid = useAuthStore.getState().user?.uid;
+  if (!uid) throw new Error("Not signed in");
+  return uid;
+}

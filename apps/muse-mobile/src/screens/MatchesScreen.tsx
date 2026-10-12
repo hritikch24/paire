@@ -1,299 +1,294 @@
-import { useQuery } from "@tanstack/react-query";
-import { FlatList, Image, Pressable, Share } from "react-native";
-import { Text, YStack, XStack } from "tamagui";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useMemo } from "react";
+import { FlatList, Pressable, ScrollView } from "react-native";
+import { Text, XStack, YStack } from "tamagui";
+import { AvatarPair } from "../components/Avatar";
+import { Icon } from "../components/Icon";
+import { LikesYouRow } from "../components/LikesYouRow";
+import { PrimaryButton } from "../components/MuseButton";
 import { Screen } from "../components/Screen";
-import { PrimaryButton, SecondaryButton } from "../components/MuseButton";
-import { fetchMatches } from "../services/matchService";
+import { EmptyState, LoadingView } from "../components/States";
+import { useLikesYou } from "../hooks/useLikesYou";
+import { chatTitle, otherParticipant, otherSide } from "../services/matchService";
 import { useAuthStore } from "../store/authStore";
-import { AppStackParamList } from "../navigation/stacks/AppStack";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useCallback } from "react";
-import { datingIntentionMap } from "../data/datingIntentions";
-import { formatLastActive } from "../utils/formatLastActive";
-import { distanceKm, formatDistanceKm } from "../utils/distance";
-import { createRoomId } from "../utils/call";
-import { CALL_DOMAIN } from "../config/call";
-
-const NEARBY_NOW_DISTANCE_KM = 5;
-const NEARBY_NOW_WINDOW_MS = 15 * 60 * 1000;
+import { useMatchesStore } from "../store/matchesStore";
+import { DiscoverProfile, Match } from "../types/models";
+import { formatShortTime } from "../utils/time";
+import type { AppStackParamList } from "../navigation/types";
 
 export function MatchesScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const user = useAuthStore((state) => state.user);
-  const profile = useAuthStore((state) => state.profile);
-  const isGuest = useAuthStore((state) => state.isGuest);
-  const resetAuth = useAuthStore((state) => state.resetAuth);
-  const uid = user?.uid ?? "";
-  const tabBarHeight = useBottomTabBarHeight();
-  const insets = useSafeAreaInsets();
-  const extraBottomPadding = Math.max(0, tabBarHeight - insets.bottom);
+  const uid = useAuthStore((state) => state.user?.uid) ?? "";
+  const { matches, loaded, failed, retry } = useMatchesStore();
+  const likes = useLikesYou().data ?? [];
+  const openLiker = (profile: DiscoverProfile) => navigation.navigate("ProfileView", { source: "likes", profile });
+  const seeAllLikes = () => navigation.navigate("LikesGallery");
+  /** One face for a match, two overlapping for a Duo chat. */
+  const facesOf = (match: Match) =>
+    (match.kind === "duo" ? otherSide(match, uid) : [otherParticipant(match, uid)]).map((member) => ({
+      uri: match.profiles[member]?.photoUrl,
+      name: match.profiles[member]?.displayName
+    }));
 
-  const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["matches", uid],
-    enabled: Boolean(uid) && !isGuest,
-    queryFn: () => fetchMatches(uid)
-  });
-
-  useFocusEffect(
-    useCallback(() => {
-      if (uid) {
-        void refetch();
-      }
-    }, [uid, refetch])
+  const { fresh, conversations } = useMemo(
+    () => ({
+      fresh: matches.filter((match) => !match.lastMessage),
+      conversations: matches.filter((match) => match.lastMessage)
+    }),
+    [matches]
   );
 
-  if (isGuest) {
-    return (
-      <Screen scrollable extraBottomPadding={extraBottomPadding}>
-        <YStack gap="$3" flex={1}>
-          <Text testID="matches-title" fontSize="$7" fontWeight="700">
-            Matches
-          </Text>
-          <Text color="$textMuted">
-            Guest mode doesn’t sync matches. Create an account to start chatting.
-          </Text>
-          <PrimaryButton onPress={resetAuth}>Create account</PrimaryButton>
-          <YStack
-            backgroundColor="$backgroundStrong"
-            padding="$4"
-            borderRadius="$4"
-            borderWidth={1}
-            borderColor="$border"
-            gap="$2"
-          >
-            <Text fontWeight="700">Muse Now</Text>
-            <Text fontSize="$2" color="$textMuted">
-              Jump into a spontaneous chat or call with someone new.
-            </Text>
-            <PrimaryButton onPress={() => navigation.navigate("RandomConnect")}>
-              Try random chat
-            </PrimaryButton>
-          </YStack>
-          {__DEV__ ? (
-            <YStack
-              backgroundColor="$backgroundStrong"
-              padding="$4"
-              borderRadius="$4"
-              borderWidth={1}
-              borderColor="$border"
-              gap="$2"
-            >
-              <Text fontWeight="700">Demo match (QA)</Text>
-              <Text fontSize="$2" color="$textMuted">
-                Preview chat + calls without signing up.
-              </Text>
-              <PrimaryButton
-                onPress={() =>
-                  navigation.navigate("Chat", { matchId: "demo-match", targetUid: "demo_anya" })
-                }
-              >
-                Open demo chat
-              </PrimaryButton>
-              <SecondaryButton
-                onPress={() =>
-                  navigation.navigate("Call", { roomId: "demo-call", video: true })
-                }
-              >
-                Start demo video call
-              </SecondaryButton>
-            </YStack>
-          ) : null}
-          <SecondaryButton onPress={() => navigation.navigate("SafetyCenter")}>
-            Safety center
-          </SecondaryButton>
-        </YStack>
-      </Screen>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <Screen extraBottomPadding={extraBottomPadding}>
-        <YStack height={120} backgroundColor="$backgroundSoft" borderRadius="$4" />
-      </Screen>
-    );
-  }
-
-  const handleGroupCall = async () => {
-    const roomId = createRoomId();
-    const shareUrl = `https://${CALL_DOMAIN}/${roomId}`;
-    await Share.share({ message: `Join my Muse group call: ${shareUrl}` });
-    navigation.navigate("Call", { roomId, video: true });
+  const openChat = (match: Match) => {
+    const otherUid = otherParticipant(match, uid);
+    const other = match.profiles[otherUid];
+    navigation.navigate("Chat", {
+      matchId: match.id,
+      // Duo chats have several people; the chat works them out itself.
+      otherUid: match.kind === "duo" ? undefined : otherUid,
+      name: chatTitle(match, uid),
+      photoUrl: other?.photoUrl ?? null
+    });
   };
 
-  return (
-    <Screen extraBottomPadding={extraBottomPadding}>
-      <YStack gap="$3" flex={1}>
-        <Text testID="matches-title" fontSize="$7" fontWeight="700">
+  if (!loaded) {
+    return (
+      <Screen edges={["top"]}>
+        <LoadingView />
+      </Screen>
+    );
+  }
+
+  if (failed) {
+    return (
+      <Screen edges={["top"]}>
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Couldn't load your matches"
+          message="Check your connection and try again."
+        >
+          <PrimaryButton onPress={retry}>Try again</PrimaryButton>
+        </EmptyState>
+      </Screen>
+    );
+  }
+
+  if (!matches.length) {
+    return (
+      <Screen edges={["top"]} padded={false}>
+        <Text fontSize="$8" fontWeight="700" testID="matches-title" accessibilityRole="header" paddingHorizontal="$4">
           Matches
         </Text>
-        <YStack
-          backgroundColor="$backgroundStrong"
-          padding="$3"
-          borderRadius="$4"
-          borderWidth={1}
-          borderColor="$border"
-          gap="$2"
-        >
-          <Text fontWeight="700">Muse Now</Text>
-          <Text fontSize="$2" color="$textMuted">
-            Start a random chat or call with someone new.
-          </Text>
-          <PrimaryButton onPress={() => navigation.navigate("RandomConnect")}>
-            Try random chat
-          </PrimaryButton>
-        </YStack>
-        <YStack
-          backgroundColor="$backgroundStrong"
-          padding="$3"
-          borderRadius="$4"
-          borderWidth={1}
-          borderColor="$border"
-          gap="$2"
-        >
-          <Text fontWeight="700">Group call</Text>
-          <Text fontSize="$2" color="$textMuted">
-            Start a room and share the link with multiple matches.
-          </Text>
-          <PrimaryButton onPress={handleGroupCall}>Start group call</PrimaryButton>
-        </YStack>
-        {!data?.length ? (
-          <YStack
-            backgroundColor="$backgroundStrong"
-            padding="$4"
-            borderRadius="$4"
-            borderWidth={1}
-            borderColor="$border"
-            gap="$3"
-          >
-            <Text fontWeight="700">No matches yet</Text>
-            <Text color="$textMuted">Start swiping to spark your first match.</Text>
-            <PrimaryButton onPress={() => navigation.getParent()?.navigate("Discover" as never)}>
-              Go to Discover
-            </PrimaryButton>
+        {likes.length ? (
+          <YStack paddingTop="$4">
+            <LikesYouRow profiles={likes} onOpen={openLiker} onSeeAll={seeAllLikes} />
           </YStack>
-        ) : (
-          <FlatList
-            data={data}
-            keyExtractor={(item) => item.id}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            refreshing={isFetching}
-            onRefresh={() => refetch()}
-            renderItem={({ item }) => {
-              const targetUid =
-                item.otherUserId ??
-                item.participants.find((participantId: string) => participantId !== uid) ??
-                "";
-              const unreadCount = item.unreadCounts?.[uid] ?? 0;
-              const openChat = () =>
-                navigation.navigate("Chat", {
-                  matchId: item.id,
-                  targetUid
-                });
+        ) : null}
+        <EmptyState
+          testID="matches-empty"
+          icon="heart-outline"
+          title="No matches yet"
+          message="When you and someone else both like each other, you'll find them here and can start chatting."
+        >
+          <PrimaryButton onPress={() => navigation.navigate("Tabs", { screen: "Discover" })}>
+            Start discovering
+          </PrimaryButton>
+        </EmptyState>
+      </Screen>
+    );
+  }
 
-              return (
-                <Pressable onPress={openChat} style={{ marginBottom: 12 }}>
-                  <XStack
-                    backgroundColor="$backgroundStrong"
-                    borderRadius="$4"
-                    padding="$3"
-                    borderWidth={1}
-                    borderColor="$border"
-                    justifyContent="space-between"
-                    alignItems="center"
-                  >
-                    <XStack gap="$3" alignItems="center" flex={1} marginRight="$3">
-                      {item.otherUser?.photoUrls?.[0] ? (
-                        <Image
-                          source={{ uri: item.otherUser.photoUrls[0] }}
-                          style={{ width: 56, height: 56, borderRadius: 18 }}
-                        />
-                      ) : (
+  return (
+    <Screen edges={["top"]} padded={false}>
+      <FlatList
+        data={conversations}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        ListHeaderComponent={
+          <YStack gap="$4" paddingBottom="$2">
+            <Text
+              fontSize="$8"
+              fontWeight="700"
+              paddingHorizontal="$4"
+              testID="matches-title"
+              accessibilityRole="header"
+            >
+              Matches
+            </Text>
+            <LikesYouRow profiles={likes} onOpen={openLiker} onSeeAll={seeAllLikes} />
+            {fresh.length ? (
+              <YStack gap="$2">
+                <Text
+                  fontSize="$2"
+                  fontWeight="700"
+                  color="$textMuted"
+                  textTransform="uppercase"
+                  paddingHorizontal="$4"
+                >
+                  New matches
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+                >
+                  {fresh.map((match) => {
+                    const otherUid = otherParticipant(match, uid);
+                    const superLiked = match.superLikedBy.includes(otherUid);
+                    return (
+                      <Pressable
+                        key={match.id}
+                        testID={`new-match-${match.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={`New match with ${chatTitle(match, uid)}. Open chat`}
+                        onPress={() => openChat(match)}
+                      >
+                        <YStack alignItems="center" gap="$1" width={78}>
+                          <YStack>
+                            <AvatarPair people={facesOf(match)} size={72} ring />
+                            {superLiked ? (
+                              <YStack
+                                position="absolute"
+                                right={-2}
+                                bottom={-2}
+                                width={24}
+                                height={24}
+                                borderRadius={12}
+                                backgroundColor="$superLike"
+                                alignItems="center"
+                                justifyContent="center"
+                                borderWidth={2}
+                                borderColor="$background"
+                              >
+                                <Icon name="star" size={12} color="#FFFFFF" />
+                              </YStack>
+                            ) : null}
+                          </YStack>
+                          <Text fontSize="$2" fontWeight="600" numberOfLines={1}>
+                            {chatTitle(match, uid)}
+                          </Text>
+                          {match.kind === "duo" ? (
+                            <Text fontSize={11} lineHeight={14} fontWeight="700" color="$primary">
+                              Duo
+                            </Text>
+                          ) : match.firstMoveBy && match.firstMoveBy !== uid ? (
+                            <Text fontSize={11} lineHeight={14} color="$textMuted">
+                              Their move
+                            </Text>
+                          ) : match.firstMoveBy === uid ? (
+                            <Text fontSize={11} lineHeight={14} fontWeight="700" color="$primary">
+                              Your move
+                            </Text>
+                          ) : match.sparks?.[otherUid] ? (
+                            <Text fontSize={11} lineHeight={14} fontWeight="700" color="$primary">
+                              Sent a note
+                            </Text>
+                          ) : null}
+                        </YStack>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </YStack>
+            ) : null}
+            {conversations.length ? (
+              <Text fontSize="$2" fontWeight="700" color="$textMuted" textTransform="uppercase" paddingHorizontal="$4">
+                Messages
+              </Text>
+            ) : (
+              <Text color="$textMuted" paddingHorizontal="$4">
+                Say hi to your new matches. Conversations will show up here.
+              </Text>
+            )}
+          </YStack>
+        }
+        renderItem={({ item }) => {
+          const title = chatTitle(item, uid);
+          const group = item.kind === "duo";
+          const unread = item.unread[uid] ?? 0;
+          const mine = item.lastMessage?.senderId === uid;
+          const sender = item.lastMessage && !mine ? item.profiles[item.lastMessage.senderId]?.displayName : undefined;
+          return (
+            <Pressable
+              testID={`match-row-${item.id}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${group ? "Duo chat" : "Chat"} with ${title}${unread ? `, ${unread} unread` : ""}`}
+              onPress={() => openChat(item)}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            >
+              <XStack paddingHorizontal="$4" paddingVertical="$3" gap="$3" alignItems="center">
+                <AvatarPair people={facesOf(item)} size={58} />
+                <YStack flex={1} gap={2} minWidth={0}>
+                  <XStack justifyContent="space-between" gap="$2">
+                    <XStack flex={1} gap="$2" alignItems="center" minWidth={0}>
+                      <Text fontSize="$4" fontWeight={unread ? "700" : "600"} numberOfLines={1} flexShrink={1}>
+                        {title}
+                      </Text>
+                      {group ? (
                         <YStack
-                          width={56}
-                          height={56}
-                          borderRadius={18}
-                          backgroundColor="$backgroundSoft"
-                          alignItems="center"
-                          justifyContent="center"
+                          paddingHorizontal={7}
+                          paddingVertical={2}
+                          borderRadius={999}
+                          backgroundColor="$primarySoft"
                         >
-                          <Text fontWeight="700">
-                            {item.otherUser?.displayName?.slice(0, 1) ?? "M"}
+                          <Text fontSize={10} lineHeight={13} fontWeight="700" color="$primary">
+                            DUO
                           </Text>
                         </YStack>
-                      )}
-                      <YStack flex={1} gap="$1">
-                        <XStack alignItems="center" gap="$2">
-                          <Text fontWeight="700" numberOfLines={1} flex={1}>
-                            {item.otherUser?.displayName ?? "Match"}
-                          </Text>
-                          {unreadCount > 0 ? (
-                            <YStack
-                              backgroundColor="$primary"
-                              paddingHorizontal="$2"
-                              paddingVertical={2}
-                              borderRadius={999}
-                            >
-                              <Text color="$primaryForeground" fontSize="$1" fontWeight="700">
-                                {unreadCount > 99 ? "99+" : unreadCount}
-                              </Text>
-                            </YStack>
-                          ) : null}
-                        </XStack>
-                        <Text color="$textMuted" numberOfLines={1}>
-                          {item.lastMessage ?? "Say hello"}
-                        </Text>
-                        {item.otherUser ? (() => {
-                          const canShowDistance =
-                            Boolean(profile?.shareLocation && profile?.location) &&
-                            Boolean(item.otherUser.shareLocation && item.otherUser.location);
-                          const distanceValue = canShowDistance
-                            ? distanceKm(
-                                { lat: profile!.location!.lat, lng: profile!.location!.lng },
-                                { lat: item.otherUser.location!.lat, lng: item.otherUser.location!.lng }
-                              )
-                            : null;
-                          const distanceLabel =
-                            distanceValue !== null ? formatDistanceKm(distanceValue) : "";
-                          const nearbyNow =
-                            distanceValue !== null &&
-                            distanceValue <= NEARBY_NOW_DISTANCE_KM &&
-                            Boolean(item.otherUser.lastActiveAt) &&
-                            Date.now() - item.otherUser.lastActiveAt <= NEARBY_NOW_WINDOW_MS;
-                          const metaLine = [
-                            nearbyNow ? "Nearby now" : null,
-                            formatLastActive(item.otherUser.lastActiveAt),
-                            item.otherUser.intentions
-                              ?.map((id) => datingIntentionMap.get(id)?.label)
-                              .filter((label): label is string => Boolean(label))
-                              .slice(0, 1)
-                              .join(", "),
-                            distanceLabel
-                          ]
-                            .filter(Boolean)
-                            .join(" • ");
-                          return metaLine ? (
-                            <Text color="$textMuted" fontSize="$2" numberOfLines={1}>
-                              {metaLine}
-                            </Text>
-                          ) : null;
-                        })() : null}
-                      </YStack>
+                      ) : null}
                     </XStack>
-                    <PrimaryButton testID={`match-chat-${item.id}`} onPress={openChat} minWidth={96}>
-                      Chat
-                    </PrimaryButton>
+                    {item.lastMessage ? (
+                      <Text fontSize="$1" color={unread ? "$primary" : "$textMuted"}>
+                        {formatShortTime(item.lastMessage.createdAt)}
+                      </Text>
+                    ) : null}
                   </XStack>
-                </Pressable>
-              );
-            }}
-          />
-        )}
-      </YStack>
+                  <XStack gap="$2" alignItems="center">
+                    <Text
+                      flex={1}
+                      numberOfLines={1}
+                      color={unread ? "$text" : "$textMuted"}
+                      fontWeight={unread ? "600" : "400"}
+                    >
+                      {mine ? "You: " : group && sender ? `${sender.split(" ")[0]}: ` : ""}
+                      {item.lastMessage?.text}
+                    </Text>
+                    {unread ? (
+                      <YStack
+                        minWidth={22}
+                        height={22}
+                        paddingHorizontal={6}
+                        borderRadius={11}
+                        backgroundColor="$primary"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <Text color="$primaryForeground" fontSize="$1" fontWeight="700">
+                          {unread > 99 ? "99+" : unread}
+                        </Text>
+                      </YStack>
+                    ) : !mine ? (
+                      // Conversations stall when nobody knows whose turn it is.
+                      <YStack
+                        paddingHorizontal={8}
+                        height={22}
+                        borderRadius={11}
+                        backgroundColor="$primarySoft"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <Text color="$primary" fontSize="$1" fontWeight="700">
+                          Your turn
+                        </Text>
+                      </YStack>
+                    ) : null}
+                  </XStack>
+                </YStack>
+              </XStack>
+            </Pressable>
+          );
+        }}
+      />
     </Screen>
   );
 }

@@ -1,91 +1,63 @@
-# Muse — QA Checklist (Smoke + Regression)
+# Muse: release QA checklist
 
-## Test Environments
-- **Prod smoke:** Install `~/Downloads/Muse-android-production.apk` on an emulator/device with working DNS.
-- **Local E2E:** `./scripts/test-e2e.sh android` (uses Firebase emulators + Maestro flows).
+Run on a physical Android device with the release build (`dist/*.aab` via an internal test track) against production Firebase, using two accounts (A and B). Automated coverage is in `docs/testing.md`.
 
-## Latest Automation Status
-- 2026-01-03: `./scripts/test-e2e.sh android` passed onboarding, discovery, match, and chat flows on emulator.
-- 2026-01-04: `./tools/run_all.sh` passed typecheck, unit tests, debug build, and connected tests.
-- 2026-01-04: Release APK rebuilt after removing `uploadType` from photo upload; device smoke pending.
-- 2026-01-05: E2E flows pass on emulator when run per-flow (onboarding, onboarding-full, discovery, match, chat, chat-two-users).
-- 2026-01-06: Release APK rebuilt with prod Firebase config + corrected Storage bucket; device smoke pending for signup/login and photo upload.
-- 2026-01-06: Added auth diagnostics (alert + network probe) to capture device error on signup/login.
-- 2026-01-06: Auth diagnostics now show Firebase config values on-screen to confirm correct project in release.
-- 2026-01-06: Auth buttons forced enabled; empty fields now trigger validation alert (tap detection check).
-- 2026-01-06: Dedicated Sign Up screen added; Create account now routes to signup flow.
-- 2026-01-07: Auth flow reverted to standard sign-in/sign-up forms with confirm password validation.
-- 2026-01-07: `./tools/run_all.sh` passed typecheck, unit tests, debug build, and connected tests.
-- 2026-01-07: Release APK rebuilt (JDK 17) and copied to `~/Downloads/Muse-android-production.apk`.
-- 2026-01-07: `./tools/run_emulator_and_smoke.sh` installed debug APK + captured logcat (`artifacts/2026-01-05_16-42-45-smoke/`).
-- 2026-01-07: Release APK rebuilt after auth flow adjustments and reinstalled on device.
-- 2026-01-07: Release APK rebuilt with new photo upload path (uploadString + getDownloadURL) and reinstalled on device.
-- 2026-01-07: Release APK rebuilt with REST upload (FileSystem uploadAsync) to avoid ArrayBuffer/Blob issues and reinstalled on device.
-- 2026-01-05: Updated onboarding/profile screens to be scrollable on small devices; reduced Discover card height for compact layouts.
-- 2026-01-05: Replaced yellow theme with plum/rose palette; tab bar + splash updated.
-- 2026-01-05: `./tools/run_all.sh` passed typecheck, unit tests, debug build, and connected tests.
-- 2026-01-06: `MUSE_SMOKE_USE_RELEASE=true ./tools/run_emulator_and_smoke.sh` installed release APK on emulator-5554 and captured logcat (`artifacts/2026-01-06_00-04-07-smoke/`).
-- 2026-01-06: Onboarding E2E now bypasses Firestore writes in E2E mode to avoid emulator/network hangs.
-- 2026-01-06: `./tools/run_all.sh` passed typecheck, unit tests, debug build, and connected tests (`artifacts/2026-01-06_01-36-02/`).
-- 2026-01-06: `./tools/run_emulator_and_smoke.sh` installed debug APK + captured logcat (`artifacts/2026-01-06_01-37-04-smoke/`).
-- 2026-01-06: `./scripts/test-e2e.sh android` completed onboarding, discovery, match, and chat flows (warnings only for optional "Not Now" taps).
+## Install and first run
+- [ ] Installs from the Play internal test track; opens to Welcome in under 3 seconds with no crash
+- [ ] Welcome shows the 18+ notice; the Terms, Privacy and Guidelines links open the hosted pages
 
-## Smoke Checklist (Must Pass)
-### 1) Install + Launch
-- App installs successfully
-- App launches without “Unable to load script”
-- No crash in first 60 seconds
+## Accounts
+- [ ] Sign up requires a valid email, an 8+ character password and the consent checkbox
+- [ ] Wrong password shows a friendly message (no "Firebase:" text)
+- [ ] "Forgot password?" sends a reset email that works
+- [ ] Sign out returns to Welcome; signing in as someone else shows none of the previous account's data
 
-### 2) Auth
-- Sign up (email/password + confirm password) succeeds
-- Sign in (existing user) succeeds
-- Sign out returns to Auth screen
+## Onboarding
+- [ ] Birthday under 18 is blocked with a clear message
+- [ ] Photo picker opens the system picker (no storage permission prompt); uploads show in the grid; make main and remove work
+- [ ] Location prompt asks for **approximate** location only
+- [ ] Notification prompt appears (Android 13+) and, once granted, the device receives pushes
+- [ ] "Enter Muse" lands on Discover; killing the app mid-onboarding resumes at the right step
 
-### 3) Onboarding
-- Profile step validates name + age
-- “Continue” advances through steps reliably (no stuck buttons)
-- “Looking for” selections appear and persist
-- Interests list scrolls and “Continue” remains reachable on small screens
-- Rapid Questions screen loads after interests and saves selections
-- Safety confirm toggles and enables “Enter Muse”
+## Discover and matching
+- [ ] Only people matching both sides' preferences appear (for example A "Show me: Women" never sees men)
+- [ ] Swipe gestures and buttons both work; the undo button brings back a pass
+- [ ] Liking someone who hasn't liked you does **not** show a match
+- [ ] When B likes A back, B sees "It's a Muse!" and A gets a "New match" push
+- [ ] Blind date mode hides names and photos; the full profile opens from the card
 
-### 4) Photos
-- “Add photo” opens picker (onboarding)
-- Selecting a photo shows a preview bubble
-- “Continue” persists photoUrls and proceeds
-- Profile → “Edit photos” opens picker and saves updates
+## Chat
+- [ ] Message input stays above the keyboard; long messages wrap; sending works offline→online
+- [ ] Recipient gets a push while the app is in the background, but not while viewing that chat
+- [ ] Unread badges clear on open; "Seen" appears after the other person reads
+- [ ] Unmatch ends the chat for both; Block ends it and the blocked person disappears from Discover
 
-### 5) Discover
-- Shows at least one profile card when multiple users exist
-- Like/Nope/Super buttons respond
-- “Today’s Spark” prompt card is visible
-- Blind Date toggle hides/reveals photos on the card
-- Rapid Questions appear on Blind Date cards when available
+## Chat safety
+- [ ] A message asking for an OTP or money shows the recipient a warning card with Report; the sender sees nothing
+- [ ] An abusive message is hidden behind "Tap to view" and shows "Message hidden by Muse AI" in the chat list and notification
+- [ ] Safety Center explains Muse AI chat safety
 
-### 6) Matches + Chat
-- Mutual “Like” creates a match
-- Match appears in Matches tab
-- Match row shows other user name + avatar (not placeholder)
-- Chat opens with matched user name in header; sending a message works
-- Second account sees the message
+## Duos and group chat (three test accounts plus one more pair)
+- [ ] Discover → Duos: Invite creates a code; Share includes the code and the app link
+- [ ] The friend enters the code and sees "Waiting for … to confirm"; the inviter sees the request and accepts; both see "You & …"
+- [ ] "Not them" declines and uses the code up; a wrong code shows a clear message
+- [ ] The Duo deck shows other pairs side by side; like, pass, swipe and undo work; "They like you two" shows when they liked first
+- [ ] A mutual like shows "It's a Duo match!" and opens a four-person chat with group icebreakers
+- [ ] In the chat: names on bubbles, "Seen by …", notifications for all three others, leave chat, People in this chat → report and block
+- [ ] Your Duo screen lists your pair's likes with undo for 10 minutes; Leave Duo works
 
-## Regression Checklist (Run Before Shipping)
-### Navigation + Layout
-- Bottom tabs are always tappable on Android gesture+3-button navigation
-- Chat input stays visible with keyboard open and on devices with large bottom insets
-- Profile photo reel is swipeable and indicators update correctly
-- “Looking for” chips render on profile cards and swipe deck when set
+## Likes gallery and themes
+- [ ] Matches → "See everyone who likes you" opens the gallery; the heart likes back and opens the chat on a match
+- [ ] Settings → Appearance: every theme and System/Light/Dark apply at once, persist after restart, and keep text readable (check Noir in dark mode)
+- [ ] The splash and welcome screens show the full "muse" wordmark
 
-### Data Integrity
-- Profile edits persist (bio/city)
-- Edit profile Save/Cancel buttons remain visible on small screens (scrollable)
-- Settings persist (discoverable toggle)
-- Swipes are not duplicated; deck refreshes when exhausted
+## Safety and settings
+- [ ] A report with a reason goes through (check `reports` in Firestore); "Also block" blocks
+- [ ] Settings changes (Show me, age range, distance, location, Show me on Muse) change the feed
+- [ ] The check-in reminder fires at the chosen time
+- [ ] Delete account asks for the password, then signs out; the account can't sign in again and its data is gone
 
-### Error Handling
-- Auth failure shows a user-visible message
-- Firestore/Storage failures show a user-visible message (no silent empty states)
-
-## Known Gaps (Non-blocking for MVP)
-- “Report” list isn’t exposed in UI; filtering reported users depends on rules/code (should not break Discover even if read is denied).
-- Notifications toggle is currently local-only (no backend).
+## Store and policy
+- [ ] Release preflight passes: `./scripts/release-preflight.sh --with-tests`
+- [ ] The Play pre-launch report shows no crashes
+- [ ] Data safety answers match `docs/RELEASE.md`

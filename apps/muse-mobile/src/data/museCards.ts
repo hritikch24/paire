@@ -17,7 +17,7 @@ export const museCards: MuseCard[] = [
     id: "canvas",
     title: "Canvas",
     emoji: "🖌️",
-    description: "Galleries, sketchbooks, and color" 
+    description: "Galleries, sketchbooks, and color"
   },
   {
     id: "movement",
@@ -62,3 +62,5 @@ export const museCards: MuseCard[] = [
     description: "Outdoor calm, small escapes"
   }
 ];
+
+export const museCardMap = new Map(museCards.map((card) => [card.id, card]));

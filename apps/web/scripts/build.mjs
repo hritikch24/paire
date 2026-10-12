@@ -1,0 +1,140 @@
+/**
+ * Builds the Paire website for static hosting (Vercel or any CDN):
+ *   /            marketing page (apps/web/site)
+ *   /app/        the real Paire app, exported for the browser from apps/muse-mobile
+ *   /privacy/ …  legal pages (apps/web/legal)
+ *
+ * Run from anywhere: `node apps/web/scripts/build.mjs`. Output: apps/web/dist.
+ * The browser app talks to the same Firebase project as the phone app; set
+ * EXPO_PUBLIC_FIREBASE_* / EXPO_PUBLIC_FUNCTIONS_REGION in the hosting
+ * environment to point it elsewhere. Emulators and test hooks are always off.
+ */
+import { execFileSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const web = resolve(import.meta.dirname, "..");
+const app = resolve(web, "../muse-mobile");
+const output = resolve(web, "dist");
+const exported = resolve(web, ".browser-export");
+
+/** A PAIRE_* site variable; the earlier CHITTHI_* name still works, so a renamed brand never drops back to placeholders. */
+const siteVar = (name) => process.env[`PAIRE_${name}`] || process.env[`CHITTHI_${name}`] || undefined;
+
+if (!existsSync(resolve(app, "node_modules/expo"))) {
+  execFileSync("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: app, stdio: "inherit" });
+}
+
+// Legal links inside the app point at this same site when we know its address.
+const siteUrl = (
+  siteVar("SITE_URL") ||
+  process.env.MUSE_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "")
+).replace(/\/+$/, "");
+
+const env = {
+  ...process.env,
+  EXPO_NO_DOTENV: "1",
+  EXPO_PUBLIC_USE_FIREBASE_EMULATOR: "false",
+  EXPO_PUBLIC_TEST_SERVER: "false",
+  EXPO_PUBLIC_E2E: "false",
+  // Native-only providers stay off in the browser.
+  EXPO_PUBLIC_CALL_DOMAIN: "",
+  EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: "",
+  EXPO_PUBLIC_REVENUECAT_IOS_KEY: "",
+  ...(siteVar("SUPPORT_EMAIL") && !process.env.EXPO_PUBLIC_SUPPORT_EMAIL ? { EXPO_PUBLIC_SUPPORT_EMAIL: siteVar("SUPPORT_EMAIL") } : {}),
+  ...(siteUrl && !process.env.EXPO_PUBLIC_LEGAL_BASE_URL ? { EXPO_PUBLIC_LEGAL_BASE_URL: siteUrl } : {})
+};
+
+rmSync(output, { recursive: true, force: true });
+rmSync(exported, { recursive: true, force: true });
+mkdirSync(output, { recursive: true });
+
+execFileSync(
+  process.execPath,
+  [resolve(app, "node_modules/expo/bin/cli"), "export", "--platform", "web", "--output-dir", exported, "--clear"],
+  { cwd: app, env, stdio: "inherit" }
+);
+
+// The app's assets live at the root (/_expo, /assets); its page moves to /app/.
+for (const item of readdirSync(exported)) {
+  if (item !== "index.html") cpSync(resolve(exported, item), resolve(output, item), { recursive: true });
+}
+mkdirSync(resolve(output, "app"), { recursive: true });
+writeFileSync(
+  resolve(output, "app/index.html"),
+  readFileSync(resolve(exported, "index.html"), "utf8")
+    .replace(/<title>[^<]*<\/title>/, "<title>Paire — Find your Paire</title>")
+    .replace(
+      "</head>",
+      '<meta name="description" content="Paire: likes with notes, free \u201cwho likes you\u201d and privacy controls built for India." />' +
+        '<meta name="theme-color" content="#9A2C5A" /><link rel="manifest" href="/manifest.webmanifest" />' +
+        '<link rel="apple-touch-icon" href="/apple-touch-icon.png" /><meta name="robots" content="noindex" /></head>'
+    )
+);
+
+cpSync(resolve(web, "site"), output, { recursive: true });
+// Social previews need an absolute image URL.
+if (siteUrl) {
+  const landing = resolve(output, "index.html");
+  writeFileSync(landing, readFileSync(landing, "utf8").replace('content="/og-image.png"', `content="${siteUrl}/og-image.png"`));
+}
+mkdirSync(resolve(output, "fonts"), { recursive: true });
+for (const [weight, kind] of [["400Regular", "regular"], ["700Bold", "bold"]]) {
+  cpSync(
+    resolve(app, `node_modules/@expo-google-fonts/space-grotesk/${weight}/SpaceGrotesk_${weight}.ttf`),
+    resolve(output, `fonts/space-grotesk-${kind}.ttf`)
+  );
+}
+// Business details for the legal pages come from the environment, never from source.
+const effectiveDate =
+  siteVar("LEGAL_EFFECTIVE_DATE") ||
+  new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
+const legalDetails = {
+  "[SUPPORT EMAIL]": siteVar("SUPPORT_EMAIL"),
+  "[GRIEVANCE EMAIL]": siteVar("GRIEVANCE_EMAIL") || siteVar("SUPPORT_EMAIL"),
+  "[GRIEVANCE OFFICER NAME]": siteVar("GRIEVANCE_OFFICER") || "Hritik Chaudhary",
+  "[POSTAL ADDRESS]": siteVar("POSTAL_ADDRESS"),
+  "[CITY]": siteVar("JURISDICTION_CITY"),
+  "[EFFECTIVE DATE]": effectiveDate
+};
+const missing = Object.entries(legalDetails).filter(([, value]) => !value).map(([key]) => key);
+const escapeHtml = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const DRAFT_BANNER = /<div class="card"><strong>Private preview · Legal draft<\/strong>.*?<\/div>/s;
+for (const page of ["privacy", "terms", "community-guidelines", "safety", "delete-account", "refunds", "contact"]) {
+  let html = readFileSync(resolve(web, "legal", `${page}.html`), "utf8");
+  for (const [placeholder, value] of Object.entries(legalDetails)) {
+    if (value) html = html.split(placeholder).join(escapeHtml(value));
+  }
+  if (!missing.length) html = html.replace(DRAFT_BANNER, "");
+  mkdirSync(resolve(output, page), { recursive: true });
+  writeFileSync(resolve(output, page, "index.html"), html);
+}
+if (missing.length) {
+  console.warn(`Legal pages still show draft placeholders: ${missing.join(", ")}. Set the PAIRE_* variables (docs/vercel.md) before launch.`);
+}
+cpSync(resolve(web, "legal/styles.css"), resolve(output, "styles.css"));
+
+// Search engines stay out until the public launch (set PAIRE_ALLOW_INDEXING=true then).
+const indexable = (siteVar("ALLOW_INDEXING") ?? process.env.MUSE_ALLOW_INDEXING) === "true";
+writeFileSync(
+  resolve(output, "robots.txt"),
+  indexable
+    ? `User-agent: *\nAllow: /\nDisallow: /app/\n${siteUrl ? `Sitemap: ${siteUrl}/sitemap.xml\n` : ""}`
+    : "User-agent: *\nDisallow: /\n"
+);
+if (indexable && siteUrl) {
+  const pages = ["", "safety/", "terms/", "privacy/", "refunds/", "contact/", "community-guidelines/"];
+  writeFileSync(
+    resolve(output, "sitemap.xml"),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages
+      .map((page) => `  <url><loc>${siteUrl}/${page}</loc></url>`)
+      .join("\n")}\n</urlset>\n`
+  );
+}
+writeFileSync(
+  resolve(output, "404.html"),
+  '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found — Paire</title><link rel="stylesheet" href="/site.css"><main class="wrap section"><a class="wordmark" href="/">paire<span>.</span></a><h1>This page wandered off.</h1><p>Head back home or open the dating app.</p><a class="button" href="/">Back home</a> <a class="text-link" href="/app/">Open Paire</a></main></html>'
+);
+rmSync(exported, { recursive: true, force: true });
+console.log(`Paire web built in ${output}${siteUrl ? ` for ${siteUrl}` : ""}. Emulators and test hooks are off.`);

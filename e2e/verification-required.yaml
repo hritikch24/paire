@@ -1,0 +1,34 @@
+# Run after setting runtime/trust.requireVerification=true with the Admin SDK.
+appId: com.muse.app
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+- runFlow:
+    file: subflows/sign-in.yaml
+    env:
+      EMAIL: "muse+dev@example.com"
+- extendedWaitUntil:
+    visible:
+      id: "gate-verify"
+    timeout: 60000
+- assertNotVisible:
+    id: "discover-mode-vibe"
+- takeScreenshot: codex-artifacts/delhi-ncr-ui/09-verification-required
+- tapOn:
+    id: "gate-verify"
+- extendedWaitUntil:
+    visible: "Let’s build a little trust."
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "verification-start"
+    direction: DOWN
+- assertVisible:
+    id: "verification-start"
+    enabled: false
+- tapOn:
+    id: "header-back"
+- tapOn:
+    id: "gate-safety"
+- assertVisible: "Your comfort comes first"

@@ -1,59 +1,39 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
-import * as Location from "expo-location";
-import { doc, setDoc } from "@firebase/firestore/dist/index.cjs.js";
-import { db } from "../services/firebase";
+import { currentApproximateLocation } from "../services/locationService";
+import { updateSettings } from "../services/profileService";
 import { useAuthStore } from "../store/authStore";
 
-const UPDATE_WINDOW_MS = 15 * 60 * 1000;
+const MIN_INTERVAL_MS = 30 * 60 * 1000;
 
+/**
+ * While location sharing is on, refreshes the approximate location when the app
+ * returns to the foreground (never in the background), and only writes when the
+ * ~1 km cell actually changed.
+ */
 export function useLocationHeartbeat() {
-  const user = useAuthStore((state) => state.user);
-  const profile = useAuthStore((state) => state.profile);
-  const setProfile = useAuthStore((state) => state.setProfile);
-  const isGuest = useAuthStore((state) => state.isGuest);
-  const lastUpdatedRef = useRef(0);
-
-  const updateLocation = useCallback(async () => {
-    if (!user || isGuest || !profile?.shareLocation) return;
-    const now = Date.now();
-    if (now - lastUpdatedRef.current < UPDATE_WINDOW_MS) return;
-    const { status } = await Location.getForegroundPermissionsAsync();
-    if (status !== "granted") return;
-
-    lastUpdatedRef.current = now;
-    const position = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced
-    });
-    const location = {
-      lat: position.coords.latitude,
-      lng: position.coords.longitude,
-      accuracy: position.coords.accuracy ?? undefined,
-      updatedAt: now
-    };
-
-    setProfile({ ...profile, location, updatedAt: now });
-    try {
-      await setDoc(
-        doc(db, "users", user.uid),
-        { location, updatedAt: now },
-        { merge: true }
-      );
-    } catch {
-      // Best-effort update.
-    }
-  }, [isGuest, profile, setProfile, user]);
+  const uid = useAuthStore((state) => state.user?.uid);
+  const enabled = useAuthStore((state) => Boolean(state.settings?.locationEnabled));
+  const lastRun = useRef(0);
 
   useEffect(() => {
-    if (!user || isGuest || !profile?.shareLocation) return;
-    void updateLocation();
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        void updateLocation();
-      }
-    });
-    return () => {
-      subscription.remove();
+    if (!uid || !enabled) return;
+
+    const refresh = async () => {
+      const now = Date.now();
+      if (now - lastRun.current < MIN_INTERVAL_MS) return;
+      lastRun.current = now;
+      const next = await currentApproximateLocation().catch(() => null);
+      if (!next) return;
+      const previous = useAuthStore.getState().settings?.location;
+      if (previous && previous.lat === next.lat && previous.lng === next.lng) return;
+      await updateSettings(uid, { location: next }).catch(() => undefined);
     };
-  }, [isGuest, profile?.shareLocation, updateLocation, user]);
+
+    void refresh();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refresh();
+    });
+    return () => subscription.remove();
+  }, [enabled, uid]);
 }
