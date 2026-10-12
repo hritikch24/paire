@@ -26,8 +26,10 @@ export type MuseInputProps = TextInputProps &
  * so passwords would show in plain text and email/number keyboards would never
  * appear. Translate the RN props into `type` here.
  */
-export function inputTypeFor(props: Pick<TextInputProps, "secureTextEntry" | "keyboardType">) {
+export function inputTypeFor(props: Pick<TextInputProps, "secureTextEntry" | "keyboardType" | "inputMode">) {
   if (props.secureTextEntry) return "password" as const;
+  // Numeric text (birthdays, codes) stays a text field: a browser number field would wipe out "/" or leading zeros.
+  if (props.inputMode === "numeric" || props.inputMode === "decimal") return "text" as const;
   switch (props.keyboardType) {
     case "email-address":
       return "email" as const;
@@ -53,7 +55,14 @@ export const MuseInput = forwardRef<TextInput, MuseInputProps>((props, ref) => {
       if (event.key === "Enter" && !props.multiline) props.onSubmitEditing?.({ nativeEvent: { text: event.currentTarget.value } } as never);
     }
   } : {};
-  return <StyledInput ref={ref as never} {...(props as object)} {...(web as object)} type={inputTypeFor(props)} />;
+  // On the web, Tamagui drops inputMode once `type` is set, so put it on the element: phones then show the number pad.
+  const inputMode = Platform.OS === "web" ? props.inputMode : undefined;
+  const setRef = (node: TextInput | null) => {
+    if (inputMode) (node as unknown as HTMLElement | null)?.setAttribute?.("inputmode", inputMode);
+    if (typeof ref === "function") ref(node);
+    else if (ref) ref.current = node;
+  };
+  return <StyledInput ref={setRef as never} {...(props as object)} {...(web as object)} type={inputTypeFor(props)} />;
 });
 MuseInput.displayName = "MuseInput";
 

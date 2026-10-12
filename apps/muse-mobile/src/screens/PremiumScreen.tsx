@@ -23,6 +23,7 @@ import {
 import { useThemeColors } from "../theme/useThemeColors";
 import { friendlyError } from "../services/errors";
 import { fetchDailyAllowance } from "../services/discoveryService";
+import { trackConversion } from "../services/analytics";
 import { useAuthStore } from "../store/authStore";
 
 export function PremiumScreen() {
@@ -48,6 +49,7 @@ export function PremiumScreen() {
     try {
       const result = restore ? await restorePasses(uid) : webCheckout ? await purchaseWebPass(plan.id, colors.gradient[1] ?? "#B83A5E") : await purchasePass(uid, product!);
       const pending = "pending" in result && result.pending === true;
+      if (!restore && webCheckout && (result.active || pending)) trackConversion("Purchase", { value: plan.priceInr, currency: "INR" });
       setMessage(result.active ? "Your Plus pass is active. Enjoy a little more possibility." : restore ? "No active pass was found. Consumable passes may need support to recover after reinstalling." : pending ? "Payment received. Your bank is still confirming it; your pass starts as soon as it does (usually a few minutes). Refresh below." : "Purchase received. Refresh your status in a moment while we confirm it.");
       await premium.refetch(); await allowance.refetch();
     } catch (error) {

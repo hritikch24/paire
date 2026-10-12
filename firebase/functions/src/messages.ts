@@ -3,7 +3,7 @@ import { logger } from "firebase-functions";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { db } from "./admin";
 import { CHAT_SAFETY, MESSAGE_PREVIEW_LENGTH, REGION } from "./config";
-import { askClaudeForJson, llmEnabled } from "./lib/llm";
+import { askAiForJson, llmEnabled } from "./lib/llm";
 import { CHAT_SAFETY_SYSTEM, SafetyFlag, applyReview, atLeast, reviewPrompt, scanMessage } from "./lib/chatSafety";
 import { dailyLimitRef } from "./quota";
 import { sendPushToUser } from "./push";
@@ -27,10 +27,10 @@ async function takeReviewQuota(uid: string): Promise<boolean> {
   });
 }
 
-/** Claude's second opinion on a medium+ rule flag, when configured and within the sender's allowance. */
+/** The AI's second opinion on a medium+ rule flag, when configured and within the sender's allowance. */
 async function review(flag: SafetyFlag, text: string, senderId: string): Promise<SafetyFlag | null> {
   if (!llmEnabled() || !atLeast(flag.severity, "medium") || !(await takeReviewQuota(senderId))) return flag;
-  const verdict = await askClaudeForJson(CHAT_SAFETY_SYSTEM, reviewPrompt(flag, text), 60, {
+  const verdict = await askAiForJson(CHAT_SAFETY_SYSTEM, reviewPrompt(flag, text), 60, {
     model: CHAT_SAFETY.model,
     timeoutMs: CHAT_SAFETY.timeoutMs
   });
@@ -143,7 +143,7 @@ async function recordFlag(
 /**
  * Chat safety, then the notification. Rules run first and their result is
  * written at once, so the recipient sees the warning from the start;
- * Claude's second opinion (when configured) then confirms, adjusts or clears it.
+ * The AI's second opinion (Claude or Gemini, when configured) then confirms, adjusts or clears it.
  * Only medium+ flags are kept for moderators. Disclosed in the Privacy Policy.
  */
 export const onMessageCreated = onDocumentCreated(

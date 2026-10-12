@@ -48,3 +48,6 @@ apps/web/.browser-export/
 
 # Superseded site preview (its own git repo; apps/web is the live site)
 apps/muse-site/
+
+# Local notes with test-account passwords (never commit)
+*.local.md

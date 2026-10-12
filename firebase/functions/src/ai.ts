@@ -3,13 +3,13 @@ import { db } from "./admin";
 import { LIMITS, REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { garbaNightLabel, sharedGarbaNights } from "./lib/garba";
-import { askClaudeForJson, cleanLines, llmEnabled } from "./lib/llm";
+import { AiProvider, aiProvider, askAiForJson, cleanLines, llmEnabled } from "./lib/llm";
 import { Person, describe, garbaOpener, templateBios, templateGroupOpeners, templateOpeners } from "./lib/suggestions";
 import { parseMatchInput } from "./lib/validate";
 import { consumeDailyQuota } from "./quota";
 import { PublicProfile, QuickAnswer } from "./types";
 
-type Suggestions = { suggestions: string[]; source: "claude" | "muse" };
+type Suggestions = { suggestions: string[]; source: AiProvider | "muse" };
 
 function toPerson(profile: Partial<PublicProfile> | undefined): Person {
   const list = (value: unknown) =>
@@ -65,14 +65,14 @@ export const suggestOpeners = onCall({ region: REGION, timeoutSeconds: 30, secre
     const snaps = await db.getAll(...[uid, ...theirs].map((member) => db.doc(`users/${member}`)));
     const [me, ...them] = snaps.map((snap) => toPerson(snap.data() as Partial<PublicProfile> | undefined));
     if (llmEnabled() && them.length) {
-      const reply = await askClaudeForJson(
+      const reply = await askAiForJson(
         GROUP_OPENERS_SYSTEM,
         `Sender:\n${describe({ ...me, bio: undefined, city: undefined })}\n\nThe other pair:\n${them
           .map((person) => describe({ ...person, city: undefined }))
           .join("\n\n")}`
       );
       const suggestions = cleanLines((reply as { suggestions?: unknown } | null)?.suggestions, 3, 180);
-      if (suggestions.length === 3) return { suggestions, source: "claude" };
+      if (suggestions.length === 3) return { suggestions, source: aiProvider() ?? "muse" };
     }
     return { suggestions: templateGroupOpeners(me, them), source: "muse" };
   }
@@ -89,13 +89,13 @@ export const suggestOpeners = onCall({ region: REGION, timeoutSeconds: 30, secre
   const garba = sharedGarbaNights(mySettings.get("garbaNights"), theirSettings.get("garbaNights")).map(garbaNightLabel);
 
   if (llmEnabled()) {
-    const reply = await askClaudeForJson(
+    const reply = await askAiForJson(
       OPENERS_SYSTEM,
       `Sender:\n${describe({ ...me, bio: undefined, city: undefined })}\n\nTheir match:\n${describe(them)}` +
         (garba.length ? `\n\nThey're both going to Garba this Navratri on: ${garba.join(", ")}. Make one message about meeting up for Garba or Dandiya.` : "")
     );
     const suggestions = cleanLines((reply as { suggestions?: unknown } | null)?.suggestions, 3, 180);
-    if (suggestions.length === 3) return { suggestions, source: "claude" };
+    if (suggestions.length === 3) return { suggestions, source: aiProvider() ?? "muse" };
   }
   const templates = templateOpeners(me, them);
   return { suggestions: garba.length ? [garbaOpener(them, garba[0]), ...templates].slice(0, 3) : templates, source: "muse" };
@@ -109,9 +109,9 @@ export const suggestBio = onCall({ region: REGION, timeoutSeconds: 30, secrets: 
   const me = toPerson(snap.data() as Partial<PublicProfile> | undefined);
 
   if (llmEnabled()) {
-    const reply = await askClaudeForJson(BIOS_SYSTEM, describe({ ...me, bio: undefined }));
+    const reply = await askAiForJson(BIOS_SYSTEM, describe({ ...me, bio: undefined }));
     const suggestions = cleanLines((reply as { suggestions?: unknown } | null)?.suggestions, 3, 220);
-    if (suggestions.length === 3) return { suggestions, source: "claude" };
+    if (suggestions.length === 3) return { suggestions, source: aiProvider() ?? "muse" };
   }
   return { suggestions: templateBios(me), source: "muse" };
 });

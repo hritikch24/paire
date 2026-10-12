@@ -31,7 +31,7 @@ export function VibeGuideScreen() {
         <YStack gap="$2" padding="$4" borderRadius={20} backgroundColor="$primarySoft">
           <Text fontWeight="700">A starting point, never a promise</Text>
           <Text color="$textMuted" fontSize="$2" lineHeight={21}>The score is a ranking out of 100, not a percentage chance of a relationship. It uses shared profile choices, approximate distance and recent activity. It doesn’t measure attractiveness or confirm safety.</Text>
-          <Text color="$textMuted" fontSize="$2" lineHeight={21}>Matching starts with shared profile choices. If you both enable AI vibe matching, Claude can refine the order using only selected interests, vibes and dating intentions. AI never overrides mutual preferences. If it’s unavailable, Paire uses its usual ranking.</Text>
+          <Text color="$textMuted" fontSize="$2" lineHeight={21}>Matching starts with shared profile choices. If you both enable AI vibe matching, Paire AI can refine the order using only selected interests, vibes and dating intentions. AI never overrides mutual preferences. If it’s unavailable, Paire uses its usual ranking.</Text>
         </YStack>
         <SecondaryButton onPress={() => navigation.navigate("Settings")}>Adjust my preferences</SecondaryButton>
       </YStack>

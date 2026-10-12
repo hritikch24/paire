@@ -1,7 +1,7 @@
 /**
  * Chat safety: spots messages that look like scams, abuse or danger so the
  * recipient gets a warning and moderators get a signal. Rule-based and free;
- * when Claude is configured it double-checks anything the rules catch, which
+ * when an AI is configured it double-checks anything the rules catch, which
  * cuts false alarms (a flag is never raised by the model alone).
  *
  * Disclosed in the Privacy Policy, Terms and Community Guidelines. Only flagged

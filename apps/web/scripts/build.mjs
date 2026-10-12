@@ -74,10 +74,29 @@ writeFileSync(
 );
 
 cpSync(resolve(web, "site"), output, { recursive: true });
-// Social previews need an absolute image URL.
-if (siteUrl) {
-  const landing = resolve(output, "index.html");
-  writeFileSync(landing, readFileSync(landing, "utf8").replace('content="/og-image.png"', `content="${siteUrl}/og-image.png"`));
+
+// Meta Pixel for ads (PAIRE_META_PIXEL_ID in Vercel): PageView everywhere, Lead when someone opens the app,
+// and the app itself reports CompleteRegistration and Purchase (src/services/analytics.ts).
+const pixelId = /^\d{6,20}$/.test(siteVar("META_PIXEL_ID") ?? "") ? siteVar("META_PIXEL_ID") : "";
+const pixel = pixelId
+  ? `<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId}');fbq('track','PageView');document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href^="/app/"]');if(a)fbq('track','Lead')});</script>`
+  : "";
+
+// Site pages: absolute URLs for canonical links, structured data and social previews.
+const origin = siteUrl || "https://www.paire.in";
+for (const page of ["index.html", "garba-nights/index.html"]) {
+  const file = resolve(output, page);
+  writeFileSync(
+    file,
+    readFileSync(file, "utf8")
+      .split("%SITE_URL%").join(origin)
+      .replace('content="/og-image.png"', `content="${origin}/og-image.png"`)
+      .replace("</head>", `${pixel}</head>`)
+  );
+}
+if (pixel) {
+  const appIndex = resolve(output, "app/index.html");
+  writeFileSync(appIndex, readFileSync(appIndex, "utf8").replace("</head>", `${pixel}</head>`));
 }
 mkdirSync(resolve(output, "fonts"), { recursive: true });
 for (const [weight, kind] of [["400Regular", "regular"], ["700Bold", "bold"]]) {
@@ -120,15 +139,19 @@ const indexable = (siteVar("ALLOW_INDEXING") ?? process.env.MUSE_ALLOW_INDEXING)
 writeFileSync(
   resolve(output, "robots.txt"),
   indexable
-    ? `User-agent: *\nAllow: /\nDisallow: /app/\n${siteUrl ? `Sitemap: ${siteUrl}/sitemap.xml\n` : ""}`
+    ? // Search engines and AI answer engines (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…) are all welcome.
+      `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /auth/\n\n${["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "PerplexityBot", "Google-Extended", "Applebot-Extended", "Bingbot"]
+        .map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /app/\n`)
+        .join("\n")}\n${siteUrl ? `Sitemap: ${siteUrl}/sitemap.xml\n` : ""}`
     : "User-agent: *\nDisallow: /\n"
 );
 if (indexable && siteUrl) {
-  const pages = ["", "safety/", "terms/", "privacy/", "refunds/", "contact/", "community-guidelines/"];
+  const pages = ["", "garba-nights/", "safety/", "community-guidelines/", "terms/", "privacy/", "refunds/", "contact/"];
+  const today = new Date().toISOString().slice(0, 10);
   writeFileSync(
     resolve(output, "sitemap.xml"),
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages
-      .map((page) => `  <url><loc>${siteUrl}/${page}</loc></url>`)
+      .map((page) => `  <url><loc>${siteUrl}/${page}</loc><lastmod>${today}</lastmod><priority>${page ? (page === "garba-nights/" ? "0.9" : "0.5") : "1.0"}</priority></url>`)
       .join("\n")}\n</urlset>\n`
   );
 }

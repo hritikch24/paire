@@ -1,7 +1,7 @@
 import { callFunction } from "./firebase";
 
-/** "claude" when written by Claude; "muse" from the free built-in writer. */
-export type Suggestions = { suggestions: string[]; source: "claude" | "muse" };
+/** "claude" or "gemini" when written by Paire AI; "muse" from the free built-in writer. */
+export type Suggestions = { suggestions: string[]; source: "claude" | "gemini" | "muse" };
 
 /** Three ways to start the conversation in a new match. */
 export function fetchOpeners(matchId: string): Promise<Suggestions> {

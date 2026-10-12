@@ -1,66 +1,126 @@
 import { logger } from "firebase-functions";
 
 /**
- * Optional Claude integration. Without ANTHROPIC_API_KEY every AI feature uses
- * the free built-in generators (lib/suggestions.ts); with it, Claude writes more
- * personal suggestions and the built-ins remain the fallback.
+ * Optional AI for Paire AI (icebreakers, bios, vibe matching, chat-safety second
+ * opinions). Without a provider every feature uses the free built-in generators
+ * (lib/suggestions.ts), which also remain the fallback on any AI failure.
  *
- * Test server: put the key in .test-backend/anthropic-api-key. Production: set
- * it as a secret, then `firebase deploy --only functions`.
+ * Providers, in order:
+ *  1. Claude, when the ANTHROPIC_API_KEY secret holds a real key.
+ *  2. Gemini on Vertex AI, when MUSE_GEMINI_ENABLED=true. It runs as the Cloud
+ *     Functions service account inside this Firebase project, so no API key is
+ *     needed: usage is billed to the project (Blaze). Needs the Vertex AI API
+ *     (aiplatform.googleapis.com) enabled on the project.
+ *
+ * Test server: put a Claude key in .test-backend/anthropic-api-key.
  */
-const API_URL = "https://api.anthropic.com/v1/messages";
-const DEFAULT_MODEL = "claude-opus-5-5";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const DEFAULT_CLAUDE_MODEL = "claude-opus-5-5";
+/** Stable Flash model on Vertex AI (supported until at least May 2027). Override with MUSE_GEMINI_MODEL. */
+const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
+const METADATA_TOKEN_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 const TIMEOUT_MS = 15_000;
 
-export const llmEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== "disabled");
+export type AiProvider = "claude" | "gemini";
+
+const claudeKey = () => {
+  const key = process.env.ANTHROPIC_API_KEY;
+  return key && key !== "disabled" ? key : null;
+};
+
+/** Which AI writes, or null for the built-in generators only. */
+export function aiProvider(): AiProvider | null {
+  if (claudeKey()) return "claude";
+  if (process.env.MUSE_GEMINI_ENABLED === "true" && process.env.FUNCTIONS_EMULATOR !== "true") return "gemini";
+  return null;
+}
+
+export const llmEnabled = () => aiProvider() !== null;
+
+type AskOptions = { model?: string; timeoutMs?: number };
+
+/** The JSON object inside a model's text reply, or null. */
+export function parseJsonReply(text: string): unknown | null {
+  const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+  return json ? JSON.parse(json) : null;
+}
 
 /**
- * Asks Claude for a JSON object and returns it parsed, or null on any failure
- * (no key, timeout, API error, unparsable output): callers fall back.
+ * Asks the configured AI for a JSON object and returns it parsed, or null on any
+ * failure (no provider, timeout, API error, unparsable output): callers fall back.
+ * `options.model` names a Claude model; Gemini uses MUSE_GEMINI_MODEL.
  */
-export async function askClaudeForJson(
-  system: string,
-  prompt: string,
-  maxTokens = 600,
-  options: { model?: string; timeoutMs?: number } = {}
-): Promise<unknown | null> {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key || key === "disabled") return null;
+export async function askAiForJson(system: string, prompt: string, maxTokens = 600, options: AskOptions = {}): Promise<unknown | null> {
+  const provider = aiProvider();
+  if (!provider) return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? TIMEOUT_MS);
   try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-      },
-      body: JSON.stringify({
-        model: options.model || process.env.MUSE_AI_MODEL || DEFAULT_MODEL,
-        max_tokens: maxTokens,
-        system,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-    if (!response.ok) {
-      logger.warn("Claude request failed", { status: response.status });
-      return null;
-    }
-    const body = (await response.json()) as { content?: Array<{ type: string; text?: string }> };
-    const text = (body.content ?? [])
-      .filter((part) => part.type === "text")
-      .map((part) => part.text ?? "")
-      .join("");
-    const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
-    return json ? JSON.parse(json) : null;
+    const text =
+      provider === "claude"
+        ? await askClaude(system, prompt, maxTokens, options.model, controller.signal)
+        : await askGemini(system, prompt, maxTokens, controller.signal);
+    return text === null ? null : parseJsonReply(text);
   } catch (error) {
-    logger.warn("Claude request failed", { error: String(error) });
+    logger.warn("AI request failed", { provider, error: String(error) });
     return null;
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function askClaude(system: string, prompt: string, maxTokens: number, model: string | undefined, signal: AbortSignal): Promise<string | null> {
+  const response = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    signal,
+    headers: { "x-api-key": claudeKey() as string, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model: model || process.env.MUSE_AI_MODEL || DEFAULT_CLAUDE_MODEL,
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  if (!response.ok) {
+    logger.warn("Claude request failed", { status: response.status });
+    return null;
+  }
+  const body = (await response.json()) as { content?: Array<{ type: string; text?: string }> };
+  return (body.content ?? []).filter((part) => part.type === "text").map((part) => part.text ?? "").join("");
+}
+
+async function askGemini(system: string, prompt: string, maxTokens: number, signal: AbortSignal): Promise<string | null> {
+  const project = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT;
+  if (!project) return null;
+  // The Cloud Functions service account's token, from the metadata server: no key to store.
+  const tokenResponse = await fetch(METADATA_TOKEN_URL, { headers: { "Metadata-Flavor": "Google" }, signal });
+  if (!tokenResponse.ok) {
+    logger.warn("Gemini token request failed", { status: tokenResponse.status });
+    return null;
+  }
+  const { access_token: token } = (await tokenResponse.json()) as { access_token?: string };
+  if (!token) return null;
+  const model = process.env.MUSE_GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+  const response = await fetch(
+    `https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${model}:generateContent`,
+    {
+      method: "POST",
+      signal,
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        // Room for the model's own reasoning tokens on top of the reply.
+        generationConfig: { maxOutputTokens: Math.max(maxTokens * 4, 2048), responseMimeType: "application/json" }
+      })
+    }
+  );
+  if (!response.ok) {
+    logger.warn("Gemini request failed", { status: response.status, model });
+    return null;
+  }
+  const body = (await response.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+  return (body.candidates?.[0]?.content?.parts ?? []).map((part) => part.text ?? "").join("");
 }
 
 /** Keeps only short, non-empty strings from a model's list. */

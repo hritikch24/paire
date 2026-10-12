@@ -12,6 +12,8 @@ import { inputTypeFor } from "../src/components/MuseInput";
 describe("inputTypeFor", () => {
   it("masks password fields (Tamagui ignores secureTextEntry otherwise)", () => {
     expect(inputTypeFor({ secureTextEntry: true })).toBe("password");
+    // Birthdays and codes: the number pad, but never a browser number field (it wipes out "/").
+    expect(inputTypeFor({ inputMode: "numeric" })).toBe("text");
     expect(inputTypeFor({ secureTextEntry: true, keyboardType: "email-address" })).toBe("password");
   });
 

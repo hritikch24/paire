@@ -105,8 +105,9 @@ export function BasicsScreen() {
       <TextField
         testID="basics-birthday"
         label="Birthday"
-        placeholder="DD/MM/YYYY"
-        keyboardType="number-pad"
+        placeholder="DD/MM/YYYY · e.g. 24032001"
+        // A text field with the number keypad: a web number field would reject the slashes we add.
+        inputMode="numeric"
         autoComplete="birthdate-full"
         maxLength={10}
         value={birthday}

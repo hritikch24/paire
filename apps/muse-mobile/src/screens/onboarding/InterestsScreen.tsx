@@ -13,6 +13,7 @@ import { datingIntentions } from "../../data/datingIntentions";
 import { friendlyError } from "../../services/errors";
 import { updateProfile, updateSettings } from "../../services/profileService";
 import { useAuthStore } from "../../store/authStore";
+import { trackConversion } from "../../services/analytics";
 import { CASUAL_DESCRIPTION, CASUAL_LABEL, ONBOARDING_STEPS } from "../../utils/profile";
 
 /** Last sign-up step: what you're into and what you're looking for. */
@@ -33,6 +34,7 @@ export function InterestsScreen() {
       await updateSettings(uid, { openToCasual: casual });
       // Completing onboarding switches the navigator to the main app.
       await updateProfile(uid, { interests, intentions, safetyConfirmed: true, onboardingComplete: true });
+      trackConversion("CompleteRegistration");
     } catch (error) {
       showToast(friendlyError(error, "We couldn't save that. Please try again."), "error");
       setSaving(false);

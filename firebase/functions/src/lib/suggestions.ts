@@ -2,7 +2,7 @@ import { QuickAnswer } from "../types";
 
 /**
  * Free, built-in writing help: icebreakers and bio drafts made from what people
- * chose to share. Used when Claude isn't configured, or as its fallback.
+ * chose to share. Used when no AI is configured, or as its fallback.
  * Ids match the app's catalogs (src/data/museCards.ts, vibes.ts, ...).
  */
 

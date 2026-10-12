@@ -206,7 +206,7 @@ export function SettingsScreen() {
           <ToggleRow
             icon="sparkles-outline"
             label="AI vibe matching"
-            description="Optional. Let Claude compare your selected interests, vibes and dating intentions with people who also opt in. No names, photos, messages, location or free text are sent. Turn off anytime."
+            description="Optional. Let Paire AI compare your selected interests, vibes and dating intentions with people who also opt in. No names, photos, messages, location or free text are sent. Turn off anytime."
             value={settings.aiVibeMatching === true}
             onValueChange={(value) => void save({ aiVibeMatching: value })}
             testID="settings-ai-vibe"

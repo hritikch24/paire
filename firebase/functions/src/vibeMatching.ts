@@ -1,6 +1,6 @@
 import { logger } from "firebase-functions";
 import { db } from "./admin";
-import { askClaudeForJson, llmEnabled } from "./lib/llm";
+import { askAiForJson, llmEnabled } from "./lib/llm";
 import { applyVibeScores, matchingChoices } from "./lib/vibeMatching";
 import { consumeDailyQuota } from "./quota";
 import { DiscoverProfile, PublicProfile, UserSettings } from "./types";
@@ -21,7 +21,7 @@ export async function rerankVibes(uid: string, viewer: Partial<PublicProfile>, s
   try {
     await consumeDailyQuota(uid, "aiVibeMatching", 10);
     const candidates = profiles.flatMap((profile, index) => eligible.has(profile.uid) ? [{ index, ...matchingChoices(profile) }] : []);
-    const reply = await askClaudeForJson(SYSTEM, JSON.stringify({ viewer: matchingChoices(viewer), candidates }), 800,
+    const reply = await askAiForJson(SYSTEM, JSON.stringify({ viewer: matchingChoices(viewer), candidates }), 800,
       { model: process.env.MUSE_MATCHING_MODEL || "claude-haiku-5-5", timeoutMs: 5000 });
     return applyVibeScores(profiles, eligible, reply);
   } catch {
