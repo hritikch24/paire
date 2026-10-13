@@ -41,14 +41,28 @@ export async function signUp(email: string, password: string) {
     termsVersion: legal.termsVersion
   });
   // Paire needs a real inbox: the member confirms it before setting up a profile.
-  await sendEmailVerification(credential.user).catch(() => undefined);
+  await resendVerificationEmail().catch(() => undefined);
   return credential;
+}
+
+/**
+ * Paire's own email (from paire.in, linking to www.paire.in) when the server can
+ * send one; otherwise Firebase's built-in email.
+ */
+async function requestAuthEmail(kind: "verify" | "reset", email?: string): Promise<boolean> {
+  try {
+    return (await callFunction<{ sent: boolean }>("requestAuthEmail", { kind, email })).sent;
+  } catch (error) {
+    // Limits are real answers; anything else (offline server, old backend) falls back.
+    if (errorCode(error) === "functions/resource-exhausted") throw error;
+    return false;
+  }
 }
 
 export async function resendVerificationEmail() {
   const user = auth.currentUser;
   if (!user) throw new Error("Not signed in");
-  await sendEmailVerification(user);
+  if (!(await requestAuthEmail("verify"))) await sendEmailVerification(user);
 }
 
 /**
@@ -72,7 +86,7 @@ export async function checkEmailVerified(): Promise<"confirmed" | "pending" | "t
 }
 
 export async function sendPasswordReset(email: string) {
-  await sendPasswordResetEmail(auth, normalizeEmail(email));
+  if (!(await requestAuthEmail("reset", normalizeEmail(email)))) await sendPasswordResetEmail(auth, normalizeEmail(email));
 }
 
 async function reauthenticate(password: string) {

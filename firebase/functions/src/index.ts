@@ -7,6 +7,7 @@ export { blockUser, onReportCreated } from "./safety";
 export { submitReport, getMyReports, getReportReviewQueue, reviewReport } from "./reports";
 export { deleteAccount, onAuthUserDeleted } from "./account";
 export { syncAccountChecks } from "./accountChecks";
+export { requestAuthEmail } from "./authEmails";
 export { suggestBio, suggestOpeners } from "./ai";
 export { getVerificationStatus, beginPhotoVerification, diditWebhook, reviewPhotoVerification, getPhotoReviewQueue } from "./verification";
 export { getDailyAllowance } from "./quota";
