@@ -34,8 +34,6 @@ export const trackVisit = onRequest({ region: REGION, maxInstances: 10, memory: 
   response.sendStatus(204);
 });
 
-const admins = () => (process.env.PAIRE_ADMIN_EMAILS || "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
-
 type Counts = Record<string, number>;
 const addInto = (target: Counts, source: unknown) => {
   if (!source || typeof source !== "object") return;
@@ -44,12 +42,23 @@ const addInto = (target: Counts, source: unknown) => {
 const top = (counts: Counts, limit = 10) => Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([name, count]) => ({ name, count }));
 const count = async (query: Query) => (await query.count().get()).data().count;
 
-/** The founder's dashboard (/metrics/). Only emails in PAIRE_ADMIN_EMAILS may read it. */
-export const getMetrics = onCall({ region: REGION, memory: "512MiB", timeoutSeconds: 60 }, async (request) => {
-  const token = request.auth?.token;
-  if (!token || token.email_verified !== true || !admins().includes(String(token.email ?? "").toLowerCase())) {
-    throw new HttpsError("permission-denied", "This page is only for the Paire team.");
+/**
+ * The open dashboard at www.paire.in/metrics?key=admin. No sign-in: it returns
+ * totals only (no names, emails or ids). Answers are reused for a minute so
+ * repeated loads don't re-read every account.
+ */
+let cached: { at: number; value: Promise<Record<string, unknown>> } | undefined;
+export const getMetrics = onCall({ region: REGION, memory: "512MiB", timeoutSeconds: 60, maxInstances: 2 }, async (request) => {
+  if ((request.data as { key?: unknown } | null)?.key !== "admin") throw new HttpsError("not-found", "Not found.");
+  if (!cached || Date.now() - cached.at > 60_000) {
+    const value = buildMetrics();
+    cached = { at: Date.now(), value };
+    value.catch(() => { if (cached?.value === value) cached = undefined; });
   }
+  return cached.value;
+});
+
+async function buildMetrics(): Promise<Record<string, unknown>> {
   const now = Date.now();
   const days = Array.from({ length: 30 }, (_, i) => istDay(now - (29 - i) * 86_400_000));
   const dayMs = 86_400_000;
@@ -132,4 +141,4 @@ export const getMetrics = onCall({ region: REGION, memory: "512MiB", timeoutSeco
     plus: { orders: plusPaid.size, rupees: Math.round(plusPaid.docs.reduce((sum, doc) => sum + (Number(doc.get("amountPaise")) || 0), 0) / 100) },
     testAccounts: testUids.size
   };
-});
+}
