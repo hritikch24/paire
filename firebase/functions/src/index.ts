@@ -8,6 +8,7 @@ export { submitReport, getMyReports, getReportReviewQueue, reviewReport } from "
 export { deleteAccount, onAuthUserDeleted } from "./account";
 export { syncAccountChecks } from "./accountChecks";
 export { requestAuthEmail } from "./authEmails";
+export { getMetrics, trackVisit } from "./metrics";
 export { suggestBio, suggestOpeners } from "./ai";
 export { getVerificationStatus, beginPhotoVerification, diditWebhook, reviewPhotoVerification, getPhotoReviewQueue } from "./verification";
 export { getDailyAllowance } from "./quota";

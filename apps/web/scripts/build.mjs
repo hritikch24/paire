@@ -82,6 +82,10 @@ const pixel = pixelId
   ? `<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId}');fbq('track','PageView');document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href^="/app/"]');if(a)fbq('track','Lead')});</script>`
   : "";
 
+// Anonymous page counts for /metrics/: no cookies, no IP or user IDs. The browser only remembers
+// (localStorage) whether it already visited today, so daily visitors can be counted.
+const visitBeacon = `<script>(function(){try{if(navigator.webdriver)return;var q=new URLSearchParams(location.search),d=new Date(Date.now()+198e5).toISOString().slice(0,10),n=0;try{if(localStorage.getItem('paire_seen')!==d){localStorage.setItem('paire_seen',d);n=1}}catch(e){}var b=JSON.stringify({p:location.pathname,r:document.referrer,s:q.get('utm_source')||'',f:q.has('fbclid')?1:0,g:q.has('gclid')?1:0,n:n});if(navigator.sendBeacon)navigator.sendBeacon('/v/',new Blob([b],{type:'text/plain'}));else fetch('/v/',{method:'POST',body:b,keepalive:true})}catch(e){}})()</script>`;
+
 // Site pages: absolute URLs for canonical links, structured data and social previews.
 const origin = siteUrl || "https://www.paire.in";
 for (const page of ["index.html", "garba-nights/index.html"]) {
@@ -91,12 +95,12 @@ for (const page of ["index.html", "garba-nights/index.html"]) {
     readFileSync(file, "utf8")
       .split("%SITE_URL%").join(origin)
       .replace('content="/og-image.png"', `content="${origin}/og-image.png"`)
-      .replace("</head>", `${pixel}</head>`)
+      .replace("</head>", `${pixel}${visitBeacon}</head>`)
   );
 }
-if (pixel) {
+{
   const appIndex = resolve(output, "app/index.html");
-  writeFileSync(appIndex, readFileSync(appIndex, "utf8").replace("</head>", `${pixel}</head>`));
+  writeFileSync(appIndex, readFileSync(appIndex, "utf8").replace("</head>", `${pixel}${visitBeacon}</head>`));
 }
 mkdirSync(resolve(output, "fonts"), { recursive: true });
 for (const [weight, kind] of [["400Regular", "regular"], ["700Bold", "bold"]]) {
@@ -126,6 +130,7 @@ for (const page of ["privacy", "terms", "community-guidelines", "safety", "delet
     if (value) html = html.split(placeholder).join(escapeHtml(value));
   }
   if (!missing.length) html = html.replace(DRAFT_BANNER, "");
+  html = html.replace("</head>", `${visitBeacon}</head>`);
   mkdirSync(resolve(output, page), { recursive: true });
   writeFileSync(resolve(output, page, "index.html"), html);
 }
@@ -140,8 +145,8 @@ writeFileSync(
   resolve(output, "robots.txt"),
   indexable
     ? // Search engines and AI answer engines (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…) are all welcome.
-      `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /auth/\n\n${["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "PerplexityBot", "Google-Extended", "Applebot-Extended", "Bingbot"]
-        .map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /app/\n`)
+      `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /auth/\nDisallow: /metrics/\n\n${["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "PerplexityBot", "Google-Extended", "Applebot-Extended", "Bingbot"]
+        .map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /app/\nDisallow: /metrics/\n`)
         .join("\n")}\n${siteUrl ? `Sitemap: ${siteUrl}/sitemap.xml\n` : ""}`
     : "User-agent: *\nDisallow: /\n"
 );

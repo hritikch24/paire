@@ -6,7 +6,10 @@
   "outputDirectory": "apps/web/dist",
   "cleanUrls": true,
   "trailingSlash": true,
-  "rewrites": [{ "source": "/app/:path*", "destination": "/app/index.html" }],
+  "rewrites": [
+    { "source": "/app/:path*", "destination": "/app/index.html" },
+    { "source": "/v/", "destination": "https://us-central1-muse-352ba.cloudfunctions.net/trackVisit" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
