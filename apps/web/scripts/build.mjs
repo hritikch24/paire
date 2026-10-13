@@ -12,6 +12,12 @@
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { cities } from "../content/cities.mjs";
+import { compare } from "../content/compare.mjs";
+import { core } from "../content/core.mjs";
+import { guidesA } from "../content/guides-a.mjs";
+import { guidesB } from "../content/guides-b.mjs";
+import { FOOTER, renderPage, stripHtml } from "./render-pages.mjs";
 
 const web = resolve(import.meta.dirname, "..");
 const app = resolve(web, "../muse-mobile");
@@ -88,6 +94,10 @@ const visitBeacon = `<script>(function(){try{if(navigator.webdriver)return;var q
 
 // Site pages: absolute URLs for canonical links, structured data and social previews.
 const origin = siteUrl || "https://www.paire.in";
+// Search Console / Bing Webmaster Tools ownership tags (PAIRE_GOOGLE_SITE_VERIFICATION, PAIRE_BING_SITE_VERIFICATION).
+const verificationTags = [["google-site-verification", siteVar("GOOGLE_SITE_VERIFICATION")], ["msvalidate.01", siteVar("BING_SITE_VERIFICATION")]]
+  .filter(([, value]) => value && /^[\w-]{10,100}$/.test(value))
+  .map(([name, value]) => `<meta name="${name}" content="${value}">`).join("");
 for (const page of ["index.html", "garba-nights/index.html"]) {
   const file = resolve(output, page);
   writeFileSync(
@@ -95,9 +105,26 @@ for (const page of ["index.html", "garba-nights/index.html"]) {
     readFileSync(file, "utf8")
       .split("%SITE_URL%").join(origin)
       .replace('content="/og-image.png"', `content="${origin}/og-image.png"`)
-      .replace("</head>", `${pixel}${visitBeacon}</head>`)
+      .replace(/<footer class="wrap">[\s\S]*?<\/footer>/, FOOTER)
+      .replace("</head>", `${page === "index.html" ? verificationTags : ""}${pixel}${visitBeacon}</head>`)
   );
 }
+
+// Guides, city pages, comparisons, about, pricing… (apps/web/content). Existing pages are listed
+// too so content can link to them in "Keep reading".
+const contentPages = [...core, ...compare, ...cities, ...guidesA, ...guidesB];
+const linkable = [
+  ...contentPages,
+  { path: "garba-nights/", crumb: "Garba Nights", h1: "Garba Nights", description: "Find a Garba or Dandiya partner this Navratri: pick your nights and meet people near you going on the same nights." },
+  { path: "safety/", crumb: "Dating safety guide", h1: "Dating safety", description: "Paire's safety guide: before you meet, on the date, and how reporting works." }
+];
+for (const page of contentPages) {
+  mkdirSync(resolve(output, page.path), { recursive: true });
+  writeFileSync(resolve(output, page.path, "index.html"), renderPage(page, { origin, pages: linkable, extraHead: `${pixel}${visitBeacon}` }));
+}
+
+// IndexNow (Bing, Yandex, Seznam…; ChatGPT search reads Bing's index): the key file is
+// apps/web/site/<key>.txt; after each deploy run `node apps/web/scripts/indexnow.mjs`.
 {
   const appIndex = resolve(output, "app/index.html");
   writeFileSync(appIndex, readFileSync(appIndex, "utf8").replace("</head>", `${pixel}${visitBeacon}</head>`));
@@ -151,15 +178,43 @@ writeFileSync(
     : "User-agent: *\nDisallow: /\n"
 );
 if (indexable && siteUrl) {
-  const pages = ["", "garba-nights/", "safety/", "community-guidelines/", "terms/", "privacy/", "refunds/", "contact/"];
   const today = new Date().toISOString().slice(0, 10);
+  const entries = [
+    ["", today, "1.0", "daily"],
+    ["garba-nights/", today, "0.9", "weekly"],
+    ...contentPages.map((page) => [page.path, page.updated ?? today, page.type === "hub" ? "0.8" : page.path.startsWith("guides/") || page.path.startsWith("compare/") ? "0.8" : "0.7", "monthly"]),
+    ...["safety/", "community-guidelines/", "contact/", "terms/", "privacy/", "refunds/"].map((page) => [page, today, page === "safety/" ? "0.6" : "0.3", "yearly"])
+  ];
   writeFileSync(
     resolve(output, "sitemap.xml"),
-    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages
-      .map((page) => `  <url><loc>${siteUrl}/${page}</loc><lastmod>${today}</lastmod><priority>${page ? (page === "garba-nights/" ? "0.9" : "0.5") : "1.0"}</priority></url>`)
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries
+      .map(([page, lastmod, priority, changefreq]) => `  <url><loc>${siteUrl}/${page}</loc><lastmod>${lastmod}</lastmod><changefreq>${changefreq}</changefreq><priority>${priority}</priority></url>`)
       .join("\n")}\n</urlset>\n`
   );
+  writeFileSync(resolve(output, "urls.txt"), entries.map(([page]) => `${siteUrl}/${page}`).join("\n") + "\n");
 }
+
+// llms.txt (a map for AI assistants) lists every page; llms-full.txt carries their full text.
+const section = (title, pages) => `\n## ${title}\n\n${pages.map((page) => `- [${page.crumb ?? stripHtml(page.h1)}](${origin}/${page.path}): ${page.description}`).join("\n")}\n`;
+writeFileSync(
+  resolve(output, "llms.txt"),
+  readFileSync(resolve(web, "site/llms.txt"), "utf8").trimEnd() + "\n" +
+    section("About Paire", core.filter((page) => page.type !== "hub")) +
+    section("Paire compared with other apps", compare) +
+    section("Dating guides for India", [...guidesA, ...guidesB]) +
+    section("Dating in Indian cities", cities) +
+    `\nFull text of these pages: ${origin}/llms-full.txt\n`
+);
+writeFileSync(
+  resolve(output, "llms-full.txt"),
+  `# Paire: full text\n\n${readFileSync(resolve(web, "site/llms.txt"), "utf8").trim()}\n\n` +
+    contentPages.filter((page) => page.type !== "hub").map((page) => [
+      `---\n\n# ${stripHtml(page.h1)}\n\nURL: ${origin}/${page.path}\nUpdated: ${page.updated}\n\n${stripHtml(page.lede)}`,
+      page.summary ? `\n\nIn short:\n${page.summary.map((line) => `- ${stripHtml(line)}`).join("\n")}` : "",
+      `\n\n${stripHtml(page.body ?? "")}`,
+      page.faq?.length ? `\n\n## Questions\n\n${page.faq.map(([q, a]) => `Q: ${q}\nA: ${a}`).join("\n\n")}` : ""
+    ].join("")).join("\n\n") + "\n"
+);
 writeFileSync(
   resolve(output, "404.html"),
   '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found — Paire</title><link rel="stylesheet" href="/site.css"><main class="wrap section"><a class="wordmark" href="/">paire<span>.</span></a><h1>This page wandered off.</h1><p>Head back home or open the dating app.</p><a class="button" href="/">Back home</a> <a class="text-link" href="/app/">Open Paire</a></main></html>'

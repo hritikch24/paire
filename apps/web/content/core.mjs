@@ -1,0 +1,189 @@
+// Core pages and section hubs. Facts here must match the product (see apps/web/site/llms.txt).
+const D = "2026-10-13";
+
+export const core = [
+  {
+    path: "about/", crumb: "About Paire", published: D, updated: D, eyebrow: "ABOUT PAIRE",
+    title: "About Paire — An Indian Dating App Where Women Set the Rules",
+    description: "Paire is an Indian dating app for men and women, built in Delhi NCR. Every like comes with a note, women set the rules, every member is email- and selfie-verified, and seeing who likes you is free.",
+    h1: "About <em>Paire</em>",
+    lede: "Paire is a dating app made in India for adult men and women: from a first coffee to a long-term partner. We built it because dating here deserved better than endless swiping, fake profiles and paywalls.",
+    summary: [
+      "Built in Delhi NCR, open across India, 18+ only, for men and women.",
+      "Every like can carry a note, so matches start with a real conversation.",
+      "Women control who can reach them; seeing who likes you is free for everyone.",
+      "Every member confirms a real email and passes a live selfie check before they can like or chat.",
+      "No caste field or filter. Paire Plus is optional, from ₹20, and never auto-renews."
+    ],
+    body: `
+<h2>Why Paire exists</h2>
+<p>Ask anyone in India who has used a dating app and you hear the same things: women are flooded with low-effort likes, men rarely get a reply, profiles are fake or years out of date, and the features that matter sit behind a monthly subscription that renews quietly. Many people also worry about family finding their profile, or about apps that sort people by caste.</p>
+<p>Paire is our answer. It is designed around a few simple ideas:</p>
+<ul>
+<li><strong>A like should mean something.</strong> Every like can carry a short note, and everyone gets a free daily allowance of likes, so each one is considered rather than sprayed.</li>
+<li><strong>Women set the rules.</strong> Women can accept only likes that come with a note, choose to send the first message, browse in incognito, and keep photos private until they match. These controls are free.</li>
+<li><strong>Real people only.</strong> Every member confirms their email and passes a live selfie check that matches them to their profile photos before they can like or chat.</li>
+<li><strong>Fair pricing.</strong> Seeing who likes you is free, forever. Paire Plus is a short pass (₹20 a day, ₹99 a week, ₹299 a month) that ends on its own. Men and women pay the same.</li>
+<li><strong>Respect.</strong> There is no caste field or filter, religion is never used to rank anyone, and paid arrangements are banned.</li>
+</ul>
+<h2>Who Paire is for</h2>
+<p>Paire is for adult men and women in India looking for anything from casual dating to marriage-minded relationships. You say what you are looking for, and you can choose to see only people who want the same thing. Paire started in Delhi NCR (Delhi, Noida, Gurugram, Faridabad and Ghaziabad) and is open across India.</p>
+<h2>How Paire works</h2>
+<p>You sign up with Google or email, confirm your email, add a few photos and some interests, and pass a quick selfie check. Then you can browse people as photo cards, try <a href="/features/">Vibe First</a> to see interests before photos, team up with a best friend for a double date with <a href="/features/">Duos</a>, or join seasonal editions such as <a href="/garba-nights/">Garba Nights</a> during Navratri. Paire runs in any phone or laptop browser at <a href="/app/">paire.in/app</a>; an Android app is on the way.</p>
+<h2>Safety and privacy</h2>
+<p>Every chat has report and block. Paire AI warns you about common scam messages, such as requests for money, OTPs or investment tips. Your exact location is never shown, only an approximate distance. Read more in <a href="/verification/">how verification works</a> and our <a href="/safety/">dating safety guide</a>.</p>
+<h2>Contact</h2>
+<p>Questions, press or partnerships: see our <a href="/contact/">contact page</a>.</p>`,
+    faq: [
+      ["Is Paire an Indian app?", "Yes. Paire is built in India, starting in Delhi NCR, and designed for how people date in India: notes with every like, women-first controls, no caste filters and prices in rupees."],
+      ["Is Paire free?", "Yes. Joining, 25 likes a day, seeing who likes you, chatting and every privacy and safety control are free. Paire Plus is an optional pass from ₹20 that never auto-renews."],
+      ["Is Paire only for serious relationships?", "No. Paire covers everything from casual dating to marriage-minded relationships. You set your intention and can choose to see only people who want the same."]
+    ],
+    related: ["features/", "verification/", "pricing/", "guides/best-dating-apps-india/"]
+  },
+  {
+    path: "pricing/", crumb: "Pricing", published: D, updated: D, eyebrow: "PRICING",
+    title: "Paire Pricing — Free Dating App, Plus Passes from ₹20 (No Auto-Renew)",
+    description: "Paire is free: 25 likes a day, see who likes you, unlimited chat. Paire Plus passes cost ₹20 for a day, ₹99 for a week or ₹299 for 30 days, never auto-renew, and cost the same for men and women.",
+    h1: "Free first. <em>Fair always.</em>",
+    lede: "Everything you need to date on Paire is free. Paire Plus is a short pass for more reach. It ends on its own: nothing to cancel, no surprise renewals.",
+    summary: [
+      "Free forever: 25 likes a day (each with a note), 1 Super Like a day, see everyone who likes you, unlimited chat, every privacy and safety control.",
+      "Paire Plus: ₹20 for 24 hours, ₹99 for 7 days, ₹299 for 30 days.",
+      "Plus adds 100 likes and 5 Super Likes a day, priority likes and the age-gap filter.",
+      "Passes never auto-renew. Men and women pay the same. Pay by UPI, card or netbanking."
+    ],
+    body: `
+<h2>What's free</h2>
+<table><thead><tr><th>Feature</th><th>Free</th><th>Paire Plus</th></tr></thead><tbody>
+<tr><td>Likes per day (each can carry a note)</td><td>25</td><td>100</td></tr>
+<tr><td>Super Likes per day</td><td>1</td><td>5</td></tr>
+<tr><td>See everyone who likes you</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Unlimited chat</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Women-first controls (notes-only likes, I'll message first, incognito, private photos)</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Vibe First, Duos, Garba Nights</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Selfie verification and safety tools</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Priority likes (shown first in "Likes you")</td><td>No</td><td>Yes</td></tr>
+<tr><td>Age-gap filter</td><td>No</td><td>Yes</td></tr>
+</tbody></table>
+<h2>Paire Plus passes</h2>
+<ul>
+<li><strong>₹20 for 24 hours</strong>: try Plus for a day, for example on a weekend.</li>
+<li><strong>₹99 for 7 days</strong>: about ₹14 a day. The most popular choice.</li>
+<li><strong>₹299 for 30 days</strong>: about ₹10 a day.</li>
+</ul>
+<p>Passes are paid once through Razorpay (UPI, cards or netbanking). They do not renew: when the time is up, your account simply goes back to free. Buying a new pass before the old one ends adds the time on.</p>
+<h2>Why we price it this way</h2>
+<p>Many dating apps charge a monthly subscription to see who likes you and renew it automatically. We think seeing who likes you is basic, so it is free. Plus only adds reach, and safety is never for sale. Paying never guarantees a match. See our <a href="/refunds/">refund and cancellation policy</a> for details.</p>`,
+    faq: [
+      ["How much does Paire cost?", "Paire is free to use. Optional Paire Plus passes cost ₹20 for 24 hours, ₹99 for 7 days or ₹299 for 30 days."],
+      ["Does Paire Plus renew automatically?", "No. Every Paire Plus pass is a one-time payment that ends by itself. There is nothing to cancel."],
+      ["Do women and men pay differently?", "No. Paire Plus costs the same for everyone, and all safety and privacy features are free for everyone."],
+      ["Can I see who likes me for free on Paire?", "Yes. Seeing everyone who likes you is free on Paire, forever."]
+    ],
+    related: ["features/", "compare/tinder/", "compare/bumble/", "about/"]
+  },
+  {
+    path: "features/", crumb: "Features", published: D, updated: D, eyebrow: "FEATURES",
+    title: "Paire Features — Notes With Likes, Women-First Controls, Vibe First & Duos",
+    description: "Everything Paire does: likes with notes, free 'who likes you', women-first privacy controls, Vibe First, Duos double dates, blind date mode, Paire AI icebreakers and selfie verification.",
+    h1: "Everything <em>Paire</em> does",
+    lede: "Paire is built around conversations that start well and people who are who they say they are. Here is every feature, and what it costs (mostly nothing).",
+    body: `
+<h2>Likes with notes (Sparks)</h2>
+<p>Every like on Paire can carry a short note, so the other person sees why you liked them. Notes are screened for abuse before they are delivered. Everyone gets 25 likes and 1 Super Like a day for free, which keeps likes considered.</p>
+<h2>See who likes you, free</h2>
+<p>Your "Likes you" list shows everyone who has liked you, with their note. On many apps this is a paid feature; on Paire it is free for everyone.</p>
+<h2>Women-first controls</h2>
+<ul>
+<li><strong>Notes-only likes:</strong> only receive likes that come with a note.</li>
+<li><strong>I'll message first:</strong> after a match, only you can start the chat.</li>
+<li><strong>Incognito:</strong> only people you like can see your profile.</li>
+<li><strong>Private photos:</strong> your photos stay hidden until you match.</li>
+<li><strong>Same intentions only:</strong> see only people looking for what you want, from casual to marriage-minded.</li>
+<li><strong>Speaks my language:</strong> see people who share a language with you.</li>
+</ul>
+<p>All of these are free, and anyone can use them.</p>
+<h2>Discovery modes</h2>
+<ul>
+<li><strong>People:</strong> classic photo cards with interests, prompts and a reason you might click.</li>
+<li><strong>Vibe First:</strong> see someone's interests, intentions and answers before their photos, then reveal the photos.</li>
+<li><strong>Duos:</strong> team up with a best friend and match with another pair for a double date.</li>
+<li><strong>Blind date mode</strong> for people who would rather chat first.</li>
+<li><strong>Seasonal editions</strong> such as <a href="/garba-nights/">Garba Nights</a> during Navratri.</li>
+</ul>
+<h2>Paire AI</h2>
+<p>Paire AI suggests icebreakers based on what you have in common, helps you write a bio, and can rank profiles by shared vibes if you turn on AI matching (opt-in, using only the profile choices you select). It also warns you about scam-style messages in chat.</p>
+<h2>Real people, checked</h2>
+<p>Every member confirms their email (temporary inboxes are not allowed) and passes a live selfie check with a random pose that matches them to every profile photo. Read <a href="/verification/">how verification works</a>.</p>
+<h2>India-specific details</h2>
+<p>Optional basics include height, languages, education, diet, drinking, smoking and religion. Religion is never used to filter or rank, and there is no caste field. Your exact location is never shown.</p>
+<h2>Paire Plus</h2>
+<p>An optional pass with more likes and Super Likes, priority likes and the age-gap filter. See <a href="/pricing/">pricing</a>.</p>`,
+    faq: [
+      ["What is Vibe First on Paire?", "Vibe First shows a person's interests, intentions and answers before their photos, so you can decide on personality first and reveal photos when you're ready."],
+      ["What are Duos on Paire?", "Duos let you team up with a best friend and match with another pair of friends for a double date. You chat as a group of four."],
+      ["Can women message first on Paire?", "Women can turn on \"I'll message first\" so that, after a match, only they can start the conversation."]
+    ],
+    related: ["verification/", "pricing/", "guides/dating-apps-for-women-india/", "guides/first-message-examples/"]
+  },
+  {
+    path: "verification/", crumb: "How verification works", published: D, updated: D, eyebrow: "SAFETY · VERIFICATION",
+    title: "How Paire Verifies Every Member — Email Check and Live Selfie Verification",
+    description: "Every Paire member confirms a real email and passes a live selfie check: a random pose, matched to every profile photo. The selfie is never stored. Here's how it works and what it can't do.",
+    h1: "How Paire keeps <em>fake profiles</em> out",
+    lede: "Fake profiles are the biggest complaint about dating apps in India. On Paire, nobody can like or chat until they have confirmed their email and passed a live selfie check.",
+    summary: [
+      "Step 1: confirm a real email. Temporary inbox services are blocked.",
+      "Step 2: a live selfie doing a random pose, matched to every profile photo.",
+      "Your selfie is never stored; only the result is kept. Badges expire after 90 days or when photos change.",
+      "Verification is free and required before you can like, match or chat."
+    ],
+    body: `
+<h2>1. A real email</h2>
+<p>When you sign up with email, Paire sends a confirmation link. Until you open it you cannot set up a profile. Disposable inbox services (the kind that create a throwaway address in seconds) are not accepted. Signing in with Google counts as confirmed.</p>
+<h2>2. A live selfie check</h2>
+<p>Before you can like or chat, Paire asks for a selfie doing a random pose, such as touching your nose or covering one eye. The pose changes every time and is uncommon, so an old photo can't be reused. Paire then checks:</p>
+<ul>
+<li><strong>It's you in your photos.</strong> A face-matching model compares your selfie with every profile photo. Your first photo must clearly show you, and no photo may show someone else (group photos that include you are fine).</li>
+<li><strong>It's live.</strong> The pose has to be visible, and photos of a screen or a printout are rejected.</li>
+<li><strong>It's real.</strong> Profile photos that are obviously AI-generated or face-swapped are rejected.</li>
+<li><strong>It's an adult.</strong> Paire is 18+ only.</li>
+</ul>
+<p>The check usually takes under ten seconds. If it doesn't pass, Paire tells you why (for example "your first photo doesn't clearly show your face") so you can fix it.</p>
+<h2>What happens to your selfie</h2>
+<p>Your selfie is used only for the check and is discarded as soon as it ends; it is never stored. Paire keeps the result and copies of the checked profile photos. If you change your photos, or after 90 days, you'll be asked to verify again, so a badge always matches the current photos. Details are in our <a href="/privacy/">privacy policy</a>.</p>
+<h2>What verification can't do</h2>
+<p>A verified badge means the person matches their photos. It doesn't tell you anything about their intentions. Keep chats on Paire until you're comfortable, meet in public, and tell a friend where you're going. Read our <a href="/safety/">safety guide</a> and <a href="/guides/dating-scams-india/">common dating scams in India</a>.</p>
+<h2>Reporting</h2>
+<p>Every profile and chat has report and block. Reports are reviewed, and profiles reported by several people are hidden while they are checked.</p>`,
+    faq: [
+      ["Are Paire profiles verified?", "Yes. Every member must confirm a real email and pass a live selfie check, matched to all their profile photos, before they can like, match or chat."],
+      ["Does Paire store my selfie?", "No. The selfie is used only during the check and discarded when it ends. Paire keeps only the result and the checked profile photos."],
+      ["Why does Paire ask for a pose?", "A random, uncommon pose proves the selfie was taken just now by the person holding the phone, so an old or stolen photo can't be used."],
+      ["Is verification free?", "Yes. Verification is free for everyone."]
+    ],
+    related: ["guides/how-to-spot-fake-dating-profiles/", "guides/dating-scams-india/", "guides/dating-app-safety-tips-india/", "features/"]
+  },
+  {
+    path: "guides/", crumb: "Dating guides", type: "hub", eyebrow: "GUIDES",
+    title: "Dating Guides for India: Safety, Profiles & First Dates | Paire",
+    description: "Practical dating guides for India: the best dating apps, staying safe, spotting fake profiles and scams, writing a bio, first messages, first dates and dating with serious intentions.",
+    h1: "Dating <em>guides</em>",
+    lede: "Honest, practical advice for dating in India, from choosing an app to your first date. Written by the Paire team and kept up to date."
+  },
+  {
+    path: "dating/", crumb: "Dating in your city", type: "hub", eyebrow: "CITIES",
+    title: "Dating in Indian Cities: Date Ideas & Safe Places | Paire",
+    description: "Dating in Delhi, Gurugram, Noida, Mumbai, Bengaluru, Pune, Hyderabad, Chennai, Kolkata, Ahmedabad and Jaipur: first-date ideas, safe public places and how to meet people on Paire.",
+    h1: "Dating in <em>your city</em>",
+    lede: "First-date ideas, safe places to meet and local tips for India's biggest cities. Paire started in Delhi NCR and is open across India."
+  },
+  {
+    path: "compare/", crumb: "Paire vs other apps", type: "hub", eyebrow: "COMPARE",
+    title: "Paire vs Tinder, Bumble & Hinge: Which Dating App Suits You?",
+    description: "How Paire compares with Tinder, Bumble and Hinge in India: who likes you, pricing, women-first controls, verification and what each app is best for.",
+    h1: "Paire vs <em>other apps</em>",
+    lede: "Every dating app is good at something. Here is an honest look at how Paire differs from the big global apps, so you can pick what suits you (or use more than one)."
+  }
+];

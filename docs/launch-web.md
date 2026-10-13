@@ -64,6 +64,9 @@ Import the repo. `vercel.json` holds the build settings. Add these environment v
 | `PAIRE_GRIEVANCE_EMAIL` | No | Defaults to the support email | |
 | `PAIRE_LEGAL_EFFECTIVE_DATE` | No | `1 November 2026` | Defaults to the build date. |
 | `PAIRE_ALLOW_INDEXING` | At public launch | `true` | Lets Google index the site and adds the sitemap. |
+| `PAIRE_GOOGLE_SITE_VERIFICATION` | For Google Search Console | the code from the HTML-tag method | Adds the ownership tag to the home page. |
+| `PAIRE_BING_SITE_VERIFICATION` | For Bing Webmaster Tools | the code from the meta-tag method | Adds the ownership tag (Bing also feeds ChatGPT search). |
+| `PAIRE_META_PIXEL_ID` | For Meta ads | numeric Pixel ID | Adds the Meta Pixel. |
 | `EXPO_PUBLIC_FUNCTIONS_REGION` | If not `us-central1` | `asia-south1` | Must match `FUNCTIONS_REGION`. |
 | `EXPO_PUBLIC_FIREBASE_API_KEY`, `…_AUTH_DOMAIN`, `…_PROJECT_ID`, `…_STORAGE_BUCKET`, `…_MESSAGING_SENDER_ID`, `…_APP_ID` | No | | Only to use a Firebase project other than `muse-352ba`. |
 
@@ -86,3 +89,7 @@ Then:
 
 ## Mobile app (later)
 The app is renamed Paire too (display name, icon, wordmark), with the package `com.muse.app` unchanged. For the Play Store, follow `docs/RELEASE.md`. Passes there go through Play billing (RevenueCat), at the same prices. Web passes and Play passes add up in one place, so a member who pays on either platform gets Plus on both.
+
+## SEO and AI search
+
+Content pages live in `apps/web/content/*.mjs` (rendered by `apps/web/scripts/render-pages.mjs`); adding a page there adds it to the sitemap, `llms.txt`, `llms-full.txt` and `urls.txt` automatically. After each deploy run `node apps/web/scripts/indexnow.mjs` to ask Bing and other IndexNow engines to recrawl.
