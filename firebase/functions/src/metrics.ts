@@ -43,8 +43,9 @@ const top = (counts: Counts, limit = 10) => Object.entries(counts).sort((a, b) =
 const count = async (query: Query) => (await query.count().get()).data().count;
 
 /**
- * The open dashboard at www.paire.in/metrics?key=admin. No sign-in: it returns
- * totals only (no names, emails or ids). Answers are reused for a minute so
+ * The open dashboard at www.paire.in/metrics?key=admin. No sign-in (owner's
+ * call). Totals, plus first names of the newest sign-ups and logins; never
+ * emails or ids. Answers are reused for a minute so
  * repeated loads don't re-read every account.
  */
 let cached: { at: number; value: Promise<Record<string, unknown>> } | undefined;
@@ -78,6 +79,8 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
   // Accounts (Firebase Auth), without the shared test accounts
   const testUids = new Set((await db.collection("moderation").where("cohort", "==", "test").get()).docs.map((doc) => doc.id));
   const accounts = { total: 0, google: 0, email: 0, emailConfirmed: 0, signedInToday: 0, signedIn7d: 0, new7d: 0 };
+  type Person = { uid: string; at: number; via: "Google" | "Email"; authName?: string };
+  const newPeople: Person[] = [], seenPeople: Person[] = [];
   let pageToken: string | undefined;
   let pagesRead = 0;
   do {
@@ -90,6 +93,9 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
       if (user.emailVerified) accounts.emailConfirmed++;
       const created = Date.parse(user.metadata.creationTime);
       const seen = Date.parse(user.metadata.lastRefreshTime || user.metadata.lastSignInTime || "");
+      const person = { uid: user.uid, via: user.providerData.some((provider) => provider.providerId === "google.com") ? "Google" as const : "Email" as const, authName: user.displayName };
+      if (now - created < 7 * dayMs) newPeople.push({ ...person, at: created });
+      if (now - seen < dayMs) seenPeople.push({ ...person, at: seen });
       if (now - seen < dayMs) accounts.signedInToday++;
       if (now - seen < 7 * dayMs) accounts.signedIn7d++;
       if (now - created < 7 * dayMs) accounts.new7d++;
@@ -98,6 +104,25 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
     }
     pageToken = batch.pageToken;
   } while (pageToken && ++pagesRead < 50);
+
+  // Newest sign-ups and recent logins, by first name (as members see it in the app)
+  newPeople.sort((a, b) => b.at - a.at).splice(30);
+  seenPeople.sort((a, b) => b.at - a.at).splice(30);
+  const listed = [...new Set([...newPeople, ...seenPeople].map((person) => person.uid))];
+  const profileOf = new Map(listed.length ? (await db.getAll(...listed.map((uid) => db.doc(`users/${uid}`)))).map((doc) => [doc.id, doc]) : []);
+  const firstName = (name: unknown) => (typeof name === "string" ? name.trim().split(/\s+/)[0] : "") || "";
+  const describe = (person: Person) => {
+    const profile = profileOf.get(person.uid);
+    const has = profile?.exists === true;
+    return {
+      name: firstName(has ? profile.get("displayName") : "") || firstName(person.authName) || "No name yet",
+      gender: has ? (profile.get("gender") ?? null) : null,
+      city: has ? (profile.get("city") ?? null) : null,
+      profile: has && profile.get("onboardingComplete") === true,
+      via: person.via,
+      at: person.at
+    };
+  };
 
   // Profiles and activity (Firestore counts), minus test accounts
   const users = db.collection("users");
@@ -129,6 +154,7 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
       pages: top(pages), sources: top(sources), devices: top(devices)
     },
     accounts,
+    people: { newSignups: newPeople.map(describe), recentLogins: seenPeople.map(describe) },
     profiles: {
       total: profiles - testDocs.length,
       women: women - testCount((doc) => doc.get("gender") === "woman"),
