@@ -9,6 +9,7 @@ import { PrimaryButton, SecondaryButton } from "../components/MuseButton";
 import { Screen } from "../components/Screen";
 import { SettingsRow, SettingsSection } from "../components/SettingsRow";
 import { LoadingView } from "../components/States";
+import { ThemeQuickPicker } from "../components/ThemeQuickPicker";
 import { legal } from "../config/legal";
 import { useAuthStore } from "../store/authStore";
 import { profileCompleteness } from "../utils/profile";
@@ -96,6 +97,7 @@ export function ProfileScreen() {
             <XStack alignItems="center" gap="$1"><Text color="$primary" fontWeight="700">Explore plans</Text><Icon name="arrow-forward" size={17} color="primary" /></XStack>
           </YStack>
         </Pressable>
+        <ThemeQuickPicker onMore={() => navigation.navigate("Appearance")} />
         <SettingsSection>
           <SettingsRow icon="images-outline" label="Photos" value={`${profile.photoUrls.length}/6`} onPress={() => navigation.navigate("EditPhotos")} showDivider={false} />
           <SettingsRow icon="options-outline" label="Discovery preferences" onPress={() => navigation.navigate("Settings")} />

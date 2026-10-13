@@ -27,11 +27,13 @@ export function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: theme.primary?.val,
         tabBarInactiveTintColor: theme.textMuted?.val,
-        tabBarLabelStyle: { fontSize: 12, fontFamily: "SpaceGrotesk_500Medium" },
+        // Room for the icon and a full line of label text, so labels never clip (web included).
+        tabBarLabelStyle: { fontSize: 12, lineHeight: 16, fontFamily: "SpaceGrotesk_500Medium" },
+        tabBarItemStyle: { paddingVertical: 2 },
         tabBarStyle: {
           backgroundColor: theme.backgroundStrong?.val,
           borderTopColor: theme.border?.val,
-          height: 62 + insets.bottom,
+          height: 74 + insets.bottom,
           paddingTop: 6,
           paddingBottom: Math.max(insets.bottom, 8)
         }

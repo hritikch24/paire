@@ -35,7 +35,7 @@ export type Palette = {
   dark: SchemeColors;
 };
 
-export const PALETTE_IDS = ["rose", "classic", "noir", "ocean", "lavender", "sunset", "forest"] as const;
+export const PALETTE_IDS = ["rose", "classic", "noir", "ocean", "lavender", "sunset", "forest", "marigold", "midnight", "berry"] as const;
 export type PaletteId = (typeof PALETTE_IDS)[number];
 
 export const DEFAULT_PALETTE: PaletteId = "rose";
@@ -270,6 +270,105 @@ export const PALETTES: Record<PaletteId, Palette> = {
       primaryForeground: "#FFFFFF",
       border: "#223028",
       card: "#151D18"
+    }
+  },
+  marigold: {
+    id: "marigold",
+    name: "Marigold",
+    description: "Navratri festive: saffron and marigold on warm cream",
+    gradient: ["#3A1236", "#8A2E1C", "#B5541E"],
+    glow: "#FFD27A",
+    light: {
+      background: "#FCF7EE",
+      backgroundStrong: "#FFFFFF",
+      backgroundSoft: "#F5EAD8",
+      text: "#2A1C12",
+      textMuted: "#6B5A49",
+      primary: "#A9471A",
+      primaryPressed: "#8F3B15",
+      primarySoft: "#FBE7D4",
+      primaryForeground: "#FFFFFF",
+      border: "#EBDCC5",
+      card: "#FFFFFF"
+    },
+    dark: {
+      background: "#17110B",
+      backgroundStrong: "#211912",
+      backgroundSoft: "#2E2318",
+      text: "#F7EEE2",
+      textMuted: "#C2B19D",
+      primary: "#B4561F",
+      primaryPressed: "#9A4719",
+      primarySoft: "#3D2818",
+      primaryForeground: "#FFFFFF",
+      border: "#352819",
+      card: "#211912"
+    }
+  },
+  midnight: {
+    id: "midnight",
+    name: "Midnight",
+    description: "Deep navy and soft gold, made for late-night chats",
+    gradient: ["#0B1430", "#1F3A6E", "#4C6FB0"],
+    glow: "#F3D48A",
+    light: {
+      background: "#F5F6FA",
+      backgroundStrong: "#FFFFFF",
+      backgroundSoft: "#E9ECF4",
+      text: "#141A2B",
+      textMuted: "#565E73",
+      primary: "#1F3A6E",
+      primaryPressed: "#182E58",
+      primarySoft: "#E2E8F5",
+      primaryForeground: "#FFFFFF",
+      border: "#DCE1EC",
+      card: "#FFFFFF"
+    },
+    dark: {
+      background: "#0A0E1A",
+      backgroundStrong: "#121829",
+      backgroundSoft: "#1B2236",
+      text: "#EEF1F8",
+      textMuted: "#A8B0C4",
+      primary: "#E3BD5E",
+      primaryPressed: "#CFA94C",
+      primarySoft: "#2A2A22",
+      primaryForeground: "#1A1406",
+      border: "#212A40",
+      card: "#121829"
+    }
+  },
+  berry: {
+    id: "berry",
+    name: "Berry Blush",
+    description: "Playful berry and blush pink, a little flirty",
+    gradient: ["#3B0F35", "#7E1F5E", "#B4437F"],
+    glow: "#FFC6E1",
+    light: {
+      background: "#FDF6F9",
+      backgroundStrong: "#FFFFFF",
+      backgroundSoft: "#F6E7EF",
+      text: "#251420",
+      textMuted: "#6E5867",
+      primary: "#9C2468",
+      primaryPressed: "#841D58",
+      primarySoft: "#F8E0EC",
+      primaryForeground: "#FFFFFF",
+      border: "#EFDCE6",
+      card: "#FFFFFF"
+    },
+    dark: {
+      background: "#160C13",
+      backgroundStrong: "#21131C",
+      backgroundSoft: "#2E1B28",
+      text: "#F7ECF2",
+      textMuted: "#C0A9B7",
+      primary: "#B2307B",
+      primaryPressed: "#992867",
+      primarySoft: "#3E1A30",
+      primaryForeground: "#FFFFFF",
+      border: "#362030",
+      card: "#21131C"
     }
   }
 };
