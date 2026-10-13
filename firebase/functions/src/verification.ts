@@ -4,13 +4,14 @@ import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { bucket, db } from "./admin";
 import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
-import { ignoreDiditEvent, ownedPhotoPath, passedLiveCheck, validDiditSignature } from "./lib/didit";
+import { diditCaptureAvailable, ignoreDiditEvent, ownedPhotoPath, passedLiveCheck, validDiditSignature } from "./lib/didit";
 import { VerificationApproval, verificationState } from "./lib/verification";
 import { consumeDailyQuota } from "./quota";
 import { eraseProviderSession } from "./verificationCleanup";
 import { verificationRequired } from "./trust";
+import { selfieCheckAvailable } from "./selfie";
 
-const captureAvailable = () => process.env.MUSE_VERIFICATION_ENABLED === "true" && Boolean(process.env.DIDIT_API_KEY && process.env.DIDIT_API_KEY !== "disabled" && process.env.DIDIT_WORKFLOW_ID && process.env.DIDIT_APPLICATION_ID);
+const captureAvailable = diditCaptureAvailable;
 const samePhotos = (a: unknown, b: unknown) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((value, index) => value === b[index]);
 
 /** Only the caller's state; no biometrics, legal identity or rejection evidence. */
@@ -18,7 +19,9 @@ export const getVerificationStatus = onCall({ region: REGION, secrets: ["DIDIT_A
   const uid = requireAuth(request);
   const [profile, moderation] = await db.getAll(db.doc(`users/${uid}`), db.doc(`moderation/${uid}`));
   const approval = moderation.get("verification") as VerificationApproval | undefined;
-  return { state: verificationState(approval, profile.get("photoUrls")), captureAvailable: captureAvailable(), required: await verificationRequired() };
+  // Didit when it's configured, otherwise Paire's own selfie check.
+  const method = captureAvailable() ? "didit" : selfieCheckAvailable() ? "selfie" : null;
+  return { state: verificationState(approval, profile.get("photoUrls")), captureAvailable: method !== null, method, required: moderation.get("cohort") !== "test" && (await verificationRequired()) };
 });
 
 /** Freeze exact object generations first, then send the live provider the frozen reference. */

@@ -91,7 +91,7 @@ export type UserSettings = {
 export type Cohort = "public" | "test";
 
 /** moderation/{uid}: server-only moderation state, managed by functions and admins. */
-export type ModerationRecord = { status?: string; cohort?: string };
+export type ModerationRecord = { status?: string; cohort?: string; emailVerified?: boolean };
 
 /** discovery/{uid}: server-only index used to build feeds. Location is coarsened. */
 export type DiscoveryEntry = {

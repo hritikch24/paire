@@ -19,7 +19,7 @@ const productionFirebase = {
   apiKey: "AIzaSyD30LSvbx2NCWulfLira3hD7cd6TxVjc4o",
   authDomain: "muse-352ba.firebaseapp.com",
   projectId: "muse-352ba",
-  storageBucket: "muse-352ba.appspot.com",
+  storageBucket: "muse-352ba.firebasestorage.app",
   messagingSenderId: "125120459010",
   appId: "1:125120459010:web:1c94b8e4f62c323ddc521b"
 };

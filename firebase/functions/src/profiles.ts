@@ -1,6 +1,7 @@
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { db } from "./admin";
 import { REGION } from "./config";
+import { refreshEmailVerification } from "./accountChecks";
 import { syncDiscoveryIndex } from "./discovery";
 import { publicSnippet, updateDuoLikeSnippets } from "./duoSnippets";
 import { MatchProfileSnippet, PublicProfile } from "./types";
@@ -44,6 +45,8 @@ export const onUserProfileWritten = onDocumentWritten(
       }
     }
 
+    // New profiles: record a confirmed email (Google sign-ins arrive confirmed).
+    if (after && (await db.doc(`moderation/${uid}`).get()).get("emailVerified") !== true) await refreshEmailVerification(uid);
     const entry = await syncDiscoveryIndex(uid);
 
     if (!after) return;

@@ -53,6 +53,7 @@ export type AppStackParamList = {
 
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList> | undefined;
+  VerifyEmail: undefined;
   Onboarding: NavigatorScreenParams<OnboardingStackParamList> | undefined;
   App: NavigatorScreenParams<AppStackParamList> | undefined;
 };

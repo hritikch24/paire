@@ -84,11 +84,13 @@ module.exports = ({ config }) => ({
     permissions: [
       "android.permission.ACCESS_COARSE_LOCATION",
       "android.permission.VIBRATE",
-      ...(callsEnabled ? ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"] : [])
+      // The selfie photo check (and video calls).
+      "android.permission.CAMERA",
+      ...(callsEnabled ? ["android.permission.RECORD_AUDIO"] : [])
     ],
     // Libraries declare more than Muse needs. Photos use the system photo picker
     // (no media permission, per Google Play's photo & video permissions policy),
-    // location is approximate only, and there is no camera/microphone feature.
+    // location is approximate only, and the camera is only for the selfie check and calls.
     blockedPermissions: [
       "android.permission.ACCESS_FINE_LOCATION",
       "android.permission.ACCESS_BACKGROUND_LOCATION",
@@ -99,7 +101,7 @@ module.exports = ({ config }) => ({
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.SYSTEM_ALERT_WINDOW",
-      ...(callsEnabled ? [] : ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"])
+      ...(callsEnabled ? [] : ["android.permission.RECORD_AUDIO"])
     ],
     ...(hasGoogleServices ? { googleServicesFile } : {})
   },
@@ -120,7 +122,8 @@ module.exports = ({ config }) => ({
       "expo-image-picker",
       {
         photosPermission: "Paire uses your photos so you can add them to your profile.",
-        ...(callsEnabled ? {} : { cameraPermission: false, microphonePermission: false })
+        cameraPermission: "Paire uses your camera for the selfie photo check that verifies your profile.",
+        ...(callsEnabled ? {} : { microphonePermission: false })
       }
     ],
     [

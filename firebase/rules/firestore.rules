@@ -20,6 +20,12 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // Profiles need a confirmed email (Google sign-ins come confirmed), so a made-up
+    // address never gets a profile. The server also checks it before any dating action.
+    function emailConfirmed() {
+      return request.auth.token.email_verified == true;
+    }
+
     function previewMode() {
       // A missing policy never opts anyone out. Fully verified chats need no policy lookup.
       return get(/databases/$(database)/documents/runtime/trust).data.requireVerification == false;
@@ -34,11 +40,15 @@ service cloud.firestore {
         && approval.verifiedAt > 0 && approval.verifiedAt <= now && approval.expiresAt > now;
     }
 
+    // A confirmed email and a current photo check. The test cohort (shared QA accounts,
+    // only ever shown to each other) skips the photo check.
     function verified(uid) {
       let moderation = get(/databases/$(database)/documents/moderation/$(uid)).data;
       return moderation.get('status', 'ok') != 'banned'
-        && moderation.get('verification', {}).get('status', '') == 'verified'
-        && approvedPhotos(uid, moderation.verification);
+        && moderation.get('emailVerified', false) == true
+        && (moderation.get('cohort', '') == 'test'
+          || (moderation.get('verification', {}).get('status', '') == 'verified'
+            && approvedPhotos(uid, moderation.verification)));
     }
 
     function previewContactAllowed(uid) {
@@ -214,8 +224,9 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if isUser(uid) || (signedIn() && hasActiveMatchWith(uid));
-      allow create: if isUser(uid) && validProfile(request.resource.data, uid);
+      allow create: if isUser(uid) && emailConfirmed() && validProfile(request.resource.data, uid);
       allow update: if isUser(uid)
+        && emailConfirmed()
         && validProfile(request.resource.data, uid)
         && !changedKeys().hasAny(['uid', 'createdAt']);
       // Accounts are deleted by the deleteAccount Cloud Function.

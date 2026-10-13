@@ -31,13 +31,23 @@ const claudeKey = () => {
 /** Which AI writes, or null for the built-in generators only. */
 export function aiProvider(): AiProvider | null {
   if (claudeKey()) return "claude";
-  if (process.env.MUSE_GEMINI_ENABLED === "true" && process.env.FUNCTIONS_EMULATOR !== "true") return "gemini";
+  if (geminiEnabled()) return "gemini";
   return null;
 }
 
 export const llmEnabled = () => aiProvider() !== null;
 
-type AskOptions = { model?: string; timeoutMs?: number };
+export type AiImage = { mimeType: string; data: Buffer };
+type AskOptions = {
+  model?: string;
+  timeoutMs?: number;
+  /** Images shown to the model before the prompt, in order. */
+  images?: AiImage[];
+  /** Gemini model for this request instead of MUSE_GEMINI_MODEL. */
+  geminiModel?: string;
+  /** Only this provider (e.g. where consent names it); null if it isn't set up. */
+  provider?: AiProvider;
+};
 
 /** The JSON object inside a model's text reply, or null. */
 export function parseJsonReply(text: string): unknown | null {
@@ -48,18 +58,21 @@ export function parseJsonReply(text: string): unknown | null {
 /**
  * Asks the configured AI for a JSON object and returns it parsed, or null on any
  * failure (no provider, timeout, API error, unparsable output): callers fall back.
- * `options.model` names a Claude model; Gemini uses MUSE_GEMINI_MODEL.
+ * `options.model` names a Claude model; Gemini uses `options.geminiModel` or MUSE_GEMINI_MODEL.
  */
+/** Gemini is set up (deployed functions only: it uses the server's own Google identity). */
+export const geminiEnabled = () => process.env.MUSE_GEMINI_ENABLED === "true" && process.env.FUNCTIONS_EMULATOR !== "true";
+
 export async function askAiForJson(system: string, prompt: string, maxTokens = 600, options: AskOptions = {}): Promise<unknown | null> {
-  const provider = aiProvider();
+  const provider = options.provider === "gemini" ? (geminiEnabled() ? "gemini" : null) : options.provider === "claude" ? (claudeKey() ? "claude" : null) : aiProvider();
   if (!provider) return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? TIMEOUT_MS);
   try {
     const text =
       provider === "claude"
-        ? await askClaude(system, prompt, maxTokens, options.model, controller.signal)
-        : await askGemini(system, prompt, maxTokens, controller.signal);
+        ? await askClaude(system, prompt, maxTokens, options, controller.signal)
+        : await askGemini(system, prompt, maxTokens, options, controller.signal);
     return text === null ? null : parseJsonReply(text);
   } catch (error) {
     logger.warn("AI request failed", { provider, error: String(error) });
@@ -69,7 +82,11 @@ export async function askAiForJson(system: string, prompt: string, maxTokens = 6
   }
 }
 
-async function askClaude(system: string, prompt: string, maxTokens: number, model: string | undefined, signal: AbortSignal): Promise<string | null> {
+async function askClaude(system: string, prompt: string, maxTokens: number, { model, images = [] }: AskOptions, signal: AbortSignal): Promise<string | null> {
+  const content = [
+    ...images.map((image) => ({ type: "image", source: { type: "base64", media_type: image.mimeType, data: image.data.toString("base64") } })),
+    { type: "text", text: prompt }
+  ];
   const response = await fetch(ANTHROPIC_URL, {
     method: "POST",
     signal,
@@ -78,7 +95,7 @@ async function askClaude(system: string, prompt: string, maxTokens: number, mode
       model: model || process.env.MUSE_AI_MODEL || DEFAULT_CLAUDE_MODEL,
       max_tokens: maxTokens,
       system,
-      messages: [{ role: "user", content: prompt }]
+      messages: [{ role: "user", content }]
     })
   });
   if (!response.ok) {
@@ -89,7 +106,7 @@ async function askClaude(system: string, prompt: string, maxTokens: number, mode
   return (body.content ?? []).filter((part) => part.type === "text").map((part) => part.text ?? "").join("");
 }
 
-async function askGemini(system: string, prompt: string, maxTokens: number, signal: AbortSignal): Promise<string | null> {
+async function askGemini(system: string, prompt: string, maxTokens: number, { images = [], geminiModel }: AskOptions, signal: AbortSignal): Promise<string | null> {
   const project = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT;
   if (!project) return null;
   // The Cloud Functions service account's token, from the metadata server: no key to store.
@@ -100,7 +117,7 @@ async function askGemini(system: string, prompt: string, maxTokens: number, sign
   }
   const { access_token: token } = (await tokenResponse.json()) as { access_token?: string };
   if (!token) return null;
-  const model = process.env.MUSE_GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+  const model = geminiModel || process.env.MUSE_GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
   const response = await fetch(
     `https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${model}:generateContent`,
     {
@@ -109,9 +126,9 @@ async function askGemini(system: string, prompt: string, maxTokens: number, sign
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: [...images.map((image) => ({ inlineData: { mimeType: image.mimeType, data: image.data.toString("base64") } })), { text: prompt }] }],
         // Room for the model's own reasoning tokens on top of the reply.
-        generationConfig: { maxOutputTokens: Math.max(maxTokens * 4, 2048), responseMimeType: "application/json" }
+        generationConfig: { maxOutputTokens: Math.max(maxTokens * 4, 2048), responseMimeType: "application/json", ...(images.length ? { temperature: 0 } : {}) }
       })
     }
   );

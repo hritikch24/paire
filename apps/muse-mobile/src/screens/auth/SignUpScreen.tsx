@@ -14,6 +14,7 @@ import { ScreenHeader } from "../../components/ScreenHeader";
 import { isValidEmail, MIN_PASSWORD_LENGTH, signUp } from "../../services/accountService";
 import { friendlyError } from "../../services/errors";
 import type { AuthStackParamList } from "../../navigation/types";
+import { isDisposableEmail } from "../../utils/disposableEmail";
 
 export function SignUpScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
@@ -26,14 +27,20 @@ export function SignUpScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const emailError = email.length > 3 && !isValidEmail(email) ? "Enter a valid email address." : null;
+  const throwaway = isDisposableEmail(email);
+  const emailError =
+    email.length > 3 && !isValidEmail(email)
+      ? "Enter a valid email address."
+      : throwaway
+        ? "Use your own email. Temporary inboxes can't be used on Paire."
+        : null;
   const passwordError =
     password.length > 0 && password.length < MIN_PASSWORD_LENGTH
       ? `Use at least ${MIN_PASSWORD_LENGTH} characters.`
       : null;
   const confirmError = confirm.length > 0 && confirm !== password ? "Passwords don't match." : null;
   const canSubmit =
-    isValidEmail(email) && password.length >= MIN_PASSWORD_LENGTH && confirm === password && agreed;
+    isValidEmail(email) && !throwaway && password.length >= MIN_PASSWORD_LENGTH && confirm === password && agreed;
 
   const handleSignUp = async () => {
     if (!canSubmit || loading) return;
@@ -75,7 +82,7 @@ export function SignUpScreen() {
           Create your account
         </Text>
         <Text color="$textMuted" fontSize="$4">
-          It takes about a minute to set up your profile.
+          It takes about a minute. We'll email you a link to confirm it's you.
         </Text>
       </YStack>
       <YStack gap="$3">

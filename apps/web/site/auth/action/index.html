@@ -135,7 +135,7 @@
     });
   } else if (mode === "verifyEmail") {
     call("update", { oobCode: code })
-      .then(() => done("Email verified", "Thanks! Your email is confirmed. Head back to Paire."))
+      .then(() => done("Email confirmed", "Thanks! Go back to Paire: it carries on by itself, or tap below."))
       .catch(() => fail());
   } else if (mode === "recoverEmail") {
     call("update", { oobCode: code })

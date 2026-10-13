@@ -30,7 +30,7 @@ it("issues a valid room-specific, short-lived signature without recording permis
   expect(url.origin).toBe("https://8x8.vc"); expect(payload.room).not.toBe("*"); expect(url.pathname.endsWith(payload.room)).toBe(true);
   expect(payload.exp - payload.nbf).toBe(310); expect(payload.context.features.recording).toBe(false);
   expect(payload.context.user.id).not.toBe("me"); expect(payload.context.user.moderator).toBe("false");
-  expect(requireVerifiedUsers).toHaveBeenCalledWith(["me", "other"], expect.anything());
+  expect(requireVerifiedUsers).toHaveBeenCalledWith(["me", "other"], expect.anything(), "me");
 });
 it("denies nonparticipants and blocked matches", async () => {
   participants = ["someone", "other"]; await expect(call()).rejects.toThrow(/isn’t available/);

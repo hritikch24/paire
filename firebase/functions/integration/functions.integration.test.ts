@@ -56,7 +56,8 @@ type FeedResult = { profiles: Array<Record<string, unknown> & { uid: string }>; 
 const clients: Client[] = [];
 let counter = 0;
 
-async function makeClient(label: string): Promise<Client> {
+/** A signed-in member; `confirmEmail: false` leaves the email unconfirmed. */
+async function makeClient(label: string, { confirmEmail = true } = {}): Promise<Client> {
   counter += 1;
   const app = initializeApp(
     { projectId: PROJECT_ID, apiKey: "demo-key", authDomain: `${PROJECT_ID}.firebaseapp.com` },
@@ -73,6 +74,10 @@ async function makeClient(label: string): Promise<Client> {
     `${label}.${Date.now()}.${counter}@example.com`,
     "Password123!"
   );
+  if (confirmEmail) {
+    await getAdminAuth().updateUser(credential.user.uid, { emailVerified: true });
+    await credential.user.getIdToken(true);
+  }
   const client: Client = {
     uid: credential.user.uid,
     app,
@@ -171,13 +176,28 @@ describe("trust and free allowance", () => {
   it("returns only the caller's approval, invalidates changed photos and refuses a forged approval", async () => {
     const member = await makeClient("verification-member");
     await onboard(member, { name: "NCR member", gender: "woman", showMe: ["man"], age: 27 });
-    expect(await member.call("getVerificationStatus", { uid: "someone-else", verified: true })).toEqual({ state: "unverified", captureAvailable: false, required: false });
+    expect(await member.call("getVerificationStatus", { uid: "someone-else", verified: true })).toEqual({ state: "unverified", captureAvailable: false, method: null, required: false });
     const photoUrls = (await admin.doc(`users/${member.uid}`).get()).get("photoUrls");
     await expect(setDoc(doc(member.db, "moderation", member.uid), { verification: { status: "verified" } })).rejects.toMatchObject({ code: "permission-denied" });
-    await admin.doc(`moderation/${member.uid}`).set({ status: "ok", verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } });
-    expect(await member.call("getVerificationStatus")).toEqual({ state: "verified", captureAvailable: false, required: false });
+    await admin.doc(`moderation/${member.uid}`).set({ emailVerified: true,  status: "ok", verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } });
+    expect(await member.call("getVerificationStatus")).toEqual({ state: "verified", captureAvailable: false, method: null, required: false });
     await updateDoc(doc(member.db, "users", member.uid), { photoUrls: ["https://example.com/replaced.jpg"] });
-    expect(await member.call("getVerificationStatus")).toEqual({ state: "needs_recheck", captureAvailable: false, required: false });
+    expect(await member.call("getVerificationStatus")).toEqual({ state: "needs_recheck", captureAvailable: false, method: null, required: false });
+  });
+
+  it("unconfirmed and throwaway emails can't make a profile or date", async () => {
+    const member = await makeClient("unconfirmed-member", { confirmEmail: false });
+    await expect(onboard(member, { name: "Unconfirmed", gender: "woman", showMe: ["man"], age: 26 })).rejects.toMatchObject({ code: "permission-denied" });
+    await expect(member.call("getDiscoverFeed")).rejects.toMatchObject({ code: "functions/failed-precondition", message: expect.stringMatching(/Confirm your email/) });
+    expect(await member.call("syncAccountChecks")).toEqual({ emailVerified: false, disposableEmail: false });
+    // Opening the emailed link confirms the address; the app then asks the server to re-check.
+    await getAdminAuth().updateUser(member.uid, { emailVerified: true });
+    expect(await member.call("syncAccountChecks")).toEqual({ emailVerified: true, disposableEmail: false });
+    expect((await admin.doc(`moderation/${member.uid}`).get()).get("emailVerified")).toBe(true);
+
+    const throwaway = await makeClient("throwaway-member");
+    await getAdminAuth().updateUser(throwaway.uid, { email: `throwaway.${Date.now()}@mailinator.com`, emailVerified: true });
+    expect(await throwaway.call("syncAccountChecks")).toEqual({ emailVerified: false, disposableEmail: true });
   });
 
   it("checks allowances without spending them, reports UTC expiry and reads only the caller", async () => {
@@ -407,8 +427,8 @@ describe("test cohort (Play review / QA accounts)", () => {
       makeClient("member")
     ]);
     // Admins flag test accounts in the console; the trigger re-indexes them.
-    await admin.doc(`moderation/${reviewer.uid}`).set({ status: "ok", cohort: "test" });
-    await admin.doc(`moderation/${tester.uid}`).set({ status: "ok", cohort: "test" });
+    await admin.doc(`moderation/${reviewer.uid}`).set({ emailVerified: true,  status: "ok", cohort: "test" });
+    await admin.doc(`moderation/${tester.uid}`).set({ emailVerified: true,  status: "ok", cohort: "test" });
     await onboard(reviewer, { name: "Reviewer", gender: "man", showMe: ["woman"], age: 35 });
     await onboard(tester, { name: "Tester", gender: "woman", showMe: ["man"], age: 33 });
     await onboard(member, { name: "Member", gender: "woman", showMe: ["man"], age: 34 });
@@ -649,7 +669,7 @@ describe("production trust boundaries", () => {
       await expect(a.call("swipe", { targetUid: b.uid, type: "like", verified: true })).rejects.toThrow(/verification is required/);
       for (const member of [a, b]) {
         const photos = (await admin.doc(`users/${member.uid}`).get()).get("photoUrls");
-        await admin.doc(`moderation/${member.uid}`).set({ verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } });
+        await admin.doc(`moderation/${member.uid}`).set({ emailVerified: true,  verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } });
       }
       await a.call("swipe", { targetUid: b.uid, type: "like" });
       const result = await b.call<{ matched: boolean; matchId: string }>("swipe", { targetUid: a.uid, type: "like" });
@@ -670,7 +690,7 @@ describe("production trust boundaries", () => {
     const originalPhotos = (await admin.doc(`users/${member.uid}`).get()).get("photoUrls");
     const frozenPhotos = ["https://example.com/immutable-test-fixture"];
     await admin.doc(`verificationSessions/${sessionId}`).set({ uid: member.uid, attempt: "test", originalPhotos, frozenPhotos, providerPassed: false, expiresAt: Date.now() + 60000 });
-    await admin.doc(`moderation/${member.uid}`).set({ verification: { status: "pending", sessionId } });
+    await admin.doc(`moderation/${member.uid}`).set({ emailVerified: true,  verification: { status: "pending", sessionId } });
     const decision = { sessionId, approve: true, reviewedAllPhotos: true, authenticPhotos: true };
     await expect(member.call("getPhotoReviewQueue")).rejects.toThrow(/Moderator access/);
     await expect(member.call("reviewPhotoVerification", { ...decision, moderator: true })).rejects.toThrow(/Moderator access/);
@@ -713,10 +733,10 @@ describe("stale discovery cards", () => {
     await updateDoc(doc(b.db, "users", b.uid), { isDiscoverable: false });
     await expect(a.call("swipe", { targetUid: b.uid, type: "like" })).rejects.toThrow(/no longer available/);
     await updateDoc(doc(b.db, "users", b.uid), { isDiscoverable: true });
-    await admin.doc(`moderation/${b.uid}`).set({ cohort: "test" });
+    await admin.doc(`moderation/${b.uid}`).set({ emailVerified: true,  cohort: "test" });
     await expect(a.call("swipe", { targetUid: b.uid, type: "like" })).rejects.toThrow(/no longer available/);
     expect(await a.call("getDailyAllowance")).toMatchObject({ remaining: { likes: 25 } });
-    await admin.doc(`moderation/${b.uid}`).set({ cohort: "public" });
+    await admin.doc(`moderation/${b.uid}`).set({ emailVerified: true,  cohort: "public" });
     await a.call("swipe", { targetUid: b.uid, type: "like" });
     await updateDoc(doc(a.db, "users", a.uid, "private", "settings"), { showMe: ["woman"] });
     await expect(b.call("swipe", { targetUid: a.uid, type: "like" })).rejects.toThrow(/no longer available/);
@@ -802,7 +822,7 @@ describe("private safety report workflow", () => {
     await onboard(target, { name: "Ban target", gender: "man", showMe: ["woman"], age: 29 });
     const reportId = newId(reporter);
     await reporter.call("submitReport", { reportId, targetUid: target.uid, reason: "harassment", details: "Concern" });
-    await admin.doc(`moderation/${target.uid}`).set({ status: "banned" });
+    await admin.doc(`moderation/${target.uid}`).set({ emailVerified: true,  status: "banned" });
     await reviewer.call("reviewReport", { reportId, status: "closed", outcome: "action_taken", action: "hide", note: "Confirm restriction while existing ban remains" });
     expect((await admin.doc(`moderation/${target.uid}`).get()).get("status")).toBe("banned");
   });

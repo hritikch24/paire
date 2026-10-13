@@ -2,6 +2,7 @@ import {
   createUserWithEmailAndPassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut
@@ -9,6 +10,7 @@ import {
 import { legal } from "../config/legal";
 import { useAuthStore } from "../store/authStore";
 import { useMatchesStore } from "../store/matchesStore";
+import { isDisposableEmail } from "../utils/disposableEmail";
 import { errorCode } from "./errors";
 import { auth, callFunction } from "./firebase";
 import { unregisterPushToken } from "./notificationService";
@@ -38,7 +40,35 @@ export async function signUp(email: string, password: string) {
     termsAcceptedAt: Date.now(),
     termsVersion: legal.termsVersion
   });
+  // Paire needs a real inbox: the member confirms it before setting up a profile.
+  await sendEmailVerification(credential.user).catch(() => undefined);
   return credential;
+}
+
+export async function resendVerificationEmail() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in");
+  await sendEmailVerification(user);
+}
+
+/**
+ * "confirmed" once the member has opened the link in the confirmation email.
+ * Refreshes the session token (the rules read `email_verified` from it) and asks
+ * the server to record it, which unlocks discovery. "throwaway" means a temporary
+ * inbox, which Paire doesn't accept even when confirmed.
+ */
+export async function checkEmailVerified(): Promise<"confirmed" | "pending" | "throwaway"> {
+  const user = auth.currentUser;
+  if (!user) return "pending";
+  await user.reload();
+  const current = auth.currentUser;
+  if (!current?.emailVerified) return "pending";
+  if (isDisposableEmail(current.email)) return "throwaway";
+  await current.getIdToken(true);
+  // Best effort: the server re-checks on its own when the profile is first saved.
+  await callFunction("syncAccountChecks").catch(() => undefined);
+  useAuthStore.getState().markEmailVerified();
+  return "confirmed";
 }
 
 export async function sendPasswordReset(email: string) {

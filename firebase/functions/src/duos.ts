@@ -477,7 +477,7 @@ export const getDuoFeed = onCall(
   await requireVerifiedUsers([uid]);
     await consumeDailyQuota(uid, "duoFeedCalls", LIMITS.duoFeedCallsPerDay);
     const { id: myDuoId, duo: myDuo } = await requireActiveDuo(uid);
-    await requireVerifiedUsers(myDuo.members);
+    await requireVerifiedUsers(myDuo.members, undefined, uid);
     // Keeps active pairs near the top of everyone else's deck, without a write per call.
     if (Date.now() - (myDuo.lastActiveAt ?? 0) > DUOS.activityRefreshMinutes * 60 * 1000) {
       await db.doc(`duos/${myDuoId}`).update({ lastActiveAt: Date.now() });
@@ -591,7 +591,7 @@ export const duoSwipe = onCall({ region: REGION }, async (request) => {
   const matchRef = db.doc(`matches/${matchId}`);
 
   const matched = await db.runTransaction(async (tx) => {
-    await requireVerifiedUsers([...myDuo.members, ...target.members], tx);
+    await requireVerifiedUsers([...myDuo.members, ...target.members], tx, uid);
     const [existing, reciprocal, match, myDuoNow, targetNow] = await tx.getAll(
       swipeRef,
       reciprocalRef,

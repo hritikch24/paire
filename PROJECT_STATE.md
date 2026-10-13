@@ -9,7 +9,7 @@ Last updated: 2026-10-12
 ## Rename and web payments (2026-10-11)
 - **Razorpay web checkout for Paire Plus.** The server prices the order, Checkout opens, the signature is verified and the payment re-read from Razorpay, then the pass is granted once. A signed webhook handles late captures and refunds, and passes queue instead of overlapping. Store and web passes combine in `billing/{uid}`.
 - **Website ready for payment-gateway review:** Refund & cancellation and Contact pages, a payments section in the Terms, business details filled from `PAIRE_*` variables, a web manifest and icons, a social share image, and a sitemap when indexing is on.
-- `scripts/set-trust-policy.mjs` sets the verification policy for launch (Didit isn't configured yet).
+- Photo verification is required (`runtime/trust.requireVerification=true`, set 2026-10-13) through Paire's own free selfie check (`selfie.ts`); Didit takes over automatically if it is ever configured. `scripts/set-trust-policy.mjs` changes the policy. Email confirmation is always required.
 - **Launch steps and every variable:** `docs/launch-web.md`. Validation: `verify.sh` passes (app 72, functions 146, rules 33, end-to-end 32).
 
 ## India v2 (2026-10-11)

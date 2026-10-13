@@ -34,7 +34,7 @@ Build: `node apps/web/scripts/build.mjs` writes `apps/web/dist`. `vercel.json` a
    cat > /tmp/cors.json <<'EOF'
    [{"origin": ["https://your-project.vercel.app", "https://yourbrand.in"], "method": ["GET", "POST", "PUT"], "maxAgeSeconds": 3600}]
    EOF
-   gsutil cors set /tmp/cors.json gs://muse-352ba.appspot.com
+   gsutil cors set /tmp/cors.json gs://muse-352ba.firebasestorage.app
    ```
 
 ## Every deploy

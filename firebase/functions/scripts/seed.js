@@ -48,12 +48,16 @@ const onboardingMember = { uid: "muse_onboard", email: "muse+onboard@example.com
 async function ensureAuthUser(uid, email) {
   try {
     const existing = await auth.getUserByEmail(email);
-    if (existing.uid === uid) return;
+    if (existing.uid === uid) {
+      // Fixtures created before email confirmation existed.
+      if (!existing.emailVerified) await auth.updateUser(uid, { emailVerified: true });
+      return;
+    }
     await auth.deleteUser(existing.uid);
   } catch {
     // Not found: create below.
   }
-  await auth.createUser({ uid, email, password: PASSWORD });
+  await auth.createUser({ uid, email, password: PASSWORD, emailVerified: true });
 }
 
 async function seedMember(member) {

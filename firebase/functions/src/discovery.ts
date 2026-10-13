@@ -46,7 +46,9 @@ export async function syncDiscoveryIndex(uid: string): Promise<DiscoveryEntry | 
     settingsSnap.data() as UserSettings | undefined,
     moderationSnap.exists ? (moderationSnap.data() as ModerationRecord) : undefined
   );
-  if (await verificationRequired()) entry.visible = entry.visible && verificationState(moderationSnap.get("verification"), profileSnap.get("photoUrls")) === "verified";
+  // Unconfirmed or throwaway emails never appear in anyone's feed.
+  if (moderationSnap.get("emailVerified") !== true) entry.visible = false;
+  if (moderationSnap.get("cohort") !== "test" && (await verificationRequired())) entry.visible = entry.visible && verificationState(moderationSnap.get("verification"), profileSnap.get("photoUrls")) === "verified";
   await indexRef.set(entry);
   return entry;
 }

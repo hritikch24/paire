@@ -1,6 +1,9 @@
 import { createHmac } from "crypto";
 import { sameSecret } from "./billing";
 
+/** Didit's hosted live check is configured (it then takes priority over Paire's selfie check). */
+export const diditCaptureAvailable = () => process.env.MUSE_VERIFICATION_ENABLED === "true" && Boolean(process.env.DIDIT_API_KEY && process.env.DIDIT_API_KEY !== "disabled" && process.env.DIDIT_WORKFLOW_ID && process.env.DIDIT_APPLICATION_ID);
+
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) => [key, canonical(item)]));

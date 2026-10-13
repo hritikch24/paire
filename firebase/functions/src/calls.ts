@@ -18,7 +18,7 @@ export const createCallSession = onCall({ region: REGION, secrets: ["JAAS_PRIVAT
     const match = await tx.get(db.doc(`matches/${matchId}`));
     const participants = match.get("participants") as string[] | undefined;
     if (!match.exists || match.get("active") !== true || !participants?.includes(uid)) throw new HttpsError("permission-denied", "This call isn’t available.");
-    await requireVerifiedUsers(participants, tx);
+    await requireVerifiedUsers(participants, tx, uid);
     const blocked = await tx.getAll(...participants.filter((member) => member !== uid).flatMap((member) => [db.doc(`blocks/${uid}/blocked/${member}`), db.doc(`blocks/${member}/blocked/${uid}`)]));
     if (blocked.some((snap) => snap.exists)) throw new HttpsError("permission-denied", "This call isn’t available.");
     const ref = db.doc(`callRooms/${matchId}`); const existing = await tx.get(ref);

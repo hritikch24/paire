@@ -1,7 +1,7 @@
 import { onAuthStateChanged } from "../services/authSdk";
 import { doc, onSnapshot } from "@firebase/firestore/dist/index.cjs.js";
 import { useEffect } from "react";
-import { auth, db } from "../services/firebase";
+import { auth, callFunction, db } from "../services/firebase";
 import { queryClient } from "../services/queryClient";
 import { useAuthStore } from "../store/authStore";
 import { useMatchesStore } from "../store/matchesStore";
@@ -38,6 +38,8 @@ export function useAuthSession() {
         useMatchesStore.getState().reset();
       }
       useAuthStore.getState().setUser(user);
+      // Let the server record an already-confirmed email (Google sign-ins, older accounts).
+      if (user?.emailVerified) void callFunction("syncAccountChecks").catch(() => undefined);
     });
   }, []);
 

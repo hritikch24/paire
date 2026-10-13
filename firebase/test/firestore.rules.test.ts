@@ -44,7 +44,9 @@ beforeEach(async () => {
   await seed({ "runtime/trust": { requireVerification: false } });
 });
 
-const dbFor = (uid: string) => testEnv.authenticatedContext(uid).firestore();
+// Members have confirmed their email (Google sign-ins arrive confirmed).
+const dbFor = (uid: string) => testEnv.authenticatedContext(uid, { email_verified: true }).firestore();
+const unconfirmedDbFor = (uid: string) => testEnv.authenticatedContext(uid, { email_verified: false }).firestore();
 
 function validProfile(uid: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -96,6 +98,14 @@ function matchDoc(active = true) {
 describe("profiles", () => {
   test("owners can create a valid adult profile", async () => {
     await assertSucceeds(dbFor("alexa").doc("users/alexa").set(validProfile("alexa")));
+  });
+
+  test("a profile needs a confirmed email", async () => {
+    await assertFails(unconfirmedDbFor("alexa").doc("users/alexa").set(validProfile("alexa")));
+    await seed({ "users/alexa": validProfile("alexa") });
+    await assertFails(unconfirmedDbFor("alexa").doc("users/alexa").update({ bio: "Changed", updatedAt: 2 }));
+    // Private settings can still be saved while the email is being confirmed.
+    await assertSucceeds(unconfirmedDbFor("alexa").doc("users/alexa/private/info").set({ email: "alexa@example.com", termsAcceptedAt: 1, termsVersion: "2026-06" }));
   });
 
   test("under-18 ages, unknown fields and bad genders are rejected", async () => {
@@ -449,7 +459,7 @@ describe("duos and duo chats", () => {
 });
 
 describe("mandatory photo verification", () => {
-  const approval = (photos: string[]) => ({ status: "ok", verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } });
+  const approval = (photos: string[]) => ({ status: "ok", emailVerified: true, verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } });
   const send = (uid: string, id: string) => dbFor(uid).collection(`matches/${id}/messages`).add({ senderId: uid, text: "Hello", createdAt: serverTimestamp() });
   test("a banned member cannot continue contact even in a closed verification preview", async () => {
     await seed({ "matches/alexa_jules": matchDoc(), "moderation/jules": { status: "banned" } });
@@ -472,7 +482,15 @@ describe("mandatory photo verification", () => {
     await assertSucceeds(send("alexa", "alexa_jules"));
     await assertSucceeds(dbFor("jules").doc("users/jules").update({ photoUrls: ["changed"] }));
     await assertFails(send("alexa", "alexa_jules"));
-    await seed({ "users/jules": validProfile("jules", { photoUrls: photos }), "moderation/jules": { verification: { ...approval(photos).verification, expiresAt: Date.now() - 1 } } });
+    await seed({ "users/jules": validProfile("jules", { photoUrls: photos }), "moderation/jules": { emailVerified: true, verification: { ...approval(photos).verification, expiresAt: Date.now() - 1 } } });
+    await assertFails(send("alexa", "alexa_jules"));
+  });
+  test("shared test-cohort accounts chat without a photo check, unless banned", async () => {
+    await seed({ "runtime/trust": { requireVerification: true }, "matches/alexa_jules": matchDoc(), "users/alexa": validProfile("alexa"), "users/jules": validProfile("jules"), "moderation/alexa": { cohort: "test", emailVerified: true }, "moderation/jules": { cohort: "test", emailVerified: true } });
+    await assertSucceeds(send("alexa", "alexa_jules"));
+    await seed({ "moderation/jules": { cohort: "test", emailVerified: false } });
+    await assertFails(send("alexa", "alexa_jules"));
+    await seed({ "moderation/jules": { cohort: "test", emailVerified: true, status: "banned" } });
     await assertFails(send("alexa", "alexa_jules"));
   });
   test("all four Duo members are checked within the rules access budget", async () => {

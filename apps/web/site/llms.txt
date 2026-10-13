@@ -10,6 +10,7 @@ Paire launched in 2026, starting in Delhi NCR (Delhi, Noida, Gurugram, Faridabad
 - Free for everyone: 25 likes a day (each can carry a note), 1 Super Like a day, see everyone who likes you, unlimited chat, all privacy and safety controls.
 - Paire Plus (optional pass, never auto-renews, same price for men and women): ₹20 for 1 day, ₹99 for 7 days, ₹299 for 30 days. Adds 100 likes a day, 5 Super Likes a day, priority likes and the age-gap filter. Paid by UPI, card or netbanking (Razorpay).
 - Women-first controls (free): notes-only likes, "I'll message first", incognito (only people you like can see you), private photos until you match, "same intentions only", "speaks my language".
+- Real people: every email is confirmed (no temporary inboxes), and members verify with a free live selfie check (a random pose, matched to every profile photo; the selfie is never stored) before they can like or chat.
 - Safety: report and block in every chat, Paire AI warnings for money, OTP and scam messages, moderation of reported profiles. Paid arrangements and money requests are banned.
 - India-specific: optional basics (height, languages, education, diet, drinking, smoking, religion); religion is never used to filter or rank; no caste field or filter.
 - Discovery modes: People (photo cards), Vibe First (interests and intentions before photos), Duos (date together with a best friend), blind date mode.
