@@ -167,13 +167,15 @@ if (missing.length) {
 cpSync(resolve(web, "legal/styles.css"), resolve(output, "styles.css"));
 
 // Search engines stay out until the public launch (set PAIRE_ALLOW_INDEXING=true then).
+// The founder dashboard is deliberately not named here: it opens only at /metrics?key=admin
+// (a vercel.json rewrite), carries noindex, and needs an allowed Google account.
 const indexable = (siteVar("ALLOW_INDEXING") ?? process.env.MUSE_ALLOW_INDEXING) === "true";
 writeFileSync(
   resolve(output, "robots.txt"),
   indexable
     ? // Search engines and AI answer engines (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…) are all welcome.
-      `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /auth/\nDisallow: /metrics/\n\n${["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "PerplexityBot", "Google-Extended", "Applebot-Extended", "Bingbot"]
-        .map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /app/\nDisallow: /metrics/\n`)
+      `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /auth/\n\n${["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "PerplexityBot", "Google-Extended", "Applebot-Extended", "Bingbot"]
+        .map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /app/\n`)
         .join("\n")}\n${siteUrl ? `Sitemap: ${siteUrl}/sitemap.xml\n` : ""}`
     : "User-agent: *\nDisallow: /\n"
 );
