@@ -3,7 +3,6 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useRef, useState } from "react";
 import { Keyboard, TextInput } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
-import { Checkbox } from "../../components/Checkbox";
 import { GoogleButton } from "../../components/GoogleButton";
 import { googleSignInAvailable } from "../../services/googleAuth";
 import { LegalLinks } from "../../components/LegalText";
@@ -19,11 +18,8 @@ import { isDisposableEmail } from "../../utils/disposableEmail";
 export function SignUpScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const passwordRef = useRef<TextInput>(null);
-  const confirmRef = useRef<TextInput>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -38,9 +34,8 @@ export function SignUpScreen() {
     password.length > 0 && password.length < MIN_PASSWORD_LENGTH
       ? `Use at least ${MIN_PASSWORD_LENGTH} characters.`
       : null;
-  const confirmError = confirm.length > 0 && confirm !== password ? "Passwords don't match." : null;
-  const canSubmit =
-    isValidEmail(email) && !throwaway && password.length >= MIN_PASSWORD_LENGTH && confirm === password && agreed;
+  // One password box with a show/hide eye, and agreement by continuing (as on the welcome screen).
+  const canSubmit = isValidEmail(email) && !throwaway && password.length >= MIN_PASSWORD_LENGTH;
 
   const handleSignUp = async () => {
     if (!canSubmit || loading) return;
@@ -69,6 +64,7 @@ export function SignUpScreen() {
           <PrimaryButton testID="signup-submit" onPress={handleSignUp} disabled={!canSubmit} loading={loading}>
             Create account
           </PrimaryButton>
+          <LegalLinks prefix="Paire is for adults 18+. By continuing you agree to our" />
           <XStack justifyContent="center" alignItems="center">
             <Text color="$textMuted">Already on Paire?</Text>
             <GhostButton onPress={() => navigation.replace("SignIn")}>Sign in</GhostButton>
@@ -108,32 +104,12 @@ export function SignUpScreen() {
           placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
           autoComplete="password-new"
           textContentType="newPassword"
-          returnKeyType="next"
+          returnKeyType="go"
           value={password}
           onChangeText={setPassword}
-          onSubmitEditing={() => confirmRef.current?.focus()}
+          onSubmitEditing={() => void handleSignUp()}
           error={passwordError}
         />
-        <PasswordField
-          ref={confirmRef}
-          testID="signup-confirm"
-          label="Confirm password"
-          placeholder="Type it again"
-          autoComplete="password-new"
-          textContentType="newPassword"
-          returnKeyType="done"
-          value={confirm}
-          onChangeText={setConfirm}
-          error={confirmError}
-        />
-        <Checkbox
-          testID="signup-consent"
-          checked={agreed}
-          onChange={setAgreed}
-          accessibilityLabel="I am 18 or older and agree to the Terms of Service, Privacy Policy and Community Guidelines"
-        >
-          <LegalLinks prefix="I'm 18 or older and I agree to Paire's" />
-        </Checkbox>
         {googleSignInAvailable ? (
           <YStack gap="$2" marginTop="$2">
             <XStack alignItems="center" gap="$3">
@@ -141,12 +117,7 @@ export function SignUpScreen() {
               <Text color="$textMuted" fontSize="$2">or</Text>
               <YStack flex={1} height={1} backgroundColor="$border" />
             </XStack>
-            <GoogleButton testID="signup-google" disabled={!agreed} onError={setError} />
-            {!agreed ? (
-              <Text color="$textMuted" fontSize="$1" textAlign="center">
-                Tick the box above to continue with Google.
-              </Text>
-            ) : null}
+            <GoogleButton testID="signup-google" onError={setError} />
           </YStack>
         ) : null}
       </YStack>

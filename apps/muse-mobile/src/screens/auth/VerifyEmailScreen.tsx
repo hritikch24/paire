@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, Platform } from "react-native";
+import { AppState, Linking, Platform } from "react-native";
 import { Text, YStack } from "tamagui";
 import { Icon } from "../../components/Icon";
 import { GhostButton, PrimaryButton, SecondaryButton } from "../../components/MuseButton";
@@ -11,6 +11,21 @@ import { useAuthStore } from "../../store/authStore";
 import { isDisposableEmail } from "../../utils/disposableEmail";
 
 const POLL_MS = 4000;
+
+/** One tap to the inbox for the common providers (a new tab on the web, so this page keeps checking). */
+const INBOXES: Array<[RegExp, string, string]> = [
+  [/^(gmail|googlemail)\.com$/, "Gmail", "https://mail.google.com/mail/u/0/#inbox"],
+  [/^(outlook|hotmail|live|msn)\.(com|in|co\.uk)$/, "Outlook", "https://outlook.live.com/mail/0/inbox"],
+  [/^(yahoo|ymail)\.(com|in|co\.in)$/, "Yahoo Mail", "https://mail.yahoo.com"],
+  [/^(icloud|me|mac)\.com$/, "iCloud Mail", "https://www.icloud.com/mail"],
+  [/^rediffmail\.com$/, "Rediffmail", "https://mail.rediff.com"],
+  [/^zoho(mail)?\.(com|in)$/, "Zoho Mail", "https://mail.zoho.in"]
+];
+function inboxFor(email: string | null | undefined): { name: string; url: string } | null {
+  const domain = email?.split("@")[1]?.trim().toLowerCase() ?? "";
+  const found = INBOXES.find(([pattern]) => pattern.test(domain));
+  return found ? { name: found[1], url: found[2] } : null;
+}
 const RESEND_WAIT_S = 60;
 
 /**
@@ -21,6 +36,7 @@ export function VerifyEmailScreen() {
   const user = useAuthStore((state) => state.user);
   const email = user?.email ?? "your email";
   const throwaway = isDisposableEmail(user?.email);
+  const inbox = inboxFor(user?.email);
   const [checking, setChecking] = useState(false);
   const [resending, setResending] = useState(false);
   const [wait, setWait] = useState(RESEND_WAIT_S);
@@ -101,7 +117,10 @@ export function VerifyEmailScreen() {
       footer={
         <YStack gap="$2">
           {error ? <Text color="$error" textAlign="center" fontSize="$2" accessibilityLiveRegion="polite">{error}</Text> : null}
-          <PrimaryButton testID="verify-email-check" loading={checking} onPress={() => void check(true)}>I've confirmed my email</PrimaryButton>
+          {inbox ? <PrimaryButton testID="verify-email-open-inbox" onPress={() => void Linking.openURL(inbox.url).catch(() => setError(`Open ${inbox.name} yourself and look for the email from Paire.`))}>{`Open ${inbox.name}`}</PrimaryButton> : null}
+          {inbox
+            ? <SecondaryButton testID="verify-email-check" loading={checking} onPress={() => void check(true)}>I've confirmed my email</SecondaryButton>
+            : <PrimaryButton testID="verify-email-check" loading={checking} onPress={() => void check(true)}>I've confirmed my email</PrimaryButton>}
           <SecondaryButton testID="verify-email-resend" loading={resending} disabled={wait > 0} onPress={() => void resend()}>
             {wait > 0 ? `Resend email in ${wait}s` : "Resend email"}
           </SecondaryButton>

@@ -1,12 +1,13 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Linking, Platform } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { Icon } from "../components/Icon";
 import { PrimaryButton, SecondaryButton } from "../components/MuseButton";
 import { Screen } from "../components/Screen";
 import { ScreenHeader } from "../components/ScreenHeader";
+import { PhotoQuickEdit } from "../components/PhotoQuickEdit";
 import { ToggleRow } from "../components/SettingsRow";
 import { friendlyError } from "../services/errors";
 import { legal } from "../config/legal";
@@ -14,6 +15,10 @@ import { SelfieCamera } from "../components/SelfieCamera";
 import { showToast } from "../components/Toast";
 import { beginPhotoVerification, fetchVerificationStatus, SelfiePose, startSelfieCheck, submitSelfieCheck, VerificationState } from "../services/verificationService";
 import { useAuthStore } from "../store/authStore";
+
+/** Rejections the member fixes by changing their profile photos, not by retaking the selfie. */
+const PHOTO_PROBLEMS = new Set(["photos-required", "first-photo-face", "first-photo-match", "other-photo-match", "ai-photo"]);
+const reasonOf = (error: unknown) => (error as { details?: { reason?: unknown } } | null)?.details?.reason;
 
 const STATES: Record<VerificationState, { title: string; text: string }> = {
   unverified: { title: "Let’s build a little trust.", text: "A quick live selfie confirms you're the person in your profile photos. You'll get a verified badge." },
@@ -29,10 +34,14 @@ export function VerificationScreen() {
   const [error, setError] = useState<string | null>(null);
   const [selfie, setSelfie] = useState<{ attempt: string; pose: SelfiePose } | null>(null);
   const [checking, setChecking] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  // Once open, the photo editor stays open (several changes, saves mid-flight) until a new check starts.
+  const [editingPhotos, setEditingPhotos] = useState(false);
+  const hasPhotos = useAuthStore((state) => (state.profile?.photoUrls?.length ?? 0) > 0);
   const queryClient = useQueryClient();
   const uid = useAuthStore((state) => state.user?.uid);
   const photosKey = useAuthStore((state) => JSON.stringify(state.profile?.photoUrls ?? []));
-  const status = useQuery({ queryKey: ["verification", uid, photosKey], queryFn: fetchVerificationStatus, enabled: Boolean(uid), staleTime: 0, retry: 1 });
+  const status = useQuery({ queryKey: ["verification", uid, photosKey], queryFn: fetchVerificationStatus, enabled: Boolean(uid), staleTime: 0, retry: 1, placeholderData: keepPreviousData });
   const refetch = status.refetch;
   useFocusEffect(useCallback(() => { if (uid) void refetch(); }, [uid, refetch]));
   const verified = status.data?.state === "verified" && !status.isError && !status.isFetching;
@@ -45,22 +54,26 @@ export function VerificationScreen() {
   const selfieMethod = status.data?.method === "selfie";
   const begin = async () => {
     if (!consent) return;
-    setStarting(true); setError(null);
+    setStarting(true); setError(null); setProblem(null);
     try {
       if (selfieMethod) {
         setSelfie(await startSelfieCheck());
+        setEditingPhotos(false);
         return;
       }
       const result = await beginPhotoVerification();
       if (Platform.OS === "web") window.location.assign(result.url);
       else { await Linking.openURL(result.url); await status.refetch(); }
     }
-    catch (error) { setError(friendlyError(error, "We couldn’t open your photo check. Please try again.")); }
+    catch (error) {
+      if (reasonOf(error) === "photos-required") setProblem("photos-required");
+      setError(friendlyError(error, "We couldn’t open your photo check. Please try again."));
+    }
     finally { setStarting(false); }
   };
   const submit = async (image: string) => {
     if (!selfie || !image) return;
-    setChecking(true); setError(null);
+    setChecking(true); setError(null); setProblem(null);
     try {
       const result = await submitSelfieCheck(selfie.attempt, image);
       setSelfie(null);
@@ -69,6 +82,7 @@ export function VerificationScreen() {
         await queryClient.invalidateQueries({ queryKey: ["verification"] });
       } else {
         setError(result.reason ?? "Your check wasn't approved. Please try again.");
+        setProblem(result.code ?? null);
       }
     } catch (error) {
       setSelfie(null);
@@ -77,6 +91,13 @@ export function VerificationScreen() {
       setChecking(false);
     }
   };
+  const photosFixed = useCallback(() => {
+    setProblem(null);
+    setError((current) => (current ? "Photos updated. Take your selfie again when you're ready." : current));
+  }, []);
+  const needsPhotoFix = !verified && available && (problem ? PHOTO_PROBLEMS.has(problem) : !hasPhotos);
+  useEffect(() => { if (needsPhotoFix) setEditingPhotos(true); }, [needsPhotoFix]);
+  const fixPhotos = !verified && (needsPhotoFix || editingPhotos);
   if (selfie) {
     return (
       // A new key starts this step at the top, not at the previous step's scroll position.
@@ -103,8 +124,16 @@ export function VerificationScreen() {
           <YStack testID="verification-error" gap="$2" padding="$4" borderRadius={20} backgroundColor="$backgroundStrong" borderWidth={1} borderColor="$error" accessibilityLiveRegion="polite">
             <Text fontWeight="700" color="$error">Not verified yet</Text>
             <Text color="$text" lineHeight={22}>{error}</Text>
-            {available && consent && !verified ? <PrimaryButton testID="verification-retry" loading={starting} onPress={() => void begin()}>Try again</PrimaryButton> : null}
+            {available && consent && !verified && hasPhotos ? <PrimaryButton testID="verification-retry" loading={starting} onPress={() => void begin()}>Try again</PrimaryButton> : null}
           </YStack>
+        ) : null}
+        {fixPhotos ? (
+          <PhotoQuickEdit
+            testID="verification-photos"
+            title={hasPhotos ? "Change your photos here" : "First, add a photo of you"}
+            text={hasPhotos ? "Make your first photo a clear, recent one of just you. Changes save straight away." : "Your selfie is matched to your profile photos. Add a clear, recent photo where your face shows. It saves straight away."}
+            onSaved={photosFixed}
+          />
         ) : null}
         <YStack width={76} height={76} borderRadius={26} alignItems="center" justifyContent="center" backgroundColor="$primarySoft">
           <Icon name={verified ? "shield-checkmark" : "scan-outline"} size={38} color="primary" />
@@ -133,7 +162,7 @@ export function VerificationScreen() {
           <Text color="$textMuted" fontSize="$2" lineHeight={21}>{available ? (selfieMethod ? "Paire compares your selfie with your profile photos using a face-matching model, and Google's Gemini checks the pose and that it's a live photo. Your selfie is never stored: it's deleted as soon as the check ends. Only the result is kept. Your badge expires after 90 days." : "Didit handles the live camera check. Paire reviews your profile photos before approval. Only the result and checked profile photos are kept in Paire; we don’t store your selfie or identity document. Your photo badge expires after 90 days.") : "Live photo checks aren’t available yet. You can’t submit a selfie or receive a new badge here. Verification will be free for everyone."}</Text>
         </YStack>
         {available && !verified ? <ToggleRow testID="verification-consent" icon="shield-outline" label="I agree to the live photo check" description={selfieMethod ? "Paire may process my selfie and profile photos for face matching, and send them to Google Gemini to check the pose, that it's live and that my photos are real. My selfie is deleted right after. I can decline and still use account settings and safety tools." : "Didit will process my selfie and profile photo for liveness and face matching. Paire will review all my checked profile photos. I can decline and still use account settings and safety tools."} value={consent} onValueChange={setConsent} /> : null}
-        <PrimaryButton testID="verification-start" loading={starting} disabled={!available || !consent || verified || status.isFetching} onPress={() => void begin()}>{verified ? "Current photos verified" : available ? (selfieMethod ? "Start my selfie check" : "Open my live photo check") : "Live photo check coming soon"}</PrimaryButton>
+        <PrimaryButton testID="verification-start" loading={starting} disabled={!available || !consent || verified || !hasPhotos || status.isFetching} onPress={() => void begin()}>{verified ? "Current photos verified" : available && !hasPhotos ? "Add a photo to start" : available ? (selfieMethod ? "Start my selfie check" : "Open my live photo check") : "Live photo check coming soon"}</PrimaryButton>
         <SecondaryButton testID="verification-refresh" loading={status.isFetching} onPress={() => void status.refetch()}>Refresh my status</SecondaryButton>
         <Text color="$textMuted" fontSize="$2" lineHeight={21}>A photo badge confirms a photo check. It doesn’t guarantee someone’s intentions or safety. Generated or face-altered profile photos won’t be allowed; suspicious checks will need review.</Text>
         {legal.supportEmail ? <SecondaryButton onPress={() => void Linking.openURL(`mailto:${legal.supportEmail}?subject=Photo%20verification%20review`)}>Contact support for a review</SecondaryButton> : null}

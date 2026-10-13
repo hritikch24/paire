@@ -1,4 +1,4 @@
-# New member signs in (seeded account without a profile) and completes the two-step sign-up.
+# New member signs in (seeded account without a profile) and completes sign-up (skipping the optional photo).
 appId: com.muse.app
 ---
 - launchApp:
@@ -37,6 +37,11 @@ appId: com.muse.app
     id: "showme-everyone"
 - tapOn:
     id: "basics-continue"
+- extendedWaitUntil:
+    visible: "Add a photo"
+    timeout: 30000
+- tapOn:
+    id: "photos-skip"
 - extendedWaitUntil:
     visible: "What are you into?"
     timeout: 30000

@@ -20,6 +20,6 @@ export function startSelfieCheck(): Promise<{ attempt: string; pose: SelfiePose;
   return callFunction("startSelfieCheck", { consent: true, consentVersion: SELFIE_CONSENT_VERSION });
 }
 
-export function submitSelfieCheck(attempt: string, image: string): Promise<{ approved: boolean; reason?: string }> {
+export function submitSelfieCheck(attempt: string, image: string): Promise<{ approved: boolean; reason?: string; code?: string }> {
   return callFunction("submitSelfieCheck", { attempt, image }, 120_000);
 }

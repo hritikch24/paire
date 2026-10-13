@@ -27,7 +27,7 @@ const samePhotos = (a: unknown, b: unknown) => Array.isArray(a) && Array.isArray
 
 function currentPhotoPaths(photos: unknown, uid: string): string[] {
   if (!Array.isArray(photos) || !photos.length || photos.length > 6 || !photos.every((photo) => typeof photo === "string")) {
-    throw new HttpsError("failed-precondition", "Add between one and six photos of you first.");
+    throw new HttpsError("failed-precondition", "Add a clear photo of you first.", { reason: "photos-required" });
   }
   const paths = photos.map((photo) => ownedPhotoPath(photo, uid, bucket().name));
   if (paths.some((path) => !path)) throw new HttpsError("failed-precondition", "Upload your photos to Paire before starting a check.");
@@ -164,7 +164,7 @@ export const submitSelfieCheck = onCall({ region: REGION, memory: "1GiB", cpu: 1
   if (!verdict.decision.approved) {
     await endAttempt();
     await audit.set({ uid, attempt, method: "selfie", approve: false, code: verdict.decision.code, scores, createdAt: FieldValue.serverTimestamp() });
-    return { approved: false, reason: verdict.decision.reason };
+    return { approved: false, reason: verdict.decision.reason, code: verdict.decision.code };
   }
 
   // Frozen copies of exactly the bytes that were checked.

@@ -43,6 +43,7 @@ describe("onboarding gate", () => {
     expect(firstIncompleteStep(profile({ gender: undefined as never }))).toBe("Basics");
     expect(firstIncompleteStep(profile({ onboardingComplete: false }))).toBe("Interests");
     expect(firstIncompleteStep(profile({ interests: [] }))).toBe("Interests");
+    expect(firstIncompleteStep(profile({ onboardingComplete: false, photoUrls: [] }))).toBe("Photos");
   });
 });
 

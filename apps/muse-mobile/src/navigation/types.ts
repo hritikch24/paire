@@ -12,6 +12,7 @@ export type AuthStackParamList = {
 
 export type OnboardingStackParamList = {
   Basics: undefined;
+  Photos: undefined;
   Interests: undefined;
 };
 

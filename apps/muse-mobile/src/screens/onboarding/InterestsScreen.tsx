@@ -43,7 +43,7 @@ export function InterestsScreen() {
 
   return (
     <OnboardingLayout
-      step={2}
+      step={3}
       total={ONBOARDING_STEPS}
       title="What are you into?"
       subtitle="Pick a few. Paire AI uses them to find people you'll click with."

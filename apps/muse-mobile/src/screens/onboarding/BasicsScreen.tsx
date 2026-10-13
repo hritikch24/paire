@@ -68,7 +68,7 @@ export function BasicsScreen() {
         profile,
         settings
       );
-      navigation.navigate("Interests");
+      navigation.navigate("Photos");
     } catch (error) {
       showToast(friendlyError(error, "We couldn't save that. Please try again."), "error");
     } finally {
@@ -81,7 +81,7 @@ export function BasicsScreen() {
       step={1}
       total={ONBOARDING_STEPS}
       title="The basics"
-      subtitle="Two quick steps and you're in."
+      subtitle="About a minute and you're in."
       footer={
         <YStack gap="$1">
           <PrimaryButton testID="basics-continue" onPress={handleContinue} disabled={!canContinue} loading={saving}>

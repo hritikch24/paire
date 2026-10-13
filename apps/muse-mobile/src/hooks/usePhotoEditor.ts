@@ -43,12 +43,24 @@ export function usePhotoEditor(initial: string[]) {
     setPhotos((current) => [current[index], ...current.filter((_, i) => i !== index)]);
   }, []);
 
-  /** Call after the new photo list is saved. */
-  const commit = useCallback((saved: string[]) => {
-    removed.current.filter((url) => !saved.includes(url)).forEach((url) => void deleteProfilePhoto(url));
-    removed.current = [];
-    uploaded.current = [];
+  /**
+   * Call after the new photo list is saved. `removedBefore` (from `pending()` taken
+   * when the save started) limits deletion to photos that save actually dropped.
+   */
+  const commit = useCallback((saved: string[], removedBefore?: string[]) => {
+    const done = removedBefore ?? removed.current;
+    done.filter((url) => !saved.includes(url)).forEach((url) => void deleteProfilePhoto(url));
+    removed.current = removed.current.filter((url) => !done.includes(url));
+    uploaded.current = uploaded.current.filter((url) => !saved.includes(url));
   }, []);
+
+  /** Uploads in `photos` are being saved: never clean them up as abandoned. */
+  const claim = useCallback((photos: string[]) => {
+    uploaded.current = uploaded.current.filter((url) => !photos.includes(url));
+  }, []);
+
+  /** Photos removed so far (snapshot for `commit`). */
+  const pending = useCallback(() => [...removed.current], []);
 
   /** Call when leaving without saving. */
   const discard = useCallback(() => {
@@ -57,5 +69,5 @@ export function usePhotoEditor(initial: string[]) {
     removed.current = [];
   }, []);
 
-  return { photos, uploading, add, remove, makeMain, commit, discard };
+  return { photos, uploading, add, remove, makeMain, commit, claim, pending, discard };
 }

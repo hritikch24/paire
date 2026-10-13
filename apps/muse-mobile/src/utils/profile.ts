@@ -38,8 +38,8 @@ export const MIN_PHOTOS = 1;
 export const MAX_PHOTOS = 6;
 
 /**
- * Signed-in members reach the main app after the two quick sign-up steps: name,
- * age, gender and interests. Photos and the rest are encouraged afterwards.
+ * Signed-in members reach the main app after the quick sign-up steps: name, age
+ * and gender, an optional photo, and interests. The rest is encouraged afterwards.
  */
 export function needsOnboarding(profile: UserProfile | null): boolean {
   return (
@@ -51,9 +51,9 @@ export function needsOnboarding(profile: UserProfile | null): boolean {
   );
 }
 
-export const ONBOARDING_STEPS = 2;
+export const ONBOARDING_STEPS = 3;
 
-export type OnboardingStep = "Basics" | "Interests";
+export type OnboardingStep = "Basics" | "Photos" | "Interests";
 
 /** Where a returning member should resume sign-up. */
 export function firstIncompleteStep(profile: UserProfile | null): OnboardingStep {
@@ -61,7 +61,7 @@ export function firstIncompleteStep(profile: UserProfile | null): OnboardingStep
   if (!profile || !profile.displayName || !(GENDERS as readonly string[]).includes(profile.gender) || !isAdultAge(profile.age)) {
     return "Basics";
   }
-  return "Interests";
+  return profile.photoUrls?.length ? "Interests" : "Photos";
 }
 
 export const CASUAL_LABEL = "Open to a one-night stand";
