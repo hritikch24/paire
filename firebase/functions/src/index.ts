@@ -29,5 +29,7 @@ export {
 
 export { getPremiumStatus, revenueCatWebhook } from "./billing";
 export { confirmPlusPayment, createPlusOrder, razorpayWebhook } from "./razorpay";
+export { createChatUnlockOrder, confirmChatUnlock, getChatAccess } from "./chatAccess";
+export { getPresence, presenceBeat, touchActivity } from "./presence";
 export { createCallSession } from "./calls";
 export { cleanupPhotoChecks } from "./verificationCleanup";

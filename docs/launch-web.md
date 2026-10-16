@@ -44,11 +44,13 @@ Internal IDs (`muse-352ba`, `com.muse.app`, `muse_premium_*`) stay as they are. 
 3. **Webhook:** Dashboard → Webhooks → Add:
    - URL: `https://<FUNCTIONS_REGION>-muse-352ba.cloudfunctions.net/razorpayWebhook` (or the `razorpayWebhook` URL that `firebase deploy` prints)
    - Secret: same as `RAZORPAY_WEBHOOK_SECRET`
-   - Events: `payment.captured`, `refund.processed`, `payment.refunded`
+   - Events: `payment.captured`, `refund.processed`, `payment.refunded`, and for chargebacks `payment.dispute.created`, `payment.dispute.lost`, `payment.dispute.won`, `payment.dispute.closed`
 4. Make sure payments are captured automatically: Account & Settings → Payment capture → **Automatic**.
 5. **Rehearse with test keys first** (`rzp_test_…`, test webhook secret). Buy a 1-day pass with test UPI `success@razorpay` and check "Your pass is active". Then refund it from the Dashboard and check the pass ends. Switch to live keys only after that.
 
 How it works: the server sets the price (₹20 / ₹99 / ₹299), creates the Razorpay order and opens Checkout. It then checks Checkout's signature and asks Razorpay that the payment really was captured for that exact order and amount. Only then does it start the pass, once. The signed webhook covers closed tabs, late UPI confirmations and refunds. Passes queue (web and store passes alike), so nobody loses days, even if two payments land at once. Any refund ends that pass. Code: `firebase/functions/src/razorpay.ts`.
+
+Unlimited Chat (₹50 once, sending messages in every match) uses the same keys and webhook, and has its own switches (`MUSE_CHAT_UNLOCK_ENABLED`, `MUSE_CHAT_UNLOCK_LIVE`, `runtime/trust.unlockSales`). Read `docs/presence-and-paid-chat.md` before turning on paid chat or presence. Production charges need a Razorpay merchant account approved for Paire itself.
 
 ## 3. Vercel (the website and web app)
 

@@ -70,7 +70,8 @@ export async function saveBasics(
     safetyConfirmed: existing?.safetyConfirmed ?? false,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
-    lastActiveAt: now
+    // Members who hide their activity keep no last-active time on their profile.
+    ...(existingSettings?.showPresence === false ? {} : { lastActiveAt: now })
   };
 
   await setDoc(infoRef(uid), { birthDate: input.birthDate, updatedAt: now }, { merge: true });

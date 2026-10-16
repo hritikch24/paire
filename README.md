@@ -11,10 +11,11 @@ Also in the app:
 - **Indian basics:** height, languages, education, work, religion (optional, never caste), diet, drinking, smoking.
 - **Close kindly:** a polite goodbye instead of ghosting.
 - **Vibe first:** read personality and intentions, then deliberately reveal a photo before deciding.
-- **Paire Plus:** ₹20/day, ₹99/week, ₹299/month passes (100 likes, 5 Super Likes, priority likes; never auto-renews). Free is 25 likes and 1 Super Like a day. Web payments use Razorpay (UPI, cards); the Android app uses Play billing via RevenueCat. Both are off until keys are configured (`docs/launch-web.md`).
+- **Paire Plus:** ₹20/day, ₹99/week, ₹299/month passes (100 likes, 5 Super Likes, priority likes, and messaging when paid chat is on; never auto-renews). Free is 25 likes and 1 Super Like a day. Web payments use Razorpay (UPI, cards); the Android app uses Play billing via RevenueCat. Both are off until keys are configured (`docs/launch-web.md`).
 - **Photo-verification status:** server-derived approval status and education. Didit capture, immutable snapshots, moderator review and strict server/rule gates are implemented; live provider activation/testing are pending.
 - **Muse AI chat safety:** warns about scams, threats and abuse, and hides abusive messages.
 - **My reports:** private progress, server-bound evidence and moderator review, with report/block retry protection.
+- **Paid sending (off until switched on):** sending messages needs your own Plus or **Unlimited Chat** (₹50 once, all current and future matches, no expiry); reading, matching and safety stay free. **Presence (off until switched on):** "Online" and approximate "Active 3 h ago" for matches, from real activity, with a setting to hide it. See `docs/presence-and-paid-chat.md`.
 - **Browser dating:** shared accounts, discovery, chat, profiles and safety in the responsive web app.
 - **Duos:** double dates with a friend, with a four-person group chat.
 - **Likes gallery:** a full-screen gallery of everyone who liked you.
@@ -76,6 +77,7 @@ See `docs/testing.md`.
 ## Docs
 - `docs/product/india-v2-plan.md`: India v2 problems → solutions → pricing (current product plan)
 - `docs/launch-web.md`: **web launch order and every environment variable** (Firebase, Razorpay, Vercel)
+- `docs/presence-and-paid-chat.md`: presence, the paid-chat gate, Unlimited Chat payments, switches, migration and rollout
 - `docs/vercel.md`: deploying the web app on Vercel
 - `docs/product/delhi-ncr-direction.md`: research, issues/solutions, naming, safety/verification, matching, pricing, design and launch requirements.
 - `docs/architecture.md`: data model, backend flows, security

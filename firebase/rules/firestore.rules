@@ -64,12 +64,15 @@ service cloud.firestore {
       return members.size() <= index || previewContactAllowed(members[index]);
     }
 
+    // The cheap preview check goes first: in a preview it passes without the full photo checks,
+    // which keeps four-person Duo sends within the rules' expression limit. Same result either
+    // way (a missing policy errors, so the full checks still decide).
     function verifiedParticipants(members) {
       return members.size() >= 2 && members.size() <= 4 && (
-        (checkedMember(members, 0) && checkedMember(members, 1)
-          && checkedMember(members, 2) && checkedMember(members, 3))
-        || (previewMode() && checkedPreviewMember(members, 0) && checkedPreviewMember(members, 1)
-          && checkedPreviewMember(members, 2) && checkedPreviewMember(members, 3)));
+        (previewMode() && checkedPreviewMember(members, 0) && checkedPreviewMember(members, 1)
+          && checkedPreviewMember(members, 2) && checkedPreviewMember(members, 3))
+        || (checkedMember(members, 0) && checkedMember(members, 1)
+          && checkedMember(members, 2) && checkedMember(members, 3)));
     }
 
     function pairId(a, b) {
@@ -183,7 +186,7 @@ service cloud.firestore {
           'showMe', 'ageMin', 'ageMax', 'maxDistanceKm', 'locationEnabled', 'location',
           'sharedVibesOnly', 'aiVibeMatching', 'openToCasual', 'notifications', 'updatedAt',
           'requireNote', 'firstMove', 'incognito', 'privatePhotos', 'sameIntentOnly', 'sharedLanguageOnly',
-          'ageGap', 'garbaNights'
+          'ageGap', 'garbaNights', 'showPresence'
         ])
         && (!('showMe' in d) || (d.showMe is list && d.showMe.size() >= 1 && d.showMe.size() <= 2
             && d.showMe.hasOnly(['woman', 'man'])))
@@ -200,6 +203,7 @@ service cloud.firestore {
         && (!('openToCasual' in d) || d.openToCasual is bool)
         && optBool(d, 'requireNote') && optBool(d, 'firstMove') && optBool(d, 'incognito')
         && optBool(d, 'privatePhotos') && optBool(d, 'sameIntentOnly') && optBool(d, 'sharedLanguageOnly')
+        && optBool(d, 'showPresence')
         && (!('ageGap' in d) || d.ageGap == null || d.ageGap in ['older', 'intoOlder'])
         && (!('garbaNights' in d) || d.garbaNights == null || validGarbaNights(d.garbaNights))
         && (!('notifications' in d) || (d.notifications is map
@@ -296,6 +300,29 @@ service cloud.firestore {
         || chat.get('firstMoveBy', null) == request.auth.uid;
     }
 
+    // Paid chat. Its switches live in runtime/trust (server-managed) because the rules already
+    // read that document: one get(), never exists() + get(), which would count twice. A missing
+    // policy or field means sending is free, as before. Only the sender's own access counts:
+    // reading and receiving are always free. Four-person Duo sends are close to the rules'
+    // 10-read and 1,000-expression limits, so the gate-off path stops after one comparison.
+    function maySend(chat) {
+      let trust = get(/databases/$(database)/documents/runtime/trust);
+      return trust == null || trust.data.get('enforcePaidChat', false) != true || paidSendAllowed(chat, trust.data);
+    }
+
+    // Unlimited Chat or a running Paire Plus pass, mirrored by the server onto the sender's
+    // moderation record (already read by verifiedParticipants()); or an announced start date
+    // still ahead; or a chat from before the gate inside its grace period (0 = no grace).
+    function paidSendAllowed(chat, policy) {
+      let now = request.time.toMillis();
+      let access = get(/databases/$(database)/documents/moderation/$(request.auth.uid)).data.get('chatAccess', {});
+      return now < policy.get('enforceFrom', 0)
+        || access.get('unlimited', false) == true
+        || access.get('premiumUntil', 0) > now
+        || (now < policy.get('legacyGraceUntil', 0) && chat.createdAt is timestamp
+          && chat.createdAt.toMillis() < policy.get('enforceFrom', 0));
+    }
+
     // Sender's half of the "send message" batch: preview, activity time, and +1 unread for everyone else.
     function isSendUpdate() {
       let others = othersIn(resource.data);
@@ -315,7 +342,8 @@ service cloud.firestore {
         && unreadAfter.diff(unreadBefore).affectedKeys().hasOnly(others)
         && bumpedOnce(others, 0, unreadBefore, unreadAfter)
         && bumpedOnce(others, 1, unreadBefore, unreadAfter)
-        && bumpedOnce(others, 2, unreadBefore, unreadAfter);
+        && bumpedOnce(others, 2, unreadBefore, unreadAfter)
+        && maySend(resource.data);
     }
 
     // Reader clears only their own unread count and stamps their own read time.
@@ -362,7 +390,8 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
           && request.resource.data.senderId == request.auth.uid
           && isStr(request.resource.data.text, 1, 1000)
-          && request.resource.data.createdAt == request.time;
+          && request.resource.data.createdAt == request.time
+          && maySend(parentMatch());
         allow update, delete: if false;
       }
 
@@ -399,6 +428,30 @@ service cloud.firestore {
     }
 
     match /duoInvites/{code} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------- presence and paid chat (server-only)
+
+    // Presence sessions are written through presenceBeat and read through getPresence,
+    // which checks the viewer shares an active chat and the member shares their activity.
+    match /presence/{uid} {
+      allow read, write: if false;
+    }
+
+    // Unlimited Chat entitlements, orders (the audit trail) and open checkouts; runtime
+    // switches. Only Cloud Functions and admins write these, and members read their own
+    // access through getChatAccess.
+    match /chatUnlocks/{uid} {
+      allow read, write: if false;
+    }
+    match /chatUnlockOrders/{orderId} {
+      allow read, write: if false;
+    }
+    match /chatUnlockCheckout/{uid} {
+      allow read, write: if false;
+    }
+    match /runtime/{docId} {
       allow read, write: if false;
     }
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
+import { callFunction } from "../services/firebase";
 import { refreshAgeIfNeeded, touchLastActive } from "../services/profileService";
 import { useAuthStore } from "../store/authStore";
 import { needsOnboarding } from "../utils/profile";
@@ -9,7 +10,8 @@ const MIN_INTERVAL_MS = 5 * 60 * 1000;
 /**
  * Updates lastActiveAt when the app comes to the foreground (at most every
  * five minutes), which keeps active members near the top of feeds. Also keeps
- * the public age current after a birthday.
+ * the public age current after a birthday. (Online status is separate:
+ * hooks/usePresence.)
  */
 export function useLastActive() {
   const uid = useAuthStore((state) => state.user?.uid);
@@ -23,8 +25,11 @@ export function useLastActive() {
       const now = Date.now();
       if (now - lastRun.current < MIN_INTERVAL_MS) return;
       lastRun.current = now;
-      const { profile, info } = useAuthStore.getState();
-      void touchLastActive(uid).catch(() => undefined);
+      const { profile, info, settings } = useAuthStore.getState();
+      // Members who hide their activity keep no last-active time on their profile; the
+      // server keeps discovery recency for them instead (it only orders feeds).
+      if (settings?.showPresence === false) void callFunction("touchActivity").catch(() => undefined);
+      else void touchLastActive(uid).catch(() => undefined);
       if (profile) void refreshAgeIfNeeded(uid, profile, info).catch(() => undefined);
     };
 

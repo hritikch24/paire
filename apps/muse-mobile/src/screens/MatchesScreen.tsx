@@ -10,12 +10,32 @@ import { PrimaryButton } from "../components/MuseButton";
 import { Screen } from "../components/Screen";
 import { EmptyState, LoadingView } from "../components/States";
 import { useLikesYou } from "../hooks/useLikesYou";
+import { usePresence } from "../hooks/usePresence";
 import { chatTitle, otherParticipant, otherSide } from "../services/matchService";
 import { useAuthStore } from "../store/authStore";
 import { useMatchesStore } from "../store/matchesStore";
 import { DiscoverProfile, Match } from "../types/models";
 import { formatShortTime } from "../utils/time";
 import type { AppStackParamList } from "../navigation/types";
+
+/** A small dot on the avatar while someone is online (recently active in Paire). */
+function OnlineDot({ size }: { size: number }) {
+  return (
+    <YStack
+      testID="online-dot"
+      position="absolute"
+      left={size - 15}
+      bottom={1}
+      width={14}
+      height={14}
+      borderRadius={7}
+      backgroundColor="$success"
+      borderWidth={2}
+      borderColor="$background"
+      accessible={false}
+    />
+  );
+}
 
 export function MatchesScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -30,6 +50,14 @@ export function MatchesScreen() {
       uri: match.profiles[member]?.photoUrl,
       name: match.profiles[member]?.displayName
     }));
+
+  // One-to-one matches only, newest activity first; the server answers only for people who share it.
+  const pairUids = useMemo(
+    () => matches.filter((match) => match.kind !== "duo").slice(0, 50).map((match) => otherParticipant(match, uid)),
+    [matches, uid]
+  );
+  const presence = usePresence(pairUids);
+  const isOnline = (match: Match) => match.kind !== "duo" && presence.statusOf(otherParticipant(match, uid))?.online === true;
 
   const { fresh, conversations } = useMemo(
     () => ({
@@ -140,12 +168,13 @@ export function MatchesScreen() {
                         key={match.id}
                         testID={`new-match-${match.id}`}
                         accessibilityRole="button"
-                        accessibilityLabel={`New match with ${chatTitle(match, uid)}. Open chat`}
+                        accessibilityLabel={`New match with ${chatTitle(match, uid)}${isOnline(match) ? ", online" : ""}. Open chat`}
                         onPress={() => openChat(match)}
                       >
                         <YStack alignItems="center" gap="$1" width={78}>
                           <YStack>
                             <AvatarPair people={facesOf(match)} size={72} ring />
+                            {isOnline(match) && !superLiked ? <OnlineDot size={72} /> : null}
                             {superLiked ? (
                               <YStack
                                 position="absolute"
@@ -212,12 +241,15 @@ export function MatchesScreen() {
             <Pressable
               testID={`match-row-${item.id}`}
               accessibilityRole="button"
-              accessibilityLabel={`${group ? "Duo chat" : "Chat"} with ${title}${unread ? `, ${unread} unread` : ""}`}
+              accessibilityLabel={`${group ? "Duo chat" : "Chat"} with ${title}${isOnline(item) ? ", online" : ""}${unread ? `, ${unread} unread` : ""}`}
               onPress={() => openChat(item)}
               style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
               <XStack paddingHorizontal="$4" paddingVertical="$3" gap="$3" alignItems="center">
-                <AvatarPair people={facesOf(item)} size={58} />
+                <YStack>
+                  <AvatarPair people={facesOf(item)} size={58} />
+                  {isOnline(item) ? <OnlineDot size={58} /> : null}
+                </YStack>
                 <YStack flex={1} gap={2} minWidth={0}>
                   <XStack justifyContent="space-between" gap="$2">
                     <XStack flex={1} gap="$2" alignItems="center" minWidth={0}>

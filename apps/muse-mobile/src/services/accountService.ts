@@ -14,6 +14,7 @@ import { isDisposableEmail } from "../utils/disposableEmail";
 import { errorCode } from "./errors";
 import { auth, callFunction } from "./firebase";
 import { unregisterPushToken } from "./notificationService";
+import { stopPresence } from "./presenceService";
 import { reauthenticateWithGoogle } from "./googleAuth";
 import { updatePrivateInfo } from "./profileService";
 import { queryClient } from "./queryClient";
@@ -102,6 +103,8 @@ function clearLocalSession() {
 }
 
 export async function signOut() {
+  // Best effort: the session's lease expires on its own if this doesn't arrive.
+  await stopPresence();
   const uid = auth.currentUser?.uid;
   if (uid) {
     // Stop pushes to this device for the account that is leaving.

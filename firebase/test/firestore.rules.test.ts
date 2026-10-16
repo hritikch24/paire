@@ -516,6 +516,191 @@ describe("mandatory photo verification", () => {
   });
 });
 
+describe("paid chat: Paire Plus or Unlimited Chat to send", () => {
+  const HOUR = 60 * 60 * 1000;
+  // The paid-chat switches live in runtime/trust (one document read for the rules).
+  const enforced = (extra: Record<string, unknown> = {}) => ({ "runtime/trust": { requireVerification: false, enforcePaidChat: true, ...extra } });
+  const member = (chatAccess?: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({ status: "ok", emailVerified: true, ...(chatAccess ? { chatAccess } : {}), ...extra });
+  const unlimited = { unlimited: true, premiumUntil: 0 };
+  const plus = (until: number) => ({ unlimited: false, premiumUntil: until });
+  /** The app's send: message, preview and the other person's unread count in one batch. */
+  const sendBatch = (uid: string, matchId: string, others: string[]) => {
+    const db = dbFor(uid);
+    const batch = db.batch();
+    batch.set(db.collection(`matches/${matchId}/messages`).doc(), { senderId: uid, text: "Hi", createdAt: serverTimestamp() });
+    batch.update(db.doc(`matches/${matchId}`), {
+      lastMessage: { text: "Hi", senderId: uid, createdAt: serverTimestamp() },
+      lastActivityAt: serverTimestamp(),
+      ...Object.fromEntries(others.map((other) => [`unread.${other}`, increment(1)]))
+    });
+    return batch.commit();
+  };
+  const messageOnly = (uid: string, matchId = "alexa_jules") =>
+    dbFor(uid).collection(`matches/${matchId}/messages`).add({ senderId: uid, text: "Hi", createdAt: serverTimestamp() });
+  const previewOnly = (uid: string, other: string) =>
+    dbFor(uid).doc("matches/alexa_jules").update({
+      lastMessage: { text: "Hi", senderId: uid, createdAt: serverTimestamp() },
+      lastActivityAt: serverTimestamp(),
+      [`unread.${other}`]: increment(1)
+    });
+
+  test("without a policy (or with it off) sending stays free, as before", async () => {
+    await seed({ "matches/alexa_jules": matchDoc(), "moderation/alexa": member() });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "runtime/trust": { requireVerification: false, enforcePaidChat: false } });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    // An announced date still in the future: free until then.
+    await seed(enforced({ enforceFrom: Date.now() + HOUR }));
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+  });
+
+  test("with no policy document at all, verified members still send free (the gate never fails closed on a missing policy)", async () => {
+    const photos = ["https://example.com/frozen.jpg"];
+    const approval = { status: "ok", emailVerified: true, verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } };
+    await testEnv.withSecurityRulesDisabled(async (context) => { await context.firestore().doc("runtime/trust").delete(); });
+    await seed({ "matches/alexa_jules": matchDoc(), "users/alexa": validProfile("alexa", { photoUrls: photos }), "users/jules": validProfile("jules", { photoUrls: photos }), "moderation/alexa": approval, "moderation/jules": approval });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+  });
+
+  test("unpaid members can't send through the batch, a lone message or a lone preview", async () => {
+    await seed({ ...enforced(), "matches/alexa_jules": matchDoc(), "moderation/alexa": member(), "moderation/jules": member() });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await assertFails(messageOnly("alexa"));
+    await assertFails(previewOnly("alexa", "jules"));
+    // No moderation record at all is no access either.
+    await testEnv.withSecurityRulesDisabled(async (context) => { await context.firestore().doc("moderation/alexa").delete(); });
+    await assertFails(messageOnly("alexa"));
+  });
+
+  test("a running Plus pass sends; an expired one doesn't, unless Unlimited Chat is owned", async () => {
+    await seed({ ...enforced(), "matches/alexa_jules": matchDoc(), "moderation/jules": member(), "moderation/alexa": member(plus(Date.now() + HOUR)) });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "moderation/alexa": member(plus(Date.now() - 1000)) });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "moderation/alexa": member({ unlimited: true, premiumUntil: Date.now() - 1000 }) });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+  });
+
+  test("Unlimited Chat works in every match, current and future", async () => {
+    await seed({
+      ...enforced(),
+      "moderation/alexa": member(unlimited),
+      "matches/alexa_jules": matchDoc(),
+      "matches/alexa_kai": { ...matchDoc(), id: "alexa_kai", participants: ["alexa", "kai"], unread: { alexa: 0, kai: 0 }, createdAt: firebase.firestore.Timestamp.now() }
+    });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await assertSucceeds(sendBatch("alexa", "alexa_kai", ["kai"]));
+  });
+
+  test("a paying sender reaches an unpaid recipient, who can read but not reply until they get access", async () => {
+    await seed({ ...enforced(), "matches/alexa_jules": matchDoc(), "moderation/alexa": member(unlimited), "moderation/jules": member() });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    const jules = dbFor("jules");
+    await assertSucceeds(jules.doc("matches/alexa_jules").get());
+    await assertSucceeds(jules.collection("matches/alexa_jules/messages").get());
+    await assertSucceeds(jules.doc("matches/alexa_jules").update({ "unread.jules": 0, "lastReadAt.jules": serverTimestamp() }));
+    await assertFails(sendBatch("jules", "alexa_jules", ["alexa"]));
+    await seed({ "moderation/jules": member(plus(Date.now() + HOUR)) });
+    await assertSucceeds(sendBatch("jules", "alexa_jules", ["alexa"]));
+  });
+
+  test("safety stays free: unpaid members can still unmatch", async () => {
+    await seed({ ...enforced(), "matches/alexa_jules": matchDoc(), "moderation/jules": member() });
+    await assertSucceeds(dbFor("jules").doc("matches/alexa_jules").update({ active: false, endedAt: serverTimestamp(), endedBy: "jules", endReason: "unmatch" }));
+  });
+
+  test("paying never bypasses matching, blocks, bans, verification or first-message controls", async () => {
+    await seed({ ...enforced(), "moderation/alexa": member(unlimited), "moderation/jules": member() });
+    // Ended (unmatched or blocked) matches.
+    await seed({ "matches/alexa_jules": matchDoc(false) });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    // Not a participant.
+    await seed({ "matches/jules_kai": { ...matchDoc(), id: "jules_kai", participants: ["jules", "kai"], unread: { jules: 0, kai: 0 } } });
+    await assertFails(messageOnly("alexa", "jules_kai"));
+    // "I'll message first" by the other person.
+    await seed({ "matches/alexa_jules": { ...matchDoc(), firstMoveBy: "jules" } });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    // Banned sender, or banned recipient.
+    await seed({ "matches/alexa_jules": matchDoc(), "moderation/alexa": member(unlimited, { status: "banned" }) });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "moderation/alexa": member(unlimited), "moderation/jules": member(undefined, { status: "banned" }) });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    // Mandatory photo verification: a paying, unverified sender is still refused.
+    await seed({ ...enforced({ requireVerification: true }), "moderation/jules": member(), "users/alexa": validProfile("alexa"), "users/jules": validProfile("jules") });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+  });
+
+  test("chats from before the gate may keep a grace period; newer chats don't", async () => {
+    const start = Date.now() - HOUR;
+    await seed({
+      ...enforced({ enforceFrom: start, legacyGraceUntil: Date.now() + HOUR }),
+      "moderation/alexa": member(),
+      "matches/alexa_jules": { ...matchDoc(), createdAt: firebase.firestore.Timestamp.fromMillis(start - HOUR) },
+      "matches/alexa_kai": { ...matchDoc(), id: "alexa_kai", participants: ["alexa", "kai"], unread: { alexa: 0, kai: 0 }, createdAt: firebase.firestore.Timestamp.fromMillis(start + 1000) }
+    });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await assertFails(sendBatch("alexa", "alexa_kai", ["kai"]));
+    await seed(enforced({ enforceFrom: start, legacyGraceUntil: Date.now() - 1000 }));
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+  });
+
+  test("a four-person Duo chat checks only the sender's access, within the rules access budget", async () => {
+    const photos = ["https://example.com/frozen.jpg"];
+    const approved = (chatAccess?: Record<string, unknown>) => ({ status: "ok", emailVerified: true, ...(chatAccess ? { chatAccess } : {}), verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } });
+    await seed({
+      ...enforced({ requireVerification: true }),
+      "matches/duo_a_b__c_d": duoChat(),
+      ...Object.fromEntries(["a", "b", "c", "d"].flatMap((uid) => [[`users/${uid}`, validProfile(uid, { photoUrls: photos })], [`moderation/${uid}`, approved(uid === "a" ? unlimited : undefined)]]))
+    });
+    await assertSucceeds(sendBatch("a", "duo_a_b__c_d", ["b", "c", "d"]));
+    await assertFails(sendBatch("b", "duo_a_b__c_d", ["a", "c", "d"]));
+    await seed(enforced());
+    await assertSucceeds(sendBatch("a", "duo_a_b__c_d", ["b", "c", "d"]));
+    await assertFails(sendBatch("c", "duo_a_b__c_d", ["a", "b", "d"]));
+  });
+
+  test("the costliest Duo path (preview mode, last member's approval expired) stays within budget, gate off or on", async () => {
+    const photos = ["https://example.com/frozen.jpg"];
+    const approved = (chatAccess?: Record<string, unknown>, expiresAt = Date.now() + 60000) => ({ status: "ok", emailVerified: true, ...(chatAccess ? { chatAccess } : {}), verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt } });
+    const members = Object.fromEntries(["a", "b", "c", "d"].flatMap((uid) => [[`users/${uid}`, validProfile(uid, { photoUrls: photos })], [`moderation/${uid}`, approved(uid === "a" ? unlimited : undefined, uid === "d" ? Date.now() - 1 : Date.now() + 60000)]]));
+    // Every flag off (production today): match + 4 moderation + 4 profiles + runtime/trust.
+    await seed({ "runtime/trust": { requireVerification: false }, "matches/duo_a_b__c_d": duoChat(), ...members });
+    await assertSucceeds(sendBatch("b", "duo_a_b__c_d", ["a", "c", "d"]));
+    await assertSucceeds(sendBatch("a", "duo_a_b__c_d", ["b", "c", "d"]));
+    // Gate on: the paid sender still sends, the unpaid one doesn't.
+    await seed(enforced());
+    await assertSucceeds(sendBatch("a", "duo_a_b__c_d", ["b", "c", "d"]));
+    await assertFails(sendBatch("b", "duo_a_b__c_d", ["a", "c", "d"]));
+  });
+
+  test("clients can't grant themselves access, change the policy or touch payment records", async () => {
+    await seed({ "moderation/alexa": member() });
+    const db = dbFor("alexa");
+    await assertFails(db.doc("moderation/alexa").set({ chatAccess: unlimited }, { merge: true }));
+    await assertFails(db.doc("moderation/alexa").update({ "chatAccess.unlimited": true }));
+    for (const path of ["runtime/trust", "chatUnlocks/alexa", "chatUnlockOrders/order_FAKE1234", "chatUnlockCheckout/alexa"]) {
+      await assertFails(db.doc(path).set({ enforcePaidChat: false, status: "active", uid: "alexa" }));
+      await assertFails(db.doc(path).get());
+    }
+  });
+});
+
+describe("presence privacy", () => {
+  test("presence is server-only: members can't read anyone's sessions, or write their own directly", async () => {
+    await seed({ "matches/alexa_jules": matchDoc(), "presence/jules": { sessions: {}, lastActiveAt: 1 } });
+    await assertFails(dbFor("alexa").doc("presence/jules").get());
+    await assertFails(dbFor("jules").doc("presence/jules").get());
+    await assertFails(dbFor("jules").doc("presence/jules").set({ lastActiveAt: Date.now() }));
+    await assertFails(dbFor("alexa").doc("runtime/presence").set({ enabled: true }));
+  });
+
+  test("hiding activity is an owner-only Boolean setting", async () => {
+    await assertSucceeds(dbFor("alexa").doc("users/alexa/private/settings").set({ showPresence: false }));
+    await assertFails(dbFor("alexa").doc("users/alexa/private/settings").set({ showPresence: "no" }));
+    await assertFails(dbFor("jules").doc("users/alexa/private/settings").set({ showPresence: true }));
+  });
+});
+
 describe("reports", () => {
   const report = (overrides: Record<string, unknown> = {}) => ({
     reporterId: "alexa",

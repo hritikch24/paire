@@ -2,6 +2,7 @@ import { forwardRef, useState, type ComponentProps, type ReactNode, type ChangeE
 import { Platform } from "react-native";
 import type { TextInput, TextInputProps } from "react-native";
 import { Input, Text, XStack, YStack, styled } from "tamagui";
+import { noteActivity } from "../services/activity";
 import { IconButton } from "./IconButton";
 
 const StyledInput = styled(Input, {
@@ -47,10 +48,12 @@ export function inputTypeFor(props: Pick<TextInputProps, "secureTextEntry" | "ke
 }
 
 export const MuseInput = forwardRef<TextInput, MuseInputProps>((props, ref) => {
+  // Typing counts as activity for presence (only that it happened, never the text).
+  const onChangeText = props.onChangeText ? (value: string) => { noteActivity(); props.onChangeText?.(value); } : undefined;
   const web = Platform.OS === "web" ? {
     tag: props.multiline ? "textarea" : "input",
     disabled: props.editable === false,
-    onChange: (event: ChangeEvent<HTMLInputElement>) => props.onChangeText?.(event.target.value),
+    onChange: (event: ChangeEvent<HTMLInputElement>) => onChangeText?.(event.target.value),
     onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter" && !props.multiline) props.onSubmitEditing?.({ nativeEvent: { text: event.currentTarget.value } } as never);
     }
@@ -62,7 +65,7 @@ export const MuseInput = forwardRef<TextInput, MuseInputProps>((props, ref) => {
     if (typeof ref === "function") ref(node);
     else if (ref) ref.current = node;
   };
-  return <StyledInput ref={setRef as never} {...(props as object)} {...(web as object)} type={inputTypeFor(props)} />;
+  return <StyledInput ref={setRef as never} {...(props as object)} {...({ onChangeText } as object)} {...(web as object)} type={inputTypeFor(props)} />;
 });
 MuseInput.displayName = "MuseInput";
 

@@ -1,8 +1,8 @@
-import { FieldPath } from "firebase-admin/firestore";
+import { FieldPath, FieldValue } from "firebase-admin/firestore";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { db } from "./admin";
-import { FEED, LIMITS, REGION } from "./config";
+import { FEED, LIMITS, PRESENCE, REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { buildDiscoveryEntry, toDiscoverProfile, viewerTraits } from "./lib/discovery";
 import { isValidLatLng } from "./lib/geo";
@@ -18,6 +18,7 @@ import { verificationState } from "./lib/verification";
 import { publicSnippet, updateDuoLikeSnippets } from "./duoSnippets";
 import { rerankVibes } from "./vibeMatching";
 import { consumeDailyQuota } from "./quota";
+import { clearPresence } from "./presence";
 import {
   DiscoverProfile,
   DiscoveryEntry,
@@ -30,10 +31,11 @@ import {
 
 /** Rebuilds discovery/{uid} from the user's profile, settings and moderation state. */
 export async function syncDiscoveryIndex(uid: string): Promise<DiscoveryEntry | null> {
-  const [profileSnap, settingsSnap, moderationSnap] = await db.getAll(
+  const [profileSnap, settingsSnap, moderationSnap, indexSnap] = await db.getAll(
     db.doc(`users/${uid}`),
     db.doc(`users/${uid}/private/settings`),
-    db.doc(`moderation/${uid}`)
+    db.doc(`moderation/${uid}`),
+    db.doc(`discovery/${uid}`)
   );
   const indexRef = db.doc(`discovery/${uid}`);
   if (!profileSnap.exists) {
@@ -46,6 +48,11 @@ export async function syncDiscoveryIndex(uid: string): Promise<DiscoveryEntry | 
     settingsSnap.data() as UserSettings | undefined,
     moderationSnap.exists ? (moderationSnap.data() as ModerationRecord) : undefined
   );
+  // Members who hide their activity keep recency only here (touchActivity), not on their profile.
+  const indexed = indexSnap.get("lastActiveAt");
+  if (typeof indexed === "number" && indexed > entry.lastActiveAt) entry.lastActiveAt = indexed;
+  // Their feed position (and the paging cursor, which carries it) knows only the hour.
+  if (entry.presenceHidden) entry.lastActiveAt = Math.floor(entry.lastActiveAt / PRESENCE.hiddenRecencyStepMs) * PRESENCE.hiddenRecencyStepMs;
   // Unconfirmed or throwaway emails never appear in anyone's feed.
   if (moderationSnap.get("emailVerified") !== true) entry.visible = false;
   if (moderationSnap.get("cohort") !== "test" && (await verificationRequired())) entry.visible = entry.visible && verificationState(moderationSnap.get("verification"), profileSnap.get("photoUrls")) === "verified";
@@ -57,6 +64,12 @@ export const onUserSettingsWritten = onDocumentWritten(
   { document: "users/{uid}/private/settings", region: REGION },
   async (event) => {
     const uid = event.params.uid;
+    // Hiding activity forgets it: presence sessions, last active, and the profile's last-active time.
+    if (event.data?.after.get("showPresence") === false && event.data?.before.get("showPresence") !== false) {
+      await clearPresence(uid);
+      const profile = db.doc(`users/${uid}`);
+      if ((await profile.get()).get("lastActiveAt") !== undefined) await profile.update({ lastActiveAt: FieldValue.delete() });
+    }
     await syncDiscoveryIndex(uid);
     // Turning private photos on or off also updates other pairs' copies of this member's photo.
     const before = event.data?.before.get("privatePhotos") === true;
@@ -73,7 +86,15 @@ export const onUserSettingsWritten = onDocumentWritten(
 export const onModerationWritten = onDocumentWritten(
   { document: "moderation/{uid}", region: REGION },
   async (event) => {
-    await syncDiscoveryIndex(event.params.uid);
+    const uid = event.params.uid;
+    const before = { ...(event.data?.before.data() ?? {}) };
+    const after = { ...(event.data?.after.data() ?? {}) };
+    if (after.status === "banned" && before.status !== "banned") await clearPresence(uid);
+    // The chat-access mirror doesn't affect discovery.
+    delete before.chatAccess;
+    delete after.chatAccess;
+    if (event.data?.before.exists && event.data?.after.exists && JSON.stringify(before) === JSON.stringify(after)) return;
+    await syncDiscoveryIndex(uid);
   }
 );
 

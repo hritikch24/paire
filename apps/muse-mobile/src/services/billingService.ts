@@ -19,8 +19,10 @@ export const fetchPremiumStatus = () => callFunction<PremiumStatus>("getPremiumS
 /** On the web, Plus passes are paid with Razorpay (UPI, cards, netbanking). */
 export const webCheckout = Platform.OS === "web";
 
-type PlusOrder = { orderId: string; amount: number; currency: string; keyId: string; name: string; description: string; email: string | null };
-type CheckoutResult = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
+/** A server-created Razorpay order: the server set the product, price and account. */
+export type CheckoutOrder = { orderId: string; amount: number; currency: string; keyId: string; name: string; description: string; email: string | null };
+type PlusOrder = CheckoutOrder;
+export type CheckoutResult = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
 type RazorpayCheckout = new (options: Record<string, unknown>) => { open: () => void; on: (event: string, handler: (response: unknown) => void) => void };
 
 const CHECKOUT_SCRIPT = "https://checkout.razorpay.com/v1/checkout.js";
@@ -50,15 +52,10 @@ export class CheckoutCancelled extends Error {
   }
 }
 
-/**
- * Buys a Plus pass on the web: the server creates the order at its own price,
- * Razorpay Checkout takes the payment, and the server confirms it with Razorpay
- * before granting anything. A successful popup alone never grants Plus.
- */
-export async function purchaseWebPass(planId: PremiumPlanId, theme: string): Promise<PremiumStatus & { pending?: boolean }> {
-  const order = await callFunction<PlusOrder>("createPlusOrder", { plan: planId });
+/** Opens Razorpay Checkout for a server-created order. Resolves with Checkout's signed response, which the server still verifies. */
+export async function openCheckout(order: CheckoutOrder, theme: string): Promise<CheckoutResult> {
   const Razorpay = await loadCheckout();
-  const result = await new Promise<CheckoutResult>((resolve, reject) => {
+  return new Promise<CheckoutResult>((resolve, reject) => {
     const checkout = new Razorpay({
       key: order.keyId,
       amount: order.amount,
@@ -74,6 +71,16 @@ export async function purchaseWebPass(planId: PremiumPlanId, theme: string): Pro
     checkout.on("payment.failed", () => undefined); // Checkout shows the error and lets them retry.
     checkout.open();
   });
+}
+
+/**
+ * Buys a Plus pass on the web: the server creates the order at its own price,
+ * Razorpay Checkout takes the payment, and the server confirms it with Razorpay
+ * before granting anything. A successful popup alone never grants Plus.
+ */
+export async function purchaseWebPass(planId: PremiumPlanId, theme: string): Promise<PremiumStatus & { pending?: boolean }> {
+  const order = await callFunction<PlusOrder>("createPlusOrder", { plan: planId });
+  const result = await openCheckout(order, theme);
   try {
     return await callFunction<PremiumStatus & { pending?: boolean }>("confirmPlusPayment", {
       orderId: result.razorpay_order_id,

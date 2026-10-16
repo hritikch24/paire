@@ -2,6 +2,7 @@ import { DocumentReference, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { db } from "./admin";
+import { handleChatUnlockWebhook } from "./chatAccess";
 import { razorpayConfigured, storeExpiryIfEnabled, syncPremium, webBillingEnabled, webPassExpiry } from "./billing";
 import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
@@ -16,6 +17,7 @@ import {
   validWebhookSignature
 } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
+import { razorpay } from "./razorpayClient";
 import { verifiedUsers } from "./trust";
 
 /**
@@ -31,27 +33,8 @@ import { verifiedUsers } from "./trust";
  * razorpayOrders/{orderId} is server-only (firestore.rules denies all client access).
  */
 
-const RAZORPAY_API = "https://api.razorpay.com/v1";
 // syncPremium also reads store passes, so the RevenueCat key must be bound here too.
 const SECRETS = ["RAZORPAY_KEY_SECRET", "REVENUECAT_SECRET_KEY"];
-
-function authHeader(): string {
-  return `Basic ${Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64")}`;
-}
-
-async function razorpay<T>(path: string, init?: { method: "POST"; body: unknown }): Promise<T> {
-  const response = await fetch(`${RAZORPAY_API}${path}`, {
-    method: init?.method ?? "GET",
-    headers: { authorization: authHeader(), "content-type": "application/json" },
-    body: init ? JSON.stringify(init.body) : undefined,
-    signal: AbortSignal.timeout(10_000)
-  });
-  if (!response.ok) {
-    logger.warn("Razorpay API error", { path: path.replace(/\/[A-Za-z0-9_]+$/, "/…"), status: response.status });
-    throw new HttpsError("unavailable", "The payment service didn't respond. Please try again.");
-  }
-  return (await response.json()) as T;
-}
 
 type OrderRecord = {
   uid: string;
@@ -185,12 +168,14 @@ type WebhookPayload = {
   payload?: {
     payment?: { entity?: { id?: string; order_id?: string } };
     refund?: { entity?: { payment_id?: string } };
+    dispute?: { entity?: { payment_id?: string } };
   };
 };
 
 /**
  * Razorpay → Dashboard → Webhooks: point at this URL with the secret stored as
- * RAZORPAY_WEBHOOK_SECRET; events payment.captured, refund.processed.
+ * RAZORPAY_WEBHOOK_SECRET; events payment.captured, refund.processed, payment.dispute.created,
+ * payment.dispute.lost, payment.dispute.won and payment.dispute.closed.
  */
 export const razorpayWebhook = onRequest(
   { region: REGION, secrets: ["RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"], timeoutSeconds: 60 },
@@ -206,6 +191,13 @@ export const razorpayWebhook = onRequest(
     const body = request.body as WebhookPayload;
     try {
       const eventPayment = body.payload?.payment?.entity;
+      const event = typeof body.event === "string" ? body.event : "";
+      const paymentId = body.payload?.refund?.entity?.payment_id ?? body.payload?.dispute?.entity?.payment_id ?? eventPayment?.id;
+      // Unlimited Chat orders live in their own collection, so a Plus pass can never be granted for one (or the reverse).
+      if (await handleChatUnlockWebhook(event, paymentId, eventPayment?.order_id)) {
+        response.sendStatus(200);
+        return;
+      }
       if (body.event === "payment.captured" && isRazorpayId(eventPayment?.id, "pay")) {
         // Re-read the payment: events can arrive late or out of order (e.g. after a refund).
         const payment = await razorpay<RazorpayPayment>(`/payments/${eventPayment.id}`);
@@ -215,8 +207,8 @@ export const razorpayWebhook = onRequest(
             await syncIfMember(await grantWebPass(payment.order_id, eventPayment.id));
           }
         }
-      } else if (body.event === "refund.processed" || body.event === "payment.refunded") {
-        const paymentId = body.payload?.refund?.entity?.payment_id ?? eventPayment?.id;
+      } else if (body.event === "refund.processed" || body.event === "payment.refunded" || body.event === "payment.dispute.lost") {
+        // A lost chargeback ends the pass like a refund does.
         const byPayment = isRazorpayId(paymentId, "pay")
           ? await db.collection("razorpayOrders").where("paymentId", "==", paymentId).limit(1).get()
           : null;

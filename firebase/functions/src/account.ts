@@ -6,6 +6,8 @@ import { adminAuth, bucket, db } from "./admin";
 import { REGION } from "./config";
 import { purgeVerificationData } from "./verificationCleanup";
 import { purgeDuoData } from "./duos";
+import { clearChatAccess } from "./chatEntitlement";
+import { clearPresence } from "./presence";
 import { requireAuth } from "./lib/auth";
 
 async function deleteQueryResults(query: Query): Promise<number> {
@@ -35,6 +37,9 @@ export async function purgeUserData(uid: string): Promise<void> {
   await db.doc(`billing/${uid}`).delete();
   // Payment records (razorpayOrders) are kept for tax law, as the privacy policy says; the queue isn't.
   await db.doc(`webPassLedger/${uid}`).delete();
+  // Unlimited Chat belongs to this account only and ends with it; chatUnlockOrders are kept like razorpayOrders.
+  await clearChatAccess(uid);
+  await clearPresence(uid);
   await deleteQueryResults(db.collection("callRooms").where("participants", "array-contains", uid));
   // Duo chats belong to four people: leave them (erasing what this member wrote) instead of deleting them.
   await purgeDuoData(uid);

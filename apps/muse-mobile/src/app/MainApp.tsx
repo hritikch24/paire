@@ -28,6 +28,7 @@ import { RootNavigator } from "../navigation/RootNavigator";
 import { SplashScreen } from "../screens/SplashScreen";
 import { TestServerScreen } from "../screens/TestServerScreen";
 import { revalidateSession } from "../services/accountService";
+import { noteActivity } from "../services/activity";
 import { configureNotifications } from "../services/notificationService";
 import { queryClient } from "../services/queryClient";
 import { useAppearanceStore, useScheme } from "../store/appearanceStore";
@@ -162,7 +163,8 @@ function AppContent() {
 
 export default function MainApp() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    // Any touch inside Paire counts as activity for presence (only the moment is noted).
+    <GestureHandlerRootView style={{ flex: 1 }} onTouchStart={noteActivity}>
       <SafeAreaProvider>
         <KeyboardProvider>
           <QueryClientProvider client={queryClient}>

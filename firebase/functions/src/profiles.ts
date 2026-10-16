@@ -1,3 +1,4 @@
+import { FieldValue } from "firebase-admin/firestore";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { db } from "./admin";
 import { REGION } from "./config";
@@ -30,6 +31,14 @@ export const onUserProfileWritten = onDocumentWritten(
     const uid = event.params.uid;
     const before = event.data?.before.data() as Partial<PublicProfile> | undefined;
     const after = event.data?.after.data() as Partial<PublicProfile> | undefined;
+
+    // Hidden activity stays hidden: an older app or a second device that hasn't seen the
+    // setting yet may still write lastActiveAt, which matches could read. Take it back out
+    // (that write runs this trigger again and rebuilds the index).
+    if (after?.lastActiveAt !== undefined && (await db.doc(`users/${uid}/private/settings`).get()).get("showPresence") === false) {
+      await db.doc(`users/${uid}`).update({ lastActiveAt: FieldValue.delete() });
+      return;
+    }
 
     // Heartbeat writes only move lastActiveAt: patch the index without re-reading everything.
     const onlyActivity =

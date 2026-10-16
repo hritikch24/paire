@@ -2,6 +2,12 @@
 
 Last updated: 2026-10-12
 
+## Presence and paid chat (2026-10-17, built, not switched on)
+- **Activity-based presence:** online only while a foreground session had a meaningful interaction within 2 minutes (configurable) and its heartbeat lease holds; multi-tab and multi-device; matches only; "Show when I'm active" hides it everywhere, including discovery. Off until `runtime/presence.enabled`.
+- **Paid sending:** your own Paire Plus or Unlimited Chat (₹50 once, account-wide, no expiry) to send; reading and safety free. Enforced in the Firestore rules for the whole send batch. Unlimited Chat via Razorpay with server verification, signed webhooks, duplicate auto-refunds, refunds and chargebacks. Gate, sales and live charges are separate switches, all off.
+- **Validation:** `verify.sh` passes (app 105, functions 219, rules 49, end-to-end 64). Payments are tested against a fake Razorpay test-mode API; no real sandbox or production payment has been made.
+- **Needs you:** a Razorpay merchant account approved for Paire (the current live key is shared with another project), legal review of Terms/Refunds/Privacy, the existing-conversation policy and announcement date, and the dispute webhook events. Full list: `docs/presence-and-paid-chat.md`.
+
 ## Paire and Garba Nights (2026-10-12)
 - **Name: Paire** (domain **paire.in**), formerly Chitthi. Tagline "Find your Paire." (the hero line under it: "Every love story starts with a note."). Logo: a paper aeroplane folded from a love note, with a heart cut out of its top wing (`tools/generate_brand_assets.py` makes every icon, the splash wordmark, the site icons, the link preview and the Play graphic). Feature names: Super Like, Paire AI, Paire Plus, Interests; a like can carry a note. Internal IDs are unchanged. Website variables are now `PAIRE_*` (the old `CHITTHI_*` names still work as a fallback).
 - **Garba Nights**, a free Discover edition for Navratri (open 1–20 October 2026). Members pick the nights they're going to Garba or Dandiya (Settings, or the sheet behind the "🪔 Garba Nights" chip). Up to 4 nights each; the edition needs location and shows only people within 50 km going on at least one of the same nights. Cards say how many nights you share ("Going on 2 of your Garba nights"), never which ones, so nobody can read a schedule. Paire AI openers mention a shared Garba night. The landing page has a Garba section that hides itself after Dussehra. Next year: add the season to `firebase/functions/src/lib/garba.ts` and `apps/muse-mobile/src/data/garba.ts`.

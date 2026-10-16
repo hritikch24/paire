@@ -120,6 +120,7 @@ export function buildDiscoveryEntry(
     garba: garbaNights.length ? activeGarbaSeason()?.id ?? null : null,
     garbaNights,
     createdAt: typeof profile?.createdAt === "number" && Number.isFinite(profile.createdAt) ? profile.createdAt : 0,
+    presenceHidden: settings?.showPresence === false,
     lastActiveAt: typeof profile?.lastActiveAt === "number" ? profile.lastActiveAt : 0
   };
 }
@@ -158,7 +159,8 @@ export function toDiscoverProfile(
     viewerLocation && candidateLocation
       ? displayDistanceKm(distanceKm(viewerLocation, candidateLocation))
       : null;
-  const lastActive = typeof profile.lastActiveAt === "number" ? profile.lastActiveAt : 0;
+  // Members who hide their activity never show "Active today" (nor does the matchmaker mention it).
+  const lastActive = entry.presenceHidden !== true && typeof profile.lastActiveAt === "number" ? profile.lastActiveAt : 0;
   const interests = stringList(profile.interests, 20);
   const vibes = stringList(profile.vibes, 10);
   const intentions = stringList(profile.intentions, 4);

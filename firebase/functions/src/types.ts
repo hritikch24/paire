@@ -82,6 +82,8 @@ export type UserSettings = {
   ageGap?: AgeGapSide | null;
   /** Garba Nights: the nights ("YYYY-MM-DD", IST) I'm going to Garba this Navratri. */
   garbaNights?: string[] | null;
+  /** Show matches when I'm online and when I was last active. Missing = true. */
+  showPresence?: boolean;
 };
 
 /**
@@ -128,6 +130,8 @@ export type DiscoveryEntry = {
   garbaNights?: string[];
   /** Profile creation time in ms (for the "new here" boost); 0 when unknown. */
   createdAt?: number;
+  /** Mirrors settings.showPresence === false: recency still orders feeds but is never shown. */
+  presenceHidden?: boolean;
   lastActiveAt: number;
 };
 

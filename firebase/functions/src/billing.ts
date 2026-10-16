@@ -4,6 +4,7 @@ import { db } from "./admin";
 import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { parsePasses, sameSecret, validRevenueCatSignature } from "./lib/billing";
+import { syncChatAccess } from "./chatEntitlement";
 import { consumeDailyQuota } from "./quota";
 import { verifiedUsers } from "./trust";
 
@@ -80,6 +81,8 @@ export async function syncPremium(uid: string): Promise<PremiumStatus> {
   ]);
   const expiresAt = Math.max(store, web);
   await db.doc(`billing/${uid}`).set({ expiresAt, checkedAt: now });
+  // Plus includes unlimited messaging: keep the rules' copy current (never touches Unlimited Chat).
+  await syncChatAccess(uid);
   return { active: expiresAt > now, expiresAt: expiresAt > now ? expiresAt : null, ...status };
 }
 

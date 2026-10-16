@@ -37,5 +37,6 @@ if (process.env.FIRESTORE_EMULATOR_HOST) {
 initializeApp({ credential: applicationDefault(), projectId: project });
 await getFirestore()
   .doc("runtime/trust")
-  .set({ requireVerification: required === "true", updatedAt: FieldValue.serverTimestamp(), updatedBy: "scripts/set-trust-policy.mjs" });
+  // Merge: runtime/trust also holds the paid-chat switches (scripts/set-runtime-flags.mjs).
+  .set({ requireVerification: required === "true", updatedAt: FieldValue.serverTimestamp(), updatedBy: "scripts/set-trust-policy.mjs" }, { merge: true });
 console.log(`runtime/trust.requireVerification = ${required} on ${project}`);

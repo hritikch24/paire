@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, XStack, YStack } from 'tamagui';
 import { useThemeColors } from '../theme/useThemeColors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import { useChatAccess } from '../hooks/useChatAccess';
+import { sendLocked } from '../utils/chatAccess';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 import { GhostButton, SecondaryButton } from './MuseButton';
@@ -31,6 +33,9 @@ export function MatchMoment({ visible, me, them, onMessage, onClose, title, subt
   const insets = useSafeAreaInsets();
   const { gradient } = useThemeColors();
   const reduced = useReducedMotion();
+  // Paid chat: say up front what sending takes. Nothing opens a payment from here.
+  const access = useChatAccess();
+  const locked = sendLocked(access.data, Date.now());
   const scale = useRef(new Animated.Value(0.85)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   // 0 → 1: the two photos slide in from the sides and meet; then the heart pops.
@@ -147,8 +152,13 @@ export function MatchMoment({ visible, me, them, onMessage, onClose, title, subt
                   fontWeight="700"
                   pressStyle={{ backgroundColor: 'rgba(255,255,255,0.88)' }}
                 >
-                  Send a message
+                  {locked ? 'Open the chat' : 'Send a message'}
                 </SecondaryButton>
+                {locked ? (
+                  <Text testID="match-access-note" color="rgba(255,255,255,0.9)" textAlign="center" fontSize="$2" lineHeight={20}>
+                    {`To send messages, choose “Get Paire Plus” or “Unlock unlimited chats — ₹${access.data?.unlock.priceInr ?? 50} once”, which covers all your current and future mutual matches. You'll find both in the chat. Each person needs their own access to send; reading is always free.`}
+                  </Text>
+                ) : null}
                 <GhostButton testID="match-keep-swiping" onPress={onClose} color="white">
                   Keep swiping
                 </GhostButton>

@@ -25,6 +25,8 @@ import { friendlyError } from "../services/errors";
 import { fetchDailyAllowance } from "../services/discoveryService";
 import { trackConversion } from "../services/analytics";
 import { useAuthStore } from "../store/authStore";
+import { useChatAccess } from "../hooks/useChatAccess";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function PremiumScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -39,6 +41,10 @@ export function PremiumScreen() {
   const products = useQuery({ queryKey: ["pass-products", uid], queryFn: () => fetchPassProducts(uid!), enabled: Boolean(uid && nativeBillingAvailable), retry: 1 });
   const product = products.data?.find((item) => item.identifier === plan.productId);
   const colors = useThemeColors();
+  const queryClient = useQueryClient();
+  // Paid chat: Plus includes unlimited messaging while it runs (copy follows the server's switch).
+  const chat = useChatAccess().data;
+  const paidChat = Boolean(chat?.enforced || chat?.enforceFrom);
   const ready = Boolean(premium.data && !premium.isError && !premium.data.active);
   // Web: Razorpay checkout at server prices. App: the store's localised product.
   const canPurchase = webCheckout ? ready && premium.data?.webPurchaseAvailable === true : Boolean(product && ready && premium.data?.purchaseAvailable);
@@ -52,6 +58,7 @@ export function PremiumScreen() {
       if (!restore && webCheckout && (result.active || pending)) trackConversion("Purchase", { value: plan.priceInr, currency: "INR" });
       setMessage(result.active ? "Your Plus pass is active. Enjoy a little more possibility." : restore ? "No active pass was found. Consumable passes may need support to recover after reinstalling." : pending ? "Payment received. Your bank is still confirming it; your pass starts as soon as it does (usually a few minutes). Refresh below." : "Purchase received. Refresh your status in a moment while we confirm it.");
       await premium.refetch(); await allowance.refetch();
+      void queryClient.invalidateQueries({ queryKey: ["chat-access"] });
     } catch (error) {
       const cancelled = Boolean(error && typeof error === "object" && "userCancelled" in error && error.userCancelled === true);
       if (!cancelled) setMessage(friendlyError(error, "We couldn’t complete that purchase. Please try again."));
@@ -77,7 +84,7 @@ export function PremiumScreen() {
         <YStack gap="$2">
           <Text color="$primary" fontSize="$2" fontWeight="700" letterSpacing={2}>PAIRE PLUS · FROM ₹10 A DAY</Text>
           <Text fontSize={34} lineHeight={40} fontWeight="700" accessibilityRole="header">More reach.{"\n"}Never more rules.</Text>
-          <Text fontSize="$4" color="$textMuted" lineHeight={24}>Everything that matters is free. Plus is a pass for when you want to meet more people: no subscription, no auto-renewal.</Text>
+          <Text fontSize="$4" color="$textMuted" lineHeight={24}>{paidChat ? "Matching and safety are free. Plus is a pass for meeting more people, with messaging included while it runs: no subscription, no auto-renewal." : "Everything that matters is free. Plus is a pass for when you want to meet more people: no subscription, no auto-renewal."}</Text>
         </YStack>
         <YStack gap="$2" accessibilityRole="radiogroup" accessibilityLabel="Plus pass duration">
           {PREMIUM_PLANS.map((item) => {
@@ -106,6 +113,7 @@ export function PremiumScreen() {
         <YStack gap="$3">
           <Text fontSize="$5" fontWeight="700">What Plus adds</Text>
           {[
+            ...(paidChat ? [["Unlimited messaging", `Send messages in all your chats while your pass runs. Only want to chat? Unlimited Chat is ₹${chat?.unlock.priceInr ?? 50} once, for messaging only, and never expires.`]] : []),
             ["4× the likes", `${ALLOWANCE.plus.likes} likes and ${ALLOWANCE.plus.supers} Super Likes a day, instead of ${ALLOWANCE.free.likes} and ${ALLOWANCE.free.supers}.`],
             ["Priority likes", "Your likes are listed ahead of other plain likes in their “Likes you”. A note still beats everything, so write one."],
             ["Age-gap filter", "Show only Silver Foxes and Cougars (35+), or only people into someone older, and see each person's side on their card."],
@@ -119,7 +127,8 @@ export function PremiumScreen() {
         </YStack>
         <YStack gap="$2" padding="$4" borderRadius={20} backgroundColor="$backgroundSoft">
           <XStack gap="$2" alignItems="center"><Icon name="heart-outline" size={19} color="primary" /><Text fontWeight="700" flex={1}>Free forever, for everyone</Text></XStack>
-          <Text fontSize="$2" color="$textMuted" lineHeight={21}>See everyone who likes you, unlimited chat, likes with notes, Vibe first, Duos, AI icebreakers, every privacy control (incognito, private photos, notes only, I'll message first) and photo verification. Prices are the same for men and women.</Text>
+          <Text fontSize="$2" color="$textMuted" lineHeight={21}>{paidChat ? "Joining, see everyone who likes you, mutual matching, likes with notes, reading every message you receive, Vibe first, Duos, AI icebreakers, every privacy control (incognito, private photos, notes only, I'll message first), photo verification, and reporting, blocking and unmatching. Sending messages needs Plus or Unlimited Chat. Prices are the same for men and women." : "See everyone who likes you, chat with your matches, likes with notes, Vibe first, Duos, AI icebreakers, every privacy control (incognito, private photos, notes only, I'll message first) and photo verification. Prices are the same for men and women."}</Text>
+          {chat?.enforceFrom ? <Text fontSize="$2" color="$text" lineHeight={21}>{`From ${new Date(chat.enforceFrom).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}, sending messages will need Paire Plus or a one-time ₹${chat.unlock.priceInr} Unlimited Chat unlock. Reading messages stays free.`}</Text> : null}
           {allowance.data && !allowance.isError ? <Text fontSize="$2" color="$textMuted" lineHeight={21}>Your current allowance: {allowance.data.limits.likes} likes and {allowance.data.limits.supers} Super Likes per day. Resets daily at {resetTime}.</Text> : <Text fontSize="$2" color="$textMuted">Free discovery limits reset every day.</Text>}
           <Text fontSize="$1" color="$textMuted">{webCheckout ? "Prices include taxes. You pay once through Razorpay; nothing renews." : "Store prices are shown before payment when passes are available."} Paying never guarantees a match, and safety is never for sale.</Text>
           <Text fontSize="$1" color="$primary" accessibilityRole="link" onPress={() => void Linking.openURL(legal.refundsUrl)}>Cancellation and refund policy</Text>

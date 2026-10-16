@@ -3,6 +3,7 @@ import { features } from "../config/features";
 import { useMatchAlerts, useMatchesSubscription, usePushRegistration } from "../hooks/useAppServices";
 import { useLastActive } from "../hooks/useLastActive";
 import { useLocationHeartbeat } from "../hooks/useLocationHeartbeat";
+import { usePresenceSession } from "../hooks/usePresence";
 import { CallScreen } from "../screens/CallScreen";
 import { ChatMembersScreen } from "../screens/ChatMembersScreen";
 import { ChatScreen } from "../screens/ChatScreen";
@@ -30,6 +31,7 @@ export function AppStack() {
   usePushRegistration();
   useMatchAlerts();
   useLastActive();
+  usePresenceSession();
   useLocationHeartbeat();
 
   return (

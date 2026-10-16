@@ -84,6 +84,8 @@ export type UserSettings = {
   ageGap?: AgeGapSide | null;
   /** Garba Nights: the nights ("YYYY-MM-DD", IST) I'm going to Garba this Navratri. */
   garbaNights?: string[] | null;
+  /** Show matches when I'm online and when I was last active. Missing = shown. */
+  showPresence?: boolean;
   updatedAt?: number;
 };
 

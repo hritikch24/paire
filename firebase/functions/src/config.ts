@@ -83,3 +83,50 @@ export const CHAT_SAFETY = {
   /** Shown in the chat list instead of a hidden message. */
   hiddenPreview: "Message hidden by Paire AI"
 } as const;
+
+/**
+ * Activity-based presence ("Online" in matches and chat). Online means recently
+ * interacting with Paire in a foreground session, never just an open tab. The
+ * live values come from runtime/presence (see docs/presence-and-paid-chat.md);
+ * these are the defaults and the bounds an admin can set them within.
+ */
+export const PRESENCE = {
+  /** Offline after this long without a meaningful interaction. */
+  idleTimeoutMs: 2 * 60_000,
+  idleTimeoutBoundsMs: [10_000, 30 * 60_000],
+  /** A session's lease lapses this long after its last heartbeat (crashes, lost connections). */
+  leaseMs: 90_000,
+  leaseBoundsMs: [10_000, 10 * 60_000],
+  /** Beats closer together than this, for the same session and state, are ignored. */
+  minBeatIntervalMs: 5_000,
+  /** Sessions kept per member (tabs and devices); the stalest are dropped first. */
+  maxSessions: 10,
+  /** Sessions whose lease lapsed this long ago are pruned on the next beat. */
+  pruneAfterMs: 15 * 60_000,
+  /** Members one getPresence call can ask about. */
+  maxTargets: 50,
+  /** "Last active" is not shown beyond this. */
+  lastActiveHorizonMs: 30 * 24 * 60 * 60_000,
+  /** Discovery recency for members who hide their activity is kept only in steps this big. */
+  hiddenRecencyStepMs: 60 * 60_000
+} as const;
+
+/**
+ * Unlimited Chat: a one-time, account-wide unlock that lets the buyer send
+ * messages in every current and future mutual match. Messaging only: never
+ * Paire Plus's likes, priority or filters. Price in paise, GST inclusive.
+ * Never trust a client amount.
+ */
+export const CHAT_UNLOCK = {
+  product: "paire_unlimited_chat",
+  amountPaise: 5000,
+  currency: "INR",
+  /** Shown in Razorpay Checkout and on the receipt. */
+  label: "Paire Unlimited Chat · one-time ₹50 unlock",
+  /** An open checkout is reused (not replaced) for this long, so two tabs can't take two payments. */
+  checkoutReuseMs: 6 * 60 * 60_000,
+  /** A checkout being created blocks a second one for this long. */
+  creatingLockMs: 30_000,
+  ordersPerDay: 20,
+  accessChecksPerDay: 400
+} as const;

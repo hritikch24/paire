@@ -11,6 +11,7 @@ import { Text, XStack, YStack } from "tamagui";
 import { ActionSheet, ActionSheetOption } from "../components/ActionSheet";
 import { AiSuggestions } from "../components/AiSuggestions";
 import { AvatarPair } from "../components/Avatar";
+import { ChatAccessCard } from "../components/ChatAccessCard";
 import { Icon } from "../components/Icon";
 import { IconButton } from "../components/IconButton";
 import { MuseInput } from "../components/MuseInput";
@@ -19,7 +20,9 @@ import { showToast } from "../components/Toast";
 import { features } from "../config/features";
 import { getDailyPrompt } from "../data/musePrompts";
 import { rapidQuestionMap } from "../data/rapidQuestions";
+import { useChatAccess } from "../hooks/useChatAccess";
 import { useMemberProfile } from "../hooks/useMemberProfile";
+import { usePresence } from "../hooks/usePresence";
 import { fetchOpeners } from "../services/aiService";
 import {
   loadOlderMessages,
@@ -28,7 +31,7 @@ import {
   subscribeToLatestMessages,
   subscribeToSafetyWarnings
 } from "../services/chatService";
-import { friendlyError } from "../services/errors";
+import { errorCode, friendlyError } from "../services/errors";
 import { leaveChat } from "../services/duoService";
 import {
   chatTitle,
@@ -45,7 +48,9 @@ import { setActiveChat } from "../services/notificationService";
 import { blockUser } from "../services/safetyService";
 import { useAuthStore } from "../store/authStore";
 import { ChatMessage, Match, MessageSafety } from "../types/models";
+import { draftFor, saveDraft, sendLocked } from "../utils/chatAccess";
 import { REPORT_REASON_FOR, safetyNotice } from "../utils/chatSafety";
+import { presenceLabel } from "../utils/presence";
 import { formatClockTime, formatDayLabel, isSameDay } from "../utils/time";
 import type { AppStackParamList } from "../navigation/types";
 
@@ -100,7 +105,15 @@ export function ChatScreen() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [messagesLoaded, setMessagesLoaded] = useState(false);
-  const [text, setText] = useState("");
+  // Kept per chat for the app session, so checkout or leaving the chat never loses it.
+  const [text, setTextState] = useState(() => draftFor(matchId));
+  const setText = useCallback(
+    (value: string) => {
+      saveDraft(matchId, value);
+      setTextState(value);
+    },
+    [matchId]
+  );
   const [sending, setSending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
@@ -128,6 +141,13 @@ export function ChatScreen() {
   const iOpen = Boolean(match && !group && !match.lastMessage && match.firstMoveBy === uid);
   const theirSpark = !group ? match?.sparks?.[otherUid] : undefined;
   const mySpark = !group ? match?.sparks?.[uid] : undefined;
+  // Sending needs your own Plus or Unlimited Chat once paid chat is on; reading never does.
+  const chatAccess = useChatAccess();
+  const locked = active && sendLocked(chatAccess.data, match?.createdAt ?? 0);
+  // Online / last active, only for people who share it (the server decides). Never a read receipt.
+  const presence = usePresence(active && match ? otherParticipants(match, uid) : [], 30_000);
+  const pairPresence = !group ? presenceLabel(presence.statusOf(otherUid)) : "";
+  const onlineCount = group && match ? otherParticipants(match, uid).filter((member) => presence.statusOf(member)?.online).length : 0;
 
   useEffect(
     () =>
@@ -197,13 +217,18 @@ export function ChatScreen() {
   const handleSend = async (body = text) => {
     const trimmed = body.trim();
     const recipients = match ? otherParticipants(match, uid) : [otherUid];
-    if (!trimmed || !active || sending || !recipients.length || !recipients[0]) return;
+    if (!trimmed || !active || sending || locked || !recipients.length || !recipients[0]) return;
     setSending(true);
     setText("");
     try {
       await sendChatMessage(matchId, uid, recipients, trimmed);
     } catch (error) {
       setText(trimmed);
+      if (errorCode(error) === "permission-denied") {
+        // Perhaps a pass just ran out: show the current options (the message is kept).
+        const latest = await chatAccess.refetch();
+        if (sendLocked(latest.data, match?.createdAt ?? 0)) return;
+      }
       showToast(friendlyError(error, "Message not sent. Please try again."), "error");
     } finally {
       setSending(false);
@@ -333,7 +358,8 @@ export function ChatScreen() {
             label: "Close kindly",
             icon: "hand-right-outline" as const,
             testID: "chat-close-kindly",
-            onPress: () => (waitingFor ? confirmUnmatch() : setCloseOpen(true))
+            // Without access to send, closing still works: it just can't include the goodbye.
+            onPress: () => (waitingFor || locked ? confirmUnmatch() : setCloseOpen(true))
           },
           { label: "Unmatch", icon: "heart-dislike-outline" as const, onPress: confirmUnmatch }
         ]
@@ -572,7 +598,15 @@ export function ChatScreen() {
               ) : group ? (
                 <Text fontSize="$1" color="$textMuted" numberOfLines={1}>
                   Duo chat{partnerName ? ` · with ${partnerName.split(" ")[0]}` : ""}
+                  {onlineCount ? ` · ${onlineCount} online` : ""}
                 </Text>
+              ) : pairPresence ? (
+                <XStack gap={6} alignItems="center" testID="chat-presence">
+                  {pairPresence === "Online" ? <YStack width={8} height={8} borderRadius={4} backgroundColor="$success" /> : null}
+                  <Text fontSize="$1" color="$textMuted" numberOfLines={1}>
+                    {pairPresence}
+                  </Text>
+                </XStack>
               ) : null}
             </YStack>
           </XStack>
@@ -670,41 +704,61 @@ export function ChatScreen() {
             </Text>
           </YStack>
         ) : active ? (
-          <XStack
-            paddingHorizontal="$3"
-            paddingTop="$2"
-            paddingBottom={composerBottom}
-            gap="$2"
-            alignItems="flex-end"
-            borderTopWidth={1}
-            borderTopColor="$border"
-            backgroundColor="$backgroundStrong"
-          >
-            <MuseInput
-              testID="chat-input"
-              flex={1}
-              multiline
-              maxLength={MAX_MESSAGE_LENGTH}
-              placeholder={`Message ${name}`}
-              value={text}
-              onChangeText={setText}
-              minHeight={46}
-              maxHeight={120}
-              borderRadius={23}
-              paddingTop="$3"
-              textAlignVertical="center"
-            />
-            <IconButton
-              testID="chat-send"
-              icon="arrow-up"
-              accessibilityLabel="Send message"
-              variant="solid"
-              color="primary"
-              size={46}
-              disabled={!text.trim() || sending}
-              onPress={() => void handleSend()}
-            />
-          </XStack>
+          <YStack>
+            {/* Announced but not yet enforced: say so in advance, so nobody's access changes silently. */}
+            {!locked && chatAccess.data?.enforceFrom && !chatAccess.data.unlimited && !((chatAccess.data.premiumUntil ?? 0) > chatAccess.data.enforceFrom) ? (
+              <XStack testID="chat-access-notice" gap="$2" alignItems="flex-start" paddingHorizontal="$4" paddingTop="$2">
+                <Icon name="information-circle-outline" size={16} color="textMuted" />
+                <Text fontSize="$1" color="$textMuted" flex={1}>
+                  {`From ${new Date(chatAccess.data.enforceFrom).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}, sending messages needs Paire Plus or Unlimited Chat (₹${chatAccess.data.unlock.priceInr} once, for all your matches). Reading stays free.`}
+                </Text>
+              </XStack>
+            ) : null}
+            {locked ? (
+              <YStack paddingTop="$2">
+                <ChatAccessCard
+                  access={chatAccess.data}
+                  onGetPlus={() => navigation.navigate("Premium")}
+                  onVerify={() => navigation.navigate("Verification")}
+                />
+              </YStack>
+            ) : null}
+            <XStack
+              paddingHorizontal="$3"
+              paddingTop="$2"
+              paddingBottom={composerBottom}
+              gap="$2"
+              alignItems="flex-end"
+              borderTopWidth={1}
+              borderTopColor="$border"
+              backgroundColor="$backgroundStrong"
+            >
+              <MuseInput
+                testID="chat-input"
+                flex={1}
+                multiline
+                maxLength={MAX_MESSAGE_LENGTH}
+                placeholder={`Message ${name}`}
+                value={text}
+                onChangeText={setText}
+                minHeight={46}
+                maxHeight={120}
+                borderRadius={23}
+                paddingTop="$3"
+                textAlignVertical="center"
+              />
+              <IconButton
+                testID="chat-send"
+                icon="arrow-up"
+                accessibilityLabel={locked ? "Sending needs Paire Plus or Unlimited Chat" : "Send message"}
+                variant="solid"
+                color="primary"
+                size={46}
+                disabled={!text.trim() || sending || locked}
+                onPress={() => void handleSend()}
+              />
+            </XStack>
+          </YStack>
         ) : match !== undefined ? (
           <YStack
             padding="$4"

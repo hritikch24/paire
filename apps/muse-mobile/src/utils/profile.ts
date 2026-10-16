@@ -115,7 +115,8 @@ export function withSettingsDefaults(settings: Partial<UserSettings> | null | un
     sameIntentOnly: settings?.sameIntentOnly === true,
     sharedLanguageOnly: settings?.sharedLanguageOnly === true,
     ageGap: settings?.ageGap === "older" || settings?.ageGap === "intoOlder" ? settings.ageGap : null,
-    garbaNights: Array.isArray(settings?.garbaNights) ? settings.garbaNights.filter((night) => typeof night === "string") : []
+    garbaNights: Array.isArray(settings?.garbaNights) ? settings.garbaNights.filter((night) => typeof night === "string") : [],
+    showPresence: settings?.showPresence !== false
   };
 }
 

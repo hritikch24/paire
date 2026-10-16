@@ -18,6 +18,7 @@ import { legal } from "../config/legal";
 import { testServerPasswordHelp } from "../config/testServer";
 import { sendPasswordReset, signOut } from "../services/accountService";
 import { friendlyError } from "../services/errors";
+import { usePresenceEnabled } from "../hooks/usePresence";
 import { hasPasswordLogin } from "../services/googleAuth";
 import { requestApproximateLocation } from "../services/locationService";
 import {
@@ -60,6 +61,7 @@ export function SettingsScreen() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const testServerOrigin = useTestServerStore((state) => state.origin);
   const themeName = useAppearanceStore((state) => PALETTES[state.palette].name);
+  const presenceEnabled = usePresenceEnabled();
 
   useFocusEffect(
     useCallback(() => {
@@ -314,6 +316,16 @@ export function SettingsScreen() {
             value={settings.incognito === true}
             onValueChange={(value) => void save({ incognito: value })}
           />
+          {presenceEnabled || settings.showPresence === false ? (
+            <ToggleRow
+              testID="settings-show-presence"
+              icon="radio-button-on-outline"
+              label="Show when I'm active"
+              description="Your matches can see when you're online and roughly when you were last active. Turn it off and nobody sees either. It never shows what you do, and it doesn't mean you've read a message."
+              value={settings.showPresence !== false}
+              onValueChange={(value) => void save({ showPresence: value })}
+            />
+          ) : null}
         </SettingsSection>
 
         {features.notifications ? (

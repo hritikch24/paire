@@ -16,7 +16,7 @@ Muse is an Expo (React Native) app on Firebase: Auth, Firestore, Storage, Cloud 
 | `swipes/{uid}/outgoing/{target}` | Likes, passes, Super Muses, an optional screened `note` (≤140 characters) and `priority` (Muse Plus) | Written by functions; owner can read |
 | `superLikes/{target}/from/{uid}` | Who Super Muse'd you (boosts them in your feed) | Functions only |
 | `matches/{id}` | Participants, name/photo snippets, last message, unread counts, read receipts, `active`. One-to-one ids are `a_b`; Duo chats are `duo_{duoA}__{duoB}` with `kind: "duo"`, `sides` (each pair's members still in the chat), `duoIds` and `memberHistory` (everyone ever in it) | Participants read. Created by functions. Participants may only send (bumping every other member's unread count by exactly one), mark read, or unmatch (one-to-one only) |
-| `matches/{id}/messages/{id}` | `senderId` (or `"system"` for server notes such as "Riya left the chat"), `text` (≤1000), server `createdAt` | Participants read. Create only as yourself while the match is active. Never edited or deleted by clients |
+| `matches/{id}/messages/{id}` | `senderId` (or `"system"` for server notes such as "Riya left the chat"), `text` (≤1000), server `createdAt` | Participants read. Create only as yourself while the match is active and, when paid chat is on, with your own Plus or Unlimited Chat. Never edited or deleted by clients |
 | `matches/{id}/safety/{messageId}` | Muse AI chat-safety warning: `recipientIds`, `category`, `severity`, `hidden` | Readable only by the listed recipients (never the sender). Functions write |
 | `chatFlags/{matchId_messageId}` | Medium/high chat-safety flags for moderators: text, category, signals, `status`, `expireAt` (TTL, 12 months) | Functions and admins only |
 | `duos/{id}` | Two friends dating together: `members`, `status` (`active`/`ended`), name/photo snippets, `lastActiveAt` | Members read while active. Functions write |
@@ -24,7 +24,10 @@ Muse is an Expo (React Native) app on Firebase: Auth, Firestore, Storage, Cloud 
 | `duoInvites/{code}` | Invite codes: `fromUid`, `requestedBy`, `expiresAt` (TTL) | Functions only |
 | `blocks/{uid}/blocked/{target}` | Blocks | Written by functions; owner can read |
 | `reports/{id}` | Reason, details, reporter, target | Create only (as yourself); never readable by clients |
-| `moderation/{uid}` | `status` (`ok`, `hidden`, `banned`), `cohort` (`public`, `test`) | Functions and admins only |
+| `moderation/{uid}` | `status` (`ok`, `hidden`, `banned`), `cohort` (`public`, `test`), and `chatAccess` (`unlimited`, `premiumUntil`): the server's mirror of who may send, read by the rules | Functions and admins only |
+| `presence/{uid}` | Online status: `sessions.{id}` (`platform`, `foreground`, `activeAt`, `heartbeatAt`) and `lastActiveAt`, server-time only, deleted when the member hides activity | Functions only (`presenceBeat`, `getPresence`) |
+| `chatUnlocks/{uid}`, `chatUnlockOrders/{orderId}`, `chatUnlockCheckout/{uid}` | Unlimited Chat: the entitlement (one per account), every Razorpay order and its outcome (the audit trail), and the open checkout | Functions only |
+| `runtime/presence`, `runtime/trust` | Live switches: presence; photo-verification policy plus the paid-chat gate and Unlimited Chat sales (one document, because the rules read it) | Admins only (`scripts/set-runtime-flags.mjs`, `scripts/set-trust-policy.mjs`) |
 | `limits/{uid}/daily/{yyyymmdd}` | Daily counters: likes, Super Muses, feed calls, AI openers and bios, chat-safety AI reviews, Duo likes, Duo feed calls, Duo code tries | Functions only |
 | Storage `user-uploads/{uid}/photos/*` | Profile photos (JPEG, ≤10 MB, EXIF stripped by the app) | Owner writes; signed-in members read |
 
@@ -45,6 +48,8 @@ Muse is an Expo (React Native) app on Firebase: Auth, Firestore, Storage, Cloud 
   - `duoSwipe` (either friend's like counts; a mutual like creates the four-person chat in the same transaction) and `undoDuoSwipe` (10 minutes).
   - `leaveDuo`, `leaveChat` and `getChatProfiles`.
   - Blocking closes shared Duo chats, and account deletion erases the member from every Duo chat they were ever in. See `docs/product/duos-prd.md`.
+- **Presence (`presence.ts`).** `presenceBeat` records a session's state and how long ago the person last interacted (server time). `getPresence` answers only for people sharing an active chat with the caller who show their activity, deciding "online" from timestamps on every read. `touchActivity` keeps discovery recency for members who hide it. See `docs/presence-and-paid-chat.md`.
+- **Who may send (`chatAccess.ts`, `chatEntitlement.ts`).** Sending needs the sender's own Paire Plus or Unlimited Chat once `runtime/trust.enforcePaidChat` is on; the rules check `moderation/{uid}.chatAccess`. `getChatAccess`, `createChatUnlockOrder` and `confirmChatUnlock` sell the ₹50 unlock through Razorpay, verified on the server; `razorpayWebhook` also handles its captures, refunds and chargebacks.
 - **`onReportCreated`.** When three different people report someone within 30 days, it sets `moderation/{uid}.status = "hidden"`, which removes them from discovery until a moderator reviews them.
 
 The region is `FUNCTIONS_REGION` (default `us-central1`). It must match the app's `EXPO_PUBLIC_FUNCTIONS_REGION`.
