@@ -2,7 +2,9 @@
 
 Last updated: 2026-10-12
 
-## Presence and paid chat (2026-10-17, built, not switched on)
+## Presence and paid chat (2026-10-17, LIVE)
+- **Live since 2026-10-17 01:29 IST** (owner's request): presence on; sending needs Plus or Unlimited Chat (**₹49** once) with no grace period for older chats; live ₹49 sales on the current Razorpay key. Deployed: Firebase functions, rules and indexes, plus Vercel. Change log: `docs/web-changes.md`.
+- Not yet verified with a real payment. Make one real ₹49 purchase and refund it from the Razorpay dashboard to confirm the live path, and add the `payment.dispute.*` webhook events.
 - **Activity-based presence:** online only while a foreground session had a meaningful interaction within 2 minutes (configurable) and its heartbeat lease holds; multi-tab and multi-device; matches only; "Show when I'm active" hides it everywhere, including discovery. Off until `runtime/presence.enabled`.
 - **Paid sending:** your own Paire Plus or Unlimited Chat (₹49 once, account-wide, no expiry) to send; reading and safety free. Enforced in the Firestore rules for the whole send batch. Unlimited Chat via Razorpay with server verification, signed webhooks, duplicate auto-refunds, refunds and chargebacks. Gate, sales and live charges are separate switches, all off.
 - **Validation:** `verify.sh` passes (app 105, functions 219, rules 49, end-to-end 64). Payments are tested against a fake Razorpay test-mode API; no real sandbox or production payment has been made.

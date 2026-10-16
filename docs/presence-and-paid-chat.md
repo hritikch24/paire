@@ -5,7 +5,7 @@ Two features, each behind its own switch, both **off** until you turn them on:
 1. **Activity-based presence**: "Online" and an approximate "Active 3 h ago" for your matches.
 2. **Paid sending**: sending messages needs your own **Paire Plus** pass or **Unlimited Chat** (₹49 once, account-wide, no expiry).
 
-Nothing changes for members when this code is deployed. Presence stays off, the sending gate stays off, and Unlimited Chat can't be bought until each switch below is set on purpose.
+**Status (2026-10-17): live in production.** At the owner's request, presence, the sending gate (from 01:29 IST, no grace period) and live ₹49 Unlimited Chat sales are all on. The code ships with every switch off; each was set on purpose with `scripts/set-runtime-flags.mjs` and the functions `.env`. Roll back with `--paid-chat off`, `--unlock-sales off` or `--presence off`.
 
 ## Switches and configuration
 
