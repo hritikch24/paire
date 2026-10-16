@@ -1,0 +1,24 @@
+# Web changes
+
+Every commit that changes the web product: www.paire.in, the browser app at `/app/`, the backend and rules it uses, and legal copy. Newest first. See `CLAUDE.md` for the rules.
+
+**Status key:** *pushed* = on GitHub `main` only (a push never deploys) · *Vercel* = website and browser app deployed · *Firebase* = functions/rules deployed.
+
+| Date | Commit | Change | Status |
+|---|---|---|---|
+| 2026-10-17 | `29c453d` | Activity-based presence ("Online" / "Active 2 h ago" for matches, with a "Show when I'm active" setting) and paid sending: your own Paire Plus or a ₹50 one-time Unlimited Chat unlock to send messages; reading and safety stay free. Razorpay unlock with server verification, webhooks, refunds and chargebacks. Site, pricing, FAQ and legal copy updated. **All switches off**; see `docs/presence-and-paid-chat.md`. The website copy should go live only with the paid-chat announcement. | pushed |
+| 2026-10-16 | `3fc2562` | "Built by KraftAI" credit in the website footer. | pushed |
+| 2026-10-13 | `577581e` | Photo check optional; add photos in place; smoother sign-up. | pushed |
+| 2026-10-13 | `660be27` | Metrics: first names of new sign-ups and recent logins. | pushed |
+| 2026-10-13 | `8c72829` | Metrics dashboard open at `/metrics?key=admin`, never indexed. | pushed |
+| 2026-10-13 | `bdc55c4` | Metrics dashboard only at `/metrics?key=admin`; not in robots.txt. | pushed |
+| 2026-10-13 | `d8033fc` | SEO/GEO: 30 content pages, full sitemap, llms-full.txt, IndexNow. | pushed |
+| 2026-10-13 | `3d3b08e` | Private `/metrics/` dashboard and anonymous visit counts. | pushed |
+| 2026-10-13 | `6ba42c3` | Paire's own confirm and reset emails (Firebase templates locked). | pushed |
+| 2026-10-13 | `63e0cfd` | Confirmed emails required; free selfie photo check. | pushed |
+| 2026-10-13 | `41df507` | Tab labels no longer clip; 10 themes with a one-tap picker. | pushed |
+| 2026-10-13 | `43c996d` | Launch readiness: SEO/GEO, Gemini AI, account page, birthday fix, ads. | pushed |
+| 2026-10-13 | `df563b5` | Founder's name removed from the landing page footer. | pushed |
+| 2026-10-12 | `d647f9a` | India web launch, Razorpay Plus, age-gap and Garba Nights. | pushed |
+
+Entries before 2026-10-17 were reconstructed from `git log`; which of them reached Vercel or Firebase wasn't recorded. From 2026-10-17 on, record every deploy here.
