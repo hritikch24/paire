@@ -48,7 +48,7 @@ export const guidesA = [
     faq: [
       ["Which is the best dating app in India?", "It depends on what you want. Tinder has the biggest pool, Bumble lets women message first, Hinge is prompt-led, Aisle is for serious relationships, and Paire offers mandatory selfie verification, notes with every like, women-first controls and free 'who likes you'."],
       ["Which dating app is safest in India?", "Look for mandatory verification and strong privacy controls. On Paire, every member must confirm a real email and pass a live selfie check before they can like or chat, and women can hide their profile and photos until they match."],
-      ["Which dating app is free in India?", "Most apps are free to join with paid upgrades. On Paire, likes, matching, seeing who likes you, reading messages and all safety controls are free; sending messages needs Paire Plus or a one-time ₹50 Unlimited Chat unlock, and nothing auto-renews."],
+      ["Which dating app is free in India?", "Most apps are free to join with paid upgrades. On Paire, likes, matching, seeing who likes you, reading messages and all safety controls are free; sending messages needs Paire Plus or a one-time ₹49 Unlimited Chat unlock, and nothing auto-renews."],
       ["Which dating app is best for serious relationships in India?", "Hinge, Aisle and Paire (with 'same intentions only' turned on) are popular choices for serious relationships."]
     ],
     related: ["guides/dating-app-for-serious-relationships-india/", "guides/dating-apps-for-women-india/", "compare/tinder/", "verification/"]

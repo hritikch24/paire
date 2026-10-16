@@ -4,7 +4,7 @@ Last updated: 2026-10-12
 
 ## Presence and paid chat (2026-10-17, built, not switched on)
 - **Activity-based presence:** online only while a foreground session had a meaningful interaction within 2 minutes (configurable) and its heartbeat lease holds; multi-tab and multi-device; matches only; "Show when I'm active" hides it everywhere, including discovery. Off until `runtime/presence.enabled`.
-- **Paid sending:** your own Paire Plus or Unlimited Chat (₹50 once, account-wide, no expiry) to send; reading and safety free. Enforced in the Firestore rules for the whole send batch. Unlimited Chat via Razorpay with server verification, signed webhooks, duplicate auto-refunds, refunds and chargebacks. Gate, sales and live charges are separate switches, all off.
+- **Paid sending:** your own Paire Plus or Unlimited Chat (₹49 once, account-wide, no expiry) to send; reading and safety free. Enforced in the Firestore rules for the whole send batch. Unlimited Chat via Razorpay with server verification, signed webhooks, duplicate auto-refunds, refunds and chargebacks. Gate, sales and live charges are separate switches, all off.
 - **Validation:** `verify.sh` passes (app 105, functions 219, rules 49, end-to-end 64). Payments are tested against a fake Razorpay test-mode API; no real sandbox or production payment has been made.
 - **Needs you:** a Razorpay merchant account approved for Paire (the current live key is shared with another project), legal review of Terms/Refunds/Privacy, the existing-conversation policy and announcement date, and the dispute webhook events. Full list: `docs/presence-and-paid-chat.md`.
 

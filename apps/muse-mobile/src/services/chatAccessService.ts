@@ -33,7 +33,7 @@ type CreateResult = { status: "checkout"; checkout: CheckoutOrder } | { status: 
 type ConfirmResult = { status: "owned" | "pending"; access: ChatAccess };
 
 /**
- * Unlimited Chat on the web. The server creates the ₹50 order for the signed-in
+ * Unlimited Chat on the web. The server creates the ₹49 order for the signed-in
  * account (reusing an open one, never a second charge), Razorpay Checkout takes
  * the payment, and the server confirms it with Razorpay before unlocking. A
  * Checkout success alone never unlocks anything. Throws CheckoutCancelled if

@@ -3,12 +3,12 @@ import { entitled, inLegacyGrace, maySend, paidChatEnforced, parseChatPolicy, ra
 
 const NOW = 1_800_000_000_000;
 const HOUR = 60 * 60 * 1000;
-const order = { orderId: "order_Chat123456", amountPaise: 5000, currency: "INR" };
-const captured = { id: "pay_Chat123456", order_id: "order_Chat123456", status: "captured", amount: 5000, currency: "INR", amount_refunded: 0, refund_status: null };
+const order = { orderId: "order_Chat123456", amountPaise: 4900, currency: "INR" };
+const captured = { id: "pay_Chat123456", order_id: "order_Chat123456", status: "captured", amount: 4900, currency: "INR", amount_refunded: 0, refund_status: null };
 
 describe("Unlimited Chat product", () => {
-  it("is ₹50 (5,000 paise, INR), priced on the server and clearly labelled as Paire", () => {
-    expect(CHAT_UNLOCK).toMatchObject({ amountPaise: 5000, currency: "INR", product: "paire_unlimited_chat" });
+  it("is ₹49 (4,900 paise, INR), priced on the server and clearly labelled as Paire", () => {
+    expect(CHAT_UNLOCK).toMatchObject({ amountPaise: 4900, currency: "INR", product: "paire_unlimited_chat" });
     expect(CHAT_UNLOCK.label).toMatch(/^Paire Unlimited Chat/);
   });
 
@@ -61,7 +61,7 @@ describe("who may send", () => {
 });
 
 describe("payment verification", () => {
-  it("grants only for a captured ₹50 INR payment of this exact order", () => {
+  it("grants only for a captured ₹49 INR payment of this exact order", () => {
     expect(unlockPaymentVerdict(captured, order)).toBe("captured");
   });
 
@@ -70,7 +70,7 @@ describe("payment verification", () => {
     expect(unlockPaymentVerdict({ ...captured, amount: 500000 }, order)).toBe("mismatch");
     expect(unlockPaymentVerdict({ ...captured, currency: "USD" }, order)).toBe("mismatch");
     expect(unlockPaymentVerdict({ ...captured, order_id: "order_Other12345" }, order)).toBe("mismatch");
-    expect(unlockPaymentVerdict({ ...captured, amount_refunded: 5000 }, order)).toBe("mismatch");
+    expect(unlockPaymentVerdict({ ...captured, amount_refunded: 4900 }, order)).toBe("mismatch");
     expect(unlockPaymentVerdict({ ...captured, refund_status: "partial" }, order)).toBe("mismatch");
     expect(unlockPaymentVerdict(captured, { ...order, amountPaise: 2000 })).toBe("mismatch");
     expect(unlockPaymentVerdict(captured, { ...order, currency: "USD" })).toBe("mismatch");

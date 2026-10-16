@@ -119,10 +119,10 @@ export const PRESENCE = {
  */
 export const CHAT_UNLOCK = {
   product: "paire_unlimited_chat",
-  amountPaise: 5000,
+  amountPaise: 4900,
   currency: "INR",
   /** Shown in Razorpay Checkout and on the receipt. */
-  label: "Paire Unlimited Chat · one-time ₹50 unlock",
+  label: "Paire Unlimited Chat · one-time ₹49 unlock",
   /** An open checkout is reused (not replaced) for this long, so two tabs can't take two payments. */
   checkoutReuseMs: 6 * 60 * 60_000,
   /** A checkout being created blocks a second one for this long. */

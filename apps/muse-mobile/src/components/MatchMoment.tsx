@@ -156,7 +156,7 @@ export function MatchMoment({ visible, me, them, onMessage, onClose, title, subt
                 </SecondaryButton>
                 {locked ? (
                   <Text testID="match-access-note" color="rgba(255,255,255,0.9)" textAlign="center" fontSize="$2" lineHeight={20}>
-                    {`To send messages, choose “Get Paire Plus” or “Unlock unlimited chats — ₹${access.data?.unlock.priceInr ?? 50} once”, which covers all your current and future mutual matches. You'll find both in the chat. Each person needs their own access to send; reading is always free.`}
+                    {`To send messages, choose “Get Paire Plus” or “Unlock unlimited chats — ₹${access.data?.unlock.priceInr ?? 49} once”, which covers all your current and future mutual matches. You'll find both in the chat. Each person needs their own access to send; reading is always free.`}
                   </Text>
                 ) : null}
                 <GhostButton testID="match-keep-swiping" onPress={onClose} color="white">

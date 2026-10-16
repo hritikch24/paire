@@ -38,9 +38,9 @@ export function ChatAccessCard({ access, onGetPlus, onVerify }: Props) {
   const [phase, setPhase] = useState<Phase>(access?.unlock.status === "pending" ? "pending" : "idle");
   const [error, setError] = useState<string | null>(null);
   const unlock = access?.unlock;
-  const price = `₹${unlock?.priceInr ?? 50}`;
+  const price = `₹${unlock?.priceInr ?? 49}`;
   const pending = phase === "pending" || unlock?.status === "pending";
-  // The ₹50 unlock is sold on the web; an unlock bought there works in the app too.
+  // The ₹49 unlock is sold on the web; an unlock bought there works in the app too.
   const canBuy = webCheckout && unlock?.status === "available";
 
   const settle = async (reconcile: boolean) => {

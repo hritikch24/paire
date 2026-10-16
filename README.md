@@ -15,7 +15,7 @@ Also in the app:
 - **Photo-verification status:** server-derived approval status and education. Didit capture, immutable snapshots, moderator review and strict server/rule gates are implemented; live provider activation/testing are pending.
 - **Muse AI chat safety:** warns about scams, threats and abuse, and hides abusive messages.
 - **My reports:** private progress, server-bound evidence and moderator review, with report/block retry protection.
-- **Paid sending (off until switched on):** sending messages needs your own Plus or **Unlimited Chat** (₹50 once, all current and future matches, no expiry); reading, matching and safety stay free. **Presence (off until switched on):** "Online" and approximate "Active 3 h ago" for matches, from real activity, with a setting to hide it. See `docs/presence-and-paid-chat.md`.
+- **Paid sending (off until switched on):** sending messages needs your own Plus or **Unlimited Chat** (₹49 once, all current and future matches, no expiry); reading, matching and safety stay free. **Presence (off until switched on):** "Online" and approximate "Active 3 h ago" for matches, from real activity, with a setting to hide it. See `docs/presence-and-paid-chat.md`.
 - **Browser dating:** shared accounts, discovery, chat, profiles and safety in the responsive web app.
 - **Duos:** double dates with a friend, with a four-person group chat.
 - **Likes gallery:** a full-screen gallery of everyone who liked you.

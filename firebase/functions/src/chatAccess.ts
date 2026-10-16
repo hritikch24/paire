@@ -14,7 +14,7 @@ import { razorpay } from "./razorpayClient";
 import { verifiedUsers } from "./trust";
 
 /**
- * Unlimited Chat: ₹50 once, for the buyer's account only, unlocks sending in
+ * Unlimited Chat: ₹49 once, for the buyer's account only, unlocks sending in
  * every current and future mutual match. Server-only records:
  *
  * - chatUnlockOrders/{orderId}: every order and what became of it (the audit

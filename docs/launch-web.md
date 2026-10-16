@@ -50,7 +50,7 @@ Internal IDs (`muse-352ba`, `com.muse.app`, `muse_premium_*`) stay as they are. 
 
 How it works: the server sets the price (₹20 / ₹99 / ₹299), creates the Razorpay order and opens Checkout. It then checks Checkout's signature and asks Razorpay that the payment really was captured for that exact order and amount. Only then does it start the pass, once. The signed webhook covers closed tabs, late UPI confirmations and refunds. Passes queue (web and store passes alike), so nobody loses days, even if two payments land at once. Any refund ends that pass. Code: `firebase/functions/src/razorpay.ts`.
 
-Unlimited Chat (₹50 once, sending messages in every match) uses the same keys and webhook, and has its own switches (`MUSE_CHAT_UNLOCK_ENABLED`, `MUSE_CHAT_UNLOCK_LIVE`, `runtime/trust.unlockSales`). Read `docs/presence-and-paid-chat.md` before turning on paid chat or presence. Production charges need a Razorpay merchant account approved for Paire itself.
+Unlimited Chat (₹49 once, sending messages in every match) uses the same keys and webhook, and has its own switches (`MUSE_CHAT_UNLOCK_ENABLED`, `MUSE_CHAT_UNLOCK_LIVE`, `runtime/trust.unlockSales`). Read `docs/presence-and-paid-chat.md` before turning on paid chat or presence. Production charges need a Razorpay merchant account approved for Paire itself.
 
 ## 3. Vercel (the website and web app)
 

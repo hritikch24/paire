@@ -87,7 +87,7 @@ export type UnlockPayment = {
 
 /**
  * Whether a Razorpay payment (as read back from Razorpay itself) pays for this
- * Unlimited Chat order: the exact order, ₹50 in INR, captured, never refunded.
+ * Unlimited Chat order: the exact order, ₹49 in INR, captured, never refunded.
  */
 export function unlockPaymentVerdict(payment: UnlockPayment | null | undefined, order: { orderId: string; amountPaise: number; currency: string }): "captured" | "pending" | "mismatch" {
   if (

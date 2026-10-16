@@ -11,7 +11,7 @@ const access = (overrides: Partial<ChatAccess> = {}): ChatAccess => ({
   canSend: false,
   unlimited: false,
   premiumUntil: null,
-  unlock: { status: "available", priceInr: 50 },
+  unlock: { status: "available", priceInr: 49 },
   serverNow: NOW,
   ...overrides
 });

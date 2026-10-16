@@ -3,7 +3,7 @@
 Two features, each behind its own switch, both **off** until you turn them on:
 
 1. **Activity-based presence**: "Online" and an approximate "Active 3 h ago" for your matches.
-2. **Paid sending**: sending messages needs your own **Paire Plus** pass or **Unlimited Chat** (₹50 once, account-wide, no expiry).
+2. **Paid sending**: sending messages needs your own **Paire Plus** pass or **Unlimited Chat** (₹49 once, account-wide, no expiry).
 
 Nothing changes for members when this code is deployed. Presence stays off, the sending gate stays off, and Unlimited Chat can't be bought until each switch below is set on purpose.
 
@@ -97,17 +97,17 @@ may send = the gate is off (or before enforceFrom)
 | Step | What happens |
 |---|---|
 | Offer | Only after the member's first server-created mutual match. Also needs sales on, a confirmed email and the photo check (when required), and an account that isn't banned. Already owned: never offered or charged again. |
-| `createChatUnlockOrder` | The server creates a 5,000-paise INR order for product `paire_unlimited_chat`, bound to the caller's uid, and records it in `chatUnlockOrders/{orderId}` with its Razorpay mode. Client-sent amounts, uids or products are ignored. One checkout at a time: a second tab or a retry reuses the same open order, and an order that is paid or still settling returns `owned` or `pending` instead of a new order. |
-| Checkout | Razorpay Checkout shows "Paire", with description "Paire Unlimited Chat · one-time ₹50 unlock". |
-| `confirmChatUnlock` | Checks the Checkout signature, the order's owner and mode, then **re-reads the payment from Razorpay**: this order, 5,000 paise, INR, `captured`, never refunded. Authorised payments are `pending`. |
+| `createChatUnlockOrder` | The server creates a 4,900-paise INR order for product `paire_unlimited_chat`, bound to the caller's uid, and records it in `chatUnlockOrders/{orderId}` with its Razorpay mode. Client-sent amounts, uids or products are ignored. One checkout at a time: a second tab or a retry reuses the same open order, and an order that is paid or still settling returns `owned` or `pending` instead of a new order. |
+| Checkout | Razorpay Checkout shows "Paire", with description "Paire Unlimited Chat · one-time ₹49 unlock". |
+| `confirmChatUnlock` | Checks the Checkout signature, the order's owner and mode, then **re-reads the payment from Razorpay**: this order, 4,900 paise, INR, `captured`, never refunded. Authorised payments are `pending`. |
 | `razorpayWebhook` | The same grant from signed `payment.captured` events (closed tabs, slow UPI). Duplicate or late events are idempotent. |
 | Grant | One transaction writes `chatUnlocks/{uid}` (the doc id is the uid, so one entitlement per account) and marks the order `paid`. A second captured payment on an order that's already paid (a late-captured earlier attempt) is recorded in `extraPaymentIds` and refunded. Its own refund or dispute events never touch the unlock. A second captured payment for an account that already owns it is marked `duplicate` and **refunded automatically**. A payment for a deleted account is `orphaned` and refunded. A test-mode payment for a real account is `rejected`. Bans are never changed. |
 | Refund or chargeback | `refund.processed`/`payment.refunded` mark the order `refunded`. `payment.dispute.lost` marks it `chargeback`. Either way, the unlock is revoked only if *that* payment paid for it. Plus is never touched. `dispute.created` only flags the order. |
 | Audit | `chatUnlockOrders` keeps every order (uid, amount, currency, product, mode, payment id, status, timestamps) and is retained after account deletion, like `razorpayOrders`. |
 
-App states (`components/ChatAccessCard.tsx`): the two choices ("Get Paire Plus" and "Unlock unlimited chats — ₹50 once"), plus loading, pending ("Payment received… you won't be charged again" with *Check payment status*), failed, cancelled (*Check payment status*, for UPI payments that finish after the window closes) and success (a toast; the composed message stays in the box and **needs a deliberate Send**). Payment never opens by itself. Drafts survive checkout, cancellation and leaving the chat for the app session. "Close kindly" falls back to a plain unmatch for members who can't send.
+App states (`components/ChatAccessCard.tsx`): the two choices ("Get Paire Plus" and "Unlock unlimited chats — ₹49 once"), plus loading, pending ("Payment received… you won't be charged again" with *Check payment status*), failed, cancelled (*Check payment status*, for UPI payments that finish after the window closes) and success (a toast; the composed message stays in the box and **needs a deliberate Send**). Payment never opens by itself. Drafts survive checkout, cancellation and leaving the chat for the app session. "Close kindly" falls back to a plain unmatch for members who can't send.
 
-**Android/iOS.** The ₹50 unlock isn't sold in the native app. Play policy would require Play Billing and a `paire_unlimited_chat` product, which aren't built. An unlock bought on the web works in the app automatically, and native members can still get Plus through the store.
+**Android/iOS.** The ₹49 unlock isn't sold in the native app. Play policy would require Play Billing and a `paire_unlimited_chat` product, which aren't built. An unlock bought on the web works in the app automatically, and native members can still get Plus through the store.
 
 ## Existing members and existing conversations
 
@@ -135,7 +135,7 @@ Decide this before switching the gate on. The recommended policy, which the swit
 ## Before charging anyone (needs you)
 
 - **Merchant account.** `firebase/functions/.env`'s live `RAZORPAY_KEY_ID` is the same key used by the `kanoon-simplified` project. Production Unlimited Chat (and Paire Plus) payments must go through a Razorpay merchant account approved for **Paire**: business name, `paire.in` website, and dating as the declared category. They must not run under another product's account. `MUSE_CHAT_UNLOCK_LIVE` stays `false` until then.
-- **Legal review** of the updated Terms §4A, the Refund policy and the Privacy policy (online status), which still contain placeholders. Also the GST treatment of the ₹50 price and Razorpay receipt settings.
+- **Legal review** of the updated Terms §4A, the Refund policy and the Privacy policy (online status), which still contain placeholders. Also the GST treatment of the ₹49 price and Razorpay receipt settings.
 - **Razorpay webhook events** for disputes (above).
 - **Refund monitoring.** Automatic refunds that fail are recorded in `refundError` / `extraRefundErrors` on the order for support to finish by hand; nothing retries them yet. Any refund, full or partial, ends the unlock, as the refund policy says.
 - **Calls** (`callRooms`) aren't gated by paid chat. Calls are off today; decide before enabling them.

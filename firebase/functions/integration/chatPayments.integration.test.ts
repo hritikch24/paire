@@ -136,9 +136,9 @@ describe("Unlimited Chat orders", () => {
     const result = await call(chat.createChatUnlockOrder, uid, { amount: 1, currency: "USD", uid: "someone-else", product: "plus" });
     expect(result.status).toBe("checkout");
     if (result.status !== "checkout") return;
-    expect(result.checkout).toMatchObject({ amount: 5000, currency: "INR", name: "Paire", description: "Paire Unlimited Chat · one-time ₹50 unlock" });
-    expect(fake.orders.get(result.checkout.orderId)).toMatchObject({ amount: 5000, currency: "INR", notes: { product: "paire_unlimited_chat", uid } });
-    expect((await admin.doc(`chatUnlockOrders/${result.checkout.orderId}`).get()).data()).toMatchObject({ uid, amountPaise: 5000, currency: "INR", mode: "test", status: "created" });
+    expect(result.checkout).toMatchObject({ amount: 4900, currency: "INR", name: "Paire", description: "Paire Unlimited Chat · one-time ₹49 unlock" });
+    expect(fake.orders.get(result.checkout.orderId)).toMatchObject({ amount: 4900, currency: "INR", notes: { product: "paire_unlimited_chat", uid } });
+    expect((await admin.doc(`chatUnlockOrders/${result.checkout.orderId}`).get()).data()).toMatchObject({ uid, amountPaise: 4900, currency: "INR", mode: "test", status: "created" });
   });
 
   test("offered only after a real mutual match, while sales are on, to accounts in good standing", async () => {
@@ -152,8 +152,8 @@ describe("Unlimited Chat orders", () => {
     const real = await buyer({ cohort: "public" });
     await expect(call(chat.createChatUnlockOrder, real)).rejects.toThrow(/test accounts/);
     // Even if such an order existed, a captured test payment for it is rejected, not granted.
-    await admin.doc("chatUnlockOrders/order_ForgedTest01").set({ uid: real, product: "paire_unlimited_chat", amountPaise: 5000, currency: "INR", mode: "test", status: "created" });
-    fake.orders.set("order_ForgedTest01", { id: "order_ForgedTest01", amount: 5000, currency: "INR", status: "created", notes: {} });
+    await admin.doc("chatUnlockOrders/order_ForgedTest01").set({ uid: real, product: "paire_unlimited_chat", amountPaise: 4900, currency: "INR", mode: "test", status: "created" });
+    fake.orders.set("order_ForgedTest01", { id: "order_ForgedTest01", amount: 4900, currency: "INR", status: "created", notes: {} });
     const payment = pay("order_ForgedTest01");
     expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
     expect(await unlockOf(real)).toBeUndefined();
@@ -167,7 +167,7 @@ describe("Unlimited Chat orders", () => {
 });
 
 describe("confirming a payment", () => {
-  test("a verified ₹50 capture unlocks chat for this account only, everywhere, and is never sold twice", async () => {
+  test("a verified ₹49 capture unlocks chat for this account only, everywhere, and is never sold twice", async () => {
     const uid = await buyer();
     const other = await buyer();
     const orderId = await checkout(uid);
@@ -175,7 +175,7 @@ describe("confirming a payment", () => {
     const result = await call(chat.confirmChatUnlock, uid, { orderId, paymentId: payment.id, signature: checkoutSignature(orderId, payment.id) });
     expect(result.status).toBe("owned");
     expect(result.access).toMatchObject({ canSend: true, unlimited: true, unlock: { status: "owned" } });
-    expect(await unlockOf(uid)).toMatchObject({ status: "active", orderId, paymentId: payment.id, amountPaise: 5000, currency: "INR", product: "paire_unlimited_chat", mode: "test" });
+    expect(await unlockOf(uid)).toMatchObject({ status: "active", orderId, paymentId: payment.id, amountPaise: 4900, currency: "INR", product: "paire_unlimited_chat", mode: "test" });
     expect(await mirrorOf(uid)).toMatchObject({ unlimited: true });
     expect(await unlockOf(other)).toBeUndefined();
     // Another device, a retry or a second tab: no new order, no second charge.
@@ -281,7 +281,7 @@ describe("webhooks", () => {
     expect(unlock?.status).toBe("active");
     const winner = unlock?.paymentId as string;
     const loser = winner === paymentA.id ? paymentB : paymentA;
-    expect(fake.refunds).toContainEqual({ paymentId: loser.id, amount: 5000 });
+    expect(fake.refunds).toContainEqual({ paymentId: loser.id, amount: 4900 });
     expect((await admin.doc(`chatUnlockOrders/${loser.order_id}`).get()).get("status")).toBe("duplicate");
     // Razorpay's refund event for the duplicate leaves the real unlock alone.
     expect(await webhook("refund.processed", { refund: { entity: { payment_id: loser.id } }, payment: { entity: { id: loser.id, order_id: loser.order_id } } })).toBe(200);
@@ -296,7 +296,7 @@ describe("webhooks", () => {
     // Razorpay late-captures an earlier attempt on the same order.
     const second = pay(orderId);
     await webhook("payment.captured", paymentEvent(second));
-    expect(fake.refunds).toContainEqual({ paymentId: second.id, amount: 5000 });
+    expect(fake.refunds).toContainEqual({ paymentId: second.id, amount: 4900 });
     const order = (await admin.doc(`chatUnlockOrders/${orderId}`).get()).data()!;
     expect(order).toMatchObject({ status: "paid", paymentId: first.id, extraPaymentIds: [second.id] });
     // The refund event for that second payment (found by order id) must not revoke what the first bought.
@@ -318,7 +318,7 @@ describe("webhooks", () => {
     await admin.doc(`billing/${uid}`).set({ expiresAt: Date.now() - 1000, checkedAt: Date.now() });
     await syncChatAccess(uid);
     expect(await mirrorOf(uid)).toMatchObject({ unlimited: true });
-    // A new Plus pass, then the ₹50 is refunded: Plus stays.
+    // A new Plus pass, then the ₹49 is refunded: Plus stays.
     await admin.doc(`billing/${uid}`).set({ expiresAt: plusUntil, checkedAt: Date.now() });
     expect(await webhook("refund.processed", { refund: { entity: { payment_id: payment.id } }, payment: { entity: { id: payment.id, order_id: payment.order_id } } })).toBe(200);
     expect(await unlockOf(uid)).toMatchObject({ status: "revoked", revokedReason: "refund" });
@@ -330,7 +330,7 @@ describe("webhooks", () => {
     const uid = await buyer();
     const orderId = await checkout(uid);
     const payment = pay(orderId);
-    payment.amount_refunded = 5000;
+    payment.amount_refunded = 4900;
     payment.refund_status = "full";
     await webhook("refund.processed", { refund: { entity: { payment_id: payment.id } }, payment: { entity: { id: payment.id, order_id: orderId } } });
     await webhook("payment.captured", paymentEvent(payment));
@@ -358,7 +358,7 @@ describe("webhooks", () => {
     expect((await admin.doc(`users/${gone}`).get()).exists).toBe(false);
     expect(await unlockOf(gone)).toBeUndefined();
     expect((await admin.doc(`chatUnlockOrders/${payment.order_id}`).get()).get("status")).toBe("orphaned");
-    expect(fake.refunds).toContainEqual({ paymentId: payment.id, amount: 5000 });
+    expect(fake.refunds).toContainEqual({ paymentId: payment.id, amount: 4900 });
 
     const banned = await buyer();
     const paid = pay(await checkout(banned));
