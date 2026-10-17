@@ -4,7 +4,7 @@ import { db } from "./admin";
 import { REGION } from "./config";
 import { requireReadAuth, isSupportSession } from "./lib/auth";
 import { parsePasses, sameSecret, validRevenueCatSignature } from "./lib/billing";
-import { chatPolicy, syncChatAccess, upiSalesOpen } from "./chatEntitlement";
+import { ccavenueSalesOpen, chatPolicy, syncChatAccess, upiSalesOpen } from "./chatEntitlement";
 import { consumeDailyQuota } from "./quota";
 import { verifiedUsers } from "./trust";
 
@@ -23,6 +23,8 @@ export const webBillingEnabled = () => billingEnabled() && razorpayConfigured();
 export const razorpayPlusOpen = async () => webBillingEnabled() && (await chatPolicy()).razorpayPlusSales;
 /** Plus passes paid by UPI into Paire's own account, confirmed by a moderator. */
 export const upiPlusOpen = async () => billingEnabled() && (await upiSalesOpen());
+/** Plus passes paid through CCAvenue (cards, UPI, netbanking) on the web. */
+export const ccavenuePlusOpen = async () => billingEnabled() && (await ccavenueSalesOpen());
 
 export type PremiumStatus = {
   active: boolean;
@@ -33,6 +35,8 @@ export type PremiumStatus = {
   webPurchaseAvailable: boolean;
   /** UPI straight to Paire (scan the QR or open a UPI app). */
   upiPurchaseAvailable: boolean;
+  /** CCAvenue checkout (web): cards, UPI, netbanking. */
+  ccavenuePurchaseAvailable: boolean;
   /** An earlier Razorpay checkout never went through (nothing was charged): say so, and offer UPI. */
   previousPaymentFailed?: boolean;
   purchaseBlockReason?: "verification-required";
@@ -68,12 +72,14 @@ export async function storeExpiryIfEnabled(uid: string, now = Date.now()): Promi
 
 /** Latest expiry among the member's paid, unrefunded web passes. 0 when none. */
 export async function webPassExpiry(uid: string, now = Date.now()): Promise<number> {
-  const [paid, upi] = await Promise.all([
+  const [paid, upi, ccavenue] = await Promise.all([
     db.collection("razorpayOrders").where("uid", "==", uid).where("status", "==", "paid").get(),
     // Plus passes paid by UPI and approved by a moderator (upiPayments.ts).
-    db.collection("upiUnlockOrders").where("uid", "==", uid).where("status", "==", "approved").get()
+    db.collection("upiUnlockOrders").where("uid", "==", uid).where("status", "==", "approved").get(),
+    // Plus passes paid through CCAvenue (ccavenue.ts).
+    db.collection("ccavenueOrders").where("uid", "==", uid).where("status", "==", "paid").get()
   ]);
-  return [...paid.docs, ...upi.docs.filter((doc) => doc.get("kind") === "plus")].reduce((latest, doc) => {
+  return [...paid.docs, ...[...upi.docs, ...ccavenue.docs].filter((doc) => doc.get("kind") === "plus")].reduce((latest, doc) => {
     const expiresAt = doc.get("expiresAt");
     return typeof expiresAt === "number" && expiresAt > now ? Math.max(latest, expiresAt) : latest;
   }, 0);
@@ -84,7 +90,7 @@ export async function webPassExpiry(uid: string, now = Date.now()): Promise<numb
  * in billing/{uid}, which swipes read. Never trusts anything the client says.
  */
 export async function syncPremium(uid: string): Promise<PremiumStatus> {
-  const status = { purchaseAvailable: nativeBillingEnabled(), webPurchaseAvailable: await razorpayPlusOpen(), upiPurchaseAvailable: await upiPlusOpen() };
+  const status = { purchaseAvailable: nativeBillingEnabled(), webPurchaseAvailable: await razorpayPlusOpen(), upiPurchaseAvailable: await upiPlusOpen(), ccavenuePurchaseAvailable: await ccavenuePlusOpen() };
   if (!billingEnabled()) return { active: false, expiresAt: null, ...status };
   const now = Date.now();
   const [store, web] = await Promise.all([
@@ -105,14 +111,14 @@ export const getPremiumStatus = onCall({ region: REGION, secrets: ["REVENUECAT_S
   const cached = isSupportSession(request) ? await db.doc(`billing/${uid}`).get() : null;
   const expiresAt = billingEnabled() ? Number(cached?.get("expiresAt")) || 0 : 0;
   const status: PremiumStatus = cached
-    ? { active: expiresAt > Date.now(), expiresAt: expiresAt > Date.now() ? expiresAt : null, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false }
+    ? { active: expiresAt > Date.now(), expiresAt: expiresAt > Date.now() ? expiresAt : null, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, ccavenuePurchaseAvailable: false }
     : await syncPremium(uid);
   if (!status.active) {
     const orders = await db.collection("razorpayOrders").where("uid", "==", uid).limit(20).get();
     if (orders.docs.some((doc) => doc.get("status") === "created") && !orders.docs.some((doc) => doc.get("status") === "paid")) status.previousPaymentFailed = true;
   }
-  if ((status.purchaseAvailable || status.webPurchaseAvailable || status.upiPurchaseAvailable) && !(await verifiedUsers([uid])).has(uid)) {
-    return { ...status, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, purchaseBlockReason: "verification-required" };
+  if ((status.purchaseAvailable || status.webPurchaseAvailable || status.upiPurchaseAvailable || status.ccavenuePurchaseAvailable) && !(await verifiedUsers([uid])).has(uid)) {
+    return { ...status, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, ccavenuePurchaseAvailable: false, purchaseBlockReason: "verification-required" };
   }
   return status;
 });

@@ -718,6 +718,7 @@ export function ChatScreen() {
               <YStack paddingTop="$2">
                 <ChatAccessCard
                   access={chatAccess.data}
+                  matchId={matchId}
                   onGetPlus={() => navigation.navigate("Premium")}
                   onVerify={() => navigation.navigate("Verification")}
                 />

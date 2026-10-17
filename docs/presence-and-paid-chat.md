@@ -161,4 +161,6 @@ Paid straight into Paire's own UPI ID (`MUSE_UPI_VPA`, `MUSE_UPI_PAYEE_NAME` in 
 
 Records: `upiUnlockOrders/{orderId}` (uid, amount, UTR, status, reviewer, timestamps), kept like other payment records. Refunds are made by hand from the bank or UPI app, then revoked in the app. Limits: India only (UPI); confirmation waits for a person; Google Pay can refuse `upi://` links to personal IDs, but scanning the QR still works.
 
+**CCAvenue (2026-10-17, off).** Unlimited Chat and Plus can also be paid through CCAvenue (cards, UPI, netbanking, wallets), behind `runtime/trust.ccavenueSales` (`--ccavenue-sales on|off`) and `MUSE_CCAVENUE_ENABLED`. While it sells, it replaces direct UPI for new orders. See `docs/ccavenue.md`.
+
 **Paire Plus by UPI (2026-10-17).** `createUpiUnlockOrder({ plan })` sells a Plus pass the same way: the plan's price plus unique paise, and moderator approval. Approval queues the pass after any running pass (`webPassLedger`), and `webPassExpiry` counts approved UPI Plus orders. Revoke recomputes the queue. New Razorpay Plus checkouts are off (`runtime/trust.razorpayPlusSales: false`, `--razorpay-plus off`); payments taken earlier still confirm and refund.

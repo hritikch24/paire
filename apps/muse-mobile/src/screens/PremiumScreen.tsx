@@ -28,6 +28,7 @@ import { useAuthStore } from "../store/authStore";
 import { useChatAccess } from "../hooks/useChatAccess";
 import { UpiPayPanel } from "../components/UpiPayPanel";
 import { fetchOpenUpiOrder, startUpiUnlock, UpiOrder } from "../services/chatAccessService";
+import { ccavenueCheckout, confirmCcavenuePayment, startCcavenuePayment } from "../services/ccavenueService";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function PremiumScreen() {
@@ -51,11 +52,32 @@ export function PremiumScreen() {
   // UPI straight to Paire when it's on (scan or open PhonePe/any UPI app); otherwise Razorpay on the
   // web, or the store's localised product in the app.
   const byUpi = premium.data?.upiPurchaseAvailable === true;
-  const upiOrder = useQuery({ queryKey: ["upi-plus-order", uid], queryFn: () => fetchOpenUpiOrder("plus"), enabled: Boolean(uid && byUpi), retry: 1 });
+  const upiOrder = useQuery({ queryKey: ["upi-plus-order", uid], queryFn: () => fetchOpenUpiOrder("plus"), enabled: Boolean(uid && (byUpi || webCheckout)), retry: 1 });
   const [shownOrder, setShownOrder] = useState<UpiOrder | null>(null);
   const openOrder = shownOrder ?? upiOrder.data ?? null;
   const upiSubmitted = openOrder?.status === "submitted";
-  const canPurchase = byUpi ? ready && !upiSubmitted : webCheckout ? ready && premium.data?.webPurchaseAvailable === true : Boolean(product && ready && premium.data?.purchaseAvailable);
+  // CCAvenue (cards, UPI, netbanking, wallets) on the web: its own button, or the main one when it's the only way.
+  const byCcavenue = ccavenueCheckout && premium.data?.ccavenuePurchaseAvailable === true;
+  const ccavenueOnly = byCcavenue && !byUpi && premium.data?.webPurchaseAvailable !== true;
+  const canPurchase = byUpi ? ready && !upiSubmitted : ccavenueOnly ? ready && !upiSubmitted : webCheckout ? ready && premium.data?.webPurchaseAvailable === true : Boolean(product && ready && premium.data?.purchaseAvailable);
+  const payByCcavenue = async () => {
+    setBusy(true); setMessage(null);
+    try {
+      const result = await startCcavenuePayment(plan.id);
+      if (result === "redirecting") return; // The page is leaving for CCAvenue.
+      if (result === "pending") setMessage("Your earlier payment is still being confirmed by your bank, usually within a few minutes. You won't be charged again. Tap Refresh below.");
+      await premium.refetch();
+      setBusy(false);
+    } catch (error) {
+      setMessage(friendlyError(error, "We couldn't open the payment page. Please try again."));
+      setBusy(false);
+    }
+  };
+  const refreshStatus = async () => {
+    // Settle a CCAvenue payment the bank was still confirming, then read the pass.
+    if (byCcavenue) await confirmCcavenuePayment({ kind: "plus" }).catch(() => null);
+    await premium.refetch();
+  };
   const priceLabel = webCheckout || byUpi ? `₹${plan.priceInr}` : (product?.priceString ?? `₹${plan.priceInr}`);
   const payByUpi = async () => {
     setBusy(true); setMessage(null);
@@ -68,6 +90,7 @@ export function PremiumScreen() {
   };
   const act = async (restore = false) => {
     if (!restore && byUpi) return payByUpi();
+    if (!restore && ccavenueOnly) return payByCcavenue();
     if (!uid || (!restore && !webCheckout && !product)) return;
     setBusy(true); setMessage(null);
     try {
@@ -92,7 +115,8 @@ export function PremiumScreen() {
       <YStack gap="$2">
         <Text textAlign="center" fontSize="$2" color="$textMuted">{priceLabel} for {plan.detail.toLowerCase()} · one-time payment · no auto-renewal</Text>
         <PrimaryButton testID="premium-purchase" loading={busy} disabled={!canPurchase} onPress={() => void act()}>{premium.data?.active ? "Your pass is active" : upiSubmitted ? "Confirming your UPI payment" : canPurchase ? (byUpi ? `Pay ${priceLabel} by UPI · ${plan.label}` : `Get ${plan.label} · ${priceLabel}`) : "Plus is coming soon"}</PrimaryButton>
-        <Text textAlign="center" fontSize="$1" color="$textMuted">{upiSubmitted ? "Thanks! Your pass starts as soon as we confirm your UPI payment, usually within a few hours." : canPurchase ? (byUpi ? "Pay by UPI straight to Paire: scan the QR code, or open PhonePe, Google Pay, Paytm or any UPI app." : webCheckout ? "Pay securely with UPI, cards or netbanking via Razorpay." : "Pay securely through your app store.") : premium.data?.active ? `Available until ${new Date(premium.data.expiresAt!).toLocaleString("en-IN")}.` : "Purchases aren’t available yet. You won’t be charged."}</Text>
+        {byCcavenue && !ccavenueOnly && ready ? <SecondaryButton testID="premium-ccavenue" disabled={busy} onPress={() => void payByCcavenue()}>{`Pay ${priceLabel} by card, netbanking or wallet`}</SecondaryButton> : null}
+        <Text textAlign="center" fontSize="$1" color="$textMuted">{upiSubmitted ? "Thanks! Your pass starts as soon as we confirm your UPI payment, usually within a few hours." : canPurchase ? (byUpi ? `Pay by UPI straight to Paire: scan the QR code, or open PhonePe, Google Pay, Paytm or any UPI app.${byCcavenue ? " Or pay by card, netbanking or wallet through CCAvenue." : ""}` : ccavenueOnly ? "Pay securely with cards, UPI, netbanking or wallets via CCAvenue. You'll come back here after paying." : webCheckout ? "Pay securely with UPI, cards or netbanking via Razorpay." : "Pay securely through your app store.") : premium.data?.active ? `Available until ${new Date(premium.data.expiresAt!).toLocaleString("en-IN")}.` : "Purchases aren’t available yet. You won’t be charged."}</Text>
       </YStack>
     }>
       <YStack paddingTop="$4" gap="$5">
@@ -135,7 +159,7 @@ export function PremiumScreen() {
           <UpiPayPanel order={openOrder} onSubmitted={(next) => { setShownOrder(next); void upiOrder.refetch(); }} />
         ) : null}
         {premium.data?.purchaseBlockReason === "verification-required" ? <YStack gap="$2"><Text color="$textMuted">Verify your photos before buying a pass, so you can use it straight away.</Text><SecondaryButton onPress={() => navigation.navigate("Verification")}>Verify my photos</SecondaryButton></YStack> : null}
-        <SecondaryButton onPress={() => void premium.refetch()} loading={premium.isFetching}>Refresh pass status</SecondaryButton>
+        <SecondaryButton onPress={() => void refreshStatus()} loading={premium.isFetching}>Refresh pass status</SecondaryButton>
         {nativeBillingAvailable ? <SecondaryButton loading={busy} onPress={() => void act(true)}>Restore purchases</SecondaryButton> : null}
         <YStack gap="$3">
           <Text fontSize="$5" fontWeight="700">What Plus adds</Text>
@@ -157,7 +181,7 @@ export function PremiumScreen() {
           <Text fontSize="$2" color="$textMuted" lineHeight={21}>{paidChat ? "Joining, see everyone who likes you, mutual matching, likes with notes, reading every message you receive, Vibe first, Duos, AI icebreakers, every privacy control (incognito, private photos, notes only, I'll message first), photo verification, and reporting, blocking and unmatching. Sending messages needs Plus or Unlimited Chat. Prices are the same for men and women." : "See everyone who likes you, chat with your matches, likes with notes, Vibe first, Duos, AI icebreakers, every privacy control (incognito, private photos, notes only, I'll message first) and photo verification. Prices are the same for men and women."}</Text>
           {chat?.enforceFrom ? <Text fontSize="$2" color="$text" lineHeight={21}>{`From ${new Date(chat.enforceFrom).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}, sending messages will need Paire Plus or a one-time ₹${chat.unlock.priceInr} Unlimited Chat unlock. Reading messages stays free.`}</Text> : null}
           {allowance.data && !allowance.isError ? <Text fontSize="$2" color="$textMuted" lineHeight={21}>Your current allowance: {allowance.data.limits.likes} likes and {allowance.data.limits.supers} Super Likes per day. Resets daily at {resetTime}.</Text> : <Text fontSize="$2" color="$textMuted">Free discovery limits reset every day.</Text>}
-          <Text fontSize="$1" color="$textMuted">{byUpi ? "Prices include taxes. You pay once by UPI, straight to Paire; nothing renews." : webCheckout ? "Prices include taxes. You pay once through Razorpay; nothing renews." : "Store prices are shown before payment when passes are available."} Paying never guarantees a match, and safety is never for sale.</Text>
+          <Text fontSize="$1" color="$textMuted">{byUpi ? "Prices include taxes. You pay once by UPI, straight to Paire; nothing renews." : ccavenueOnly ? "Prices include taxes. You pay once through CCAvenue; nothing renews." : webCheckout ? "Prices include taxes. You pay once through Razorpay; nothing renews." : "Store prices are shown before payment when passes are available."} Paying never guarantees a match, and safety is never for sale.</Text>
           <Text fontSize="$1" color="$primary" accessibilityRole="link" onPress={() => void Linking.openURL(legal.refundsUrl)}>Cancellation and refund policy</Text>
         </YStack>
       </YStack>

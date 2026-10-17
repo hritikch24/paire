@@ -6,6 +6,9 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | `2f794d7` | CCAvenue replaces direct UPI (paire.in@ybl) for new orders while CCAvenue sells; submitted UPI orders still confirmable. Pricing, llms.txt, Terms, Refunds and Privacy copy name CCAvenue (Infibeam Avenues). | pushed |
+| 2026-10-17 | `c47a2eb` | CCAvenue returns buyers through `www.paire.in/pay/ccavenue/` (Vercel rewrite to `ccavenueResponse`), the site its keys are registered for. | pushed |
+| 2026-10-17 | `7fb6177` | CCAvenue integration (cards, UPI, netbanking, wallets) for Unlimited Chat and Plus on the web. Encrypted redirect checkout, and grants only after CCAvenue's order status API confirms the payment; automatic duplicate refunds, refunds and chargebacks handled. **Off** behind `MUSE_CCAVENUE_ENABLED`, `MUSE_CCAVENUE_LIVE` and `runtime/trust.ccavenueSales`. See `docs/ccavenue.md`. | pushed |
 | 2026-10-17 | `a35663c` | Signed-in profile share links, opt-in browser match/message push, returning-member activity/sign-in counts and 10 daily free likes (Plus remains 100). 460 automated checks and emulator browser QA passed. | pushed, Vercel, Firebase (14 functions) |
 | 2026-10-17 | `3247544` | Compact browser Discover empty state with one Expand search action, explicit wider age/distance limits, automatic feed reload and no overlapping footer/setup prompts; feed uses current limits before index sync completes. Full verification (452 tests), empty-state/expansion browser QA and card-layout regression passed. | pushed, Vercel, Firebase (`getDiscoverFeed`) |
 | 2026-10-17 | `a4392a0` | Legal postal address masked behind a black bar with an accessible reveal control on Contact and Privacy; narrow-screen legal tables and links wrap. Address supplied through the production environment; 452 automated checks and mobile/desktop reveal checks passed. | pushed, Vercel |

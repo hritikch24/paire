@@ -1,5 +1,5 @@
 import type { ChatAccess } from "../src/services/chatAccessService";
-import { draftFor, saveDraft, sendLocked } from "../src/utils/chatAccess";
+import { draftFor, saveDraft, sendLocked, stashDrafts } from "../src/utils/chatAccess";
 
 const NOW = 1_800_000_000_000;
 const HOUR = 60 * 60 * 1000;
@@ -48,5 +48,26 @@ describe("drafts", () => {
     expect(draftFor("m2")).toBe("");
     saveDraft("m1", "");
     expect(draftFor("m1")).toBe("");
+  });
+
+  it("survive a full-page payment redirect in the same tab, once", () => {
+    const store = new Map<string, string>();
+    const sessionStorage = { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => void store.set(key, value), removeItem: (key: string) => void store.delete(key) };
+    Object.assign(globalThis, { sessionStorage });
+    try {
+      saveDraft("m3", "See you at 7?");
+      stashDrafts();
+      // The page reloads after CCAvenue: a fresh copy of the module, with nothing in memory.
+      jest.isolateModules(() => {
+        const fresh = require("../src/utils/chatAccess") as typeof import("../src/utils/chatAccess");
+        expect(fresh.draftFor("m3")).toBe("");
+        fresh.restoreDrafts();
+        expect(fresh.draftFor("m3")).toBe("See you at 7?");
+      });
+      expect(store.size).toBe(0);
+    } finally {
+      delete (globalThis as { sessionStorage?: unknown }).sessionStorage;
+      saveDraft("m3", "");
+    }
   });
 });

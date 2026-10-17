@@ -493,6 +493,10 @@ service cloud.firestore {
     match /upiSlots/{amount} {
       allow read, write: if false;
     }
+    // CCAvenue orders (Unlimited Chat and Plus): the payment audit trail.
+    match /ccavenueOrders/{orderId} {
+      allow read, write: if false;
+    }
     match /runtime/{docId} {
       allow read, write: if false;
     }

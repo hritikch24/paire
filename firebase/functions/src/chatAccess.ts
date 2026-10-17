@@ -13,6 +13,8 @@ import { consumeDailyQuota } from "./quota";
 import { razorpay } from "./razorpayClient";
 import { verifiedUsers } from "./trust";
 import { openUpiOrder, upiSalesOpen } from "./upiPayments";
+import { openCcavenueOrder } from "./ccavenue";
+import { ccavenueSalesOpen, upiVpa } from "./chatEntitlement";
 
 /**
  * Unlimited Chat: ₹49 once, for the buyer's account only, unlocks sending in
@@ -73,20 +75,30 @@ export type UnlockOffer = {
   status: "owned" | "available" | "pending" | "unavailable";
   priceInr: number;
   reason?: "sales-off" | "no-match" | "verification-required" | "account";
-  /** How it can be paid right now: Razorpay Checkout, and/or UPI into Paire's own account. */
-  methods: Array<"razorpay" | "upi">;
+  /** How it can be paid right now: Razorpay Checkout, UPI into Paire's own account, and/or CCAvenue. */
+  methods: Array<"razorpay" | "upi" | "ccavenue">;
   /** A UPI payment waiting for confirmation (the member has entered its UTR). */
   upiPending?: boolean;
+  /** A CCAvenue payment the bank is still confirming ("Check payment status" asks CCAvenue). */
+  ccavenuePending?: boolean;
 };
 
 async function unlockOffer(uid: string, access: ChatAccessMirror | null): Promise<UnlockOffer> {
   const priceInr = CHAT_UNLOCK.amountPaise / 100;
-  const methods: UnlockOffer["methods"] = [...((await salesOpen()) ? ["razorpay" as const] : []), ...((await upiSalesOpen()) ? ["upi" as const] : [])];
+  const methods: UnlockOffer["methods"] = [
+    ...((await salesOpen()) ? ["razorpay" as const] : []),
+    ...((await upiSalesOpen()) ? ["upi" as const] : []),
+    ...((await ccavenueSalesOpen()) ? ["ccavenue" as const] : [])
+  ];
   if (access?.unlimited) return { status: "owned", priceInr, methods };
   const checkout = await db.doc(`chatUnlockCheckout/${uid}`).get();
   if (checkout.get("state") === "pending" && Date.now() - (Number(checkout.get("updatedAt")) || 0) < CHAT_UNLOCK.checkoutReuseMs) return { status: "pending", priceInr, methods };
-  const upiOrder = methods.includes("upi") ? await openUpiOrder(uid) : null;
+  // Even after direct UPI gives way to CCAvenue, a UPI payment already submitted is still being confirmed.
+  const upiOrder = methods.includes("upi") || upiVpa() ? await openUpiOrder(uid) : null;
   if (upiOrder?.get("status") === "submitted") return { status: "pending", priceInr, methods, upiPending: true };
+  // Any open CCAvenue order the bank is still confirming, even if sales were paused since.
+  const ccavenueOrder = await openCcavenueOrder(uid, "chat");
+  if (ccavenueOrder?.get("awaiting") === true) return { status: "pending", priceInr, methods, ccavenuePending: true };
   if (!access) return { status: "unavailable", priceInr, methods, reason: "account" };
   if (!methods.length) return { status: "unavailable", priceInr, methods, reason: "sales-off" };
   if (!(await hasHadMatch(uid))) return { status: "unavailable", priceInr, methods, reason: "no-match" };

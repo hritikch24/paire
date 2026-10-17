@@ -34,6 +34,8 @@ export type ChatPolicy = {
   upiSales: boolean;
   /** New Paire Plus passes can be bought through Razorpay. Missing = yes (as before). */
   razorpayPlusSales: boolean;
+  /** Unlimited Chat and Plus can be paid through CCAvenue (also needs MUSE_CCAVENUE_ENABLED and CCAvenue keys). */
+  ccavenueSales: boolean;
 };
 
 export type ChatAccessMirror = { unlimited: boolean; premiumUntil: number };
@@ -48,7 +50,8 @@ export function parseChatPolicy(data: unknown): ChatPolicy {
     legacyGraceUntil: ms(raw.legacyGraceUntil),
     unlockSales: raw.unlockSales === true,
     upiSales: raw.upiSales === true,
-    razorpayPlusSales: raw.razorpayPlusSales !== false
+    razorpayPlusSales: raw.razorpayPlusSales !== false,
+    ccavenueSales: raw.ccavenueSales === true
   };
 }
 

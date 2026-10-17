@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./admin";
+import { CcavenueMode, ccavenueMode } from "./lib/ccavenue";
 import { ChatAccessMirror, ChatPolicy, parseChatPolicy } from "./lib/chatAccess";
 
 let cachedPolicy: { policy: ChatPolicy; at: number } | null = null;
@@ -52,9 +53,30 @@ export const upiVpa = () => {
   return /^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9]{2,64}$/.test(vpa) ? vpa : null;
 };
 
-/** UPI checkout is on: a valid UPI ID is configured and runtime/trust.upiSales is set. */
+/**
+ * Direct UPI checkout is on: a valid UPI ID is configured, runtime/trust.upiSales is set,
+ * and CCAvenue isn't selling (CCAvenue takes UPI too, and confirms it automatically, so it
+ * replaces direct UPI for new orders). Open UPI orders can still be paid and reviewed.
+ */
 export async function upiSalesOpen(): Promise<boolean> {
-  return Boolean(upiVpa()) && (await chatPolicy()).upiSales;
+  return Boolean(upiVpa()) && (await chatPolicy()).upiSales && !(await ccavenueSalesOpen());
+}
+
+/**
+ * The CCAvenue environment new orders may open in, if any: CCAVENUE_ENV with a
+ * merchant id and access code, plus MUSE_CCAVENUE_LIVE=true (explicit approval)
+ * for live money, or MUSE_BILLING_SANDBOX=true for the test environment.
+ */
+export function ccavenueSellingMode(): CcavenueMode | null {
+  const mode = ccavenueMode(process.env.CCAVENUE_ENV);
+  if (!mode || !process.env.CCAVENUE_MERCHANT_ID?.trim() || !process.env.CCAVENUE_ACCESS_CODE?.trim()) return null;
+  if (mode === "live") return process.env.MUSE_CCAVENUE_LIVE === "true" ? "live" : null;
+  return process.env.MUSE_BILLING_SANDBOX === "true" ? "test" : null;
+}
+
+/** CCAvenue checkout is on: MUSE_CCAVENUE_ENABLED, a selling mode, and runtime/trust.ccavenueSales. */
+export async function ccavenueSalesOpen(): Promise<boolean> {
+  return process.env.MUSE_CCAVENUE_ENABLED === "true" && ccavenueSellingMode() !== null && (await chatPolicy()).ccavenueSales;
 }
 
 /** Account deletion: the mirror goes; payment records stay for tax law. */
