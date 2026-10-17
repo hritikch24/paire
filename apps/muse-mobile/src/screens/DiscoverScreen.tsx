@@ -263,6 +263,13 @@ function DiscoveryExperience() {
   const deckRef = useRef<SwipeDeckHandle>(null);
   const cursorRef = useRef<FeedCursor | null>(null);
   const exhaustedRef = useRef(false);
+  // Web, Paire Plus: once everyone new is seen, the feed carries on with people passed on before.
+  const revisitRef = useRef(false);
+  const [revisiting, setRevisiting] = useState(false);
+  const plusRef = useRef(plus);
+  plusRef.current = plus;
+  const deckNowRef = useRef<DiscoverProfile[]>([]);
+  deckNowRef.current = deck;
   const loadingRef = useRef(false);
   const seenRef = useRef(new Set<string>());
 
@@ -275,6 +282,8 @@ function DiscoveryExperience() {
       generationRef.current += 1;
       cursorRef.current = null;
       exhaustedRef.current = false;
+      revisitRef.current = false;
+      setRevisiting(false);
       seenRef.current = new Set();
       setStatus("loading");
     }
@@ -285,11 +294,19 @@ function DiscoveryExperience() {
       let fresh: DiscoverProfile[] = [];
       // A page can come back empty when everything scanned was filtered out; keep going a little.
       for (let attempt = 0; attempt < 3 && !fresh.length && !exhaustedRef.current; attempt += 1) {
-        const page = await fetchFeedPage(cursorRef.current, filter);
+        const page = await fetchFeedPage(cursorRef.current, filter, revisitRef.current);
         if (generation !== generationRef.current) return;
         fresh = page.profiles.filter((profile) => !seenRef.current.has(profile.uid));
         cursorRef.current = page.cursor;
         exhaustedRef.current = page.cursor === null;
+        if (exhaustedRef.current && !revisitRef.current && !filter && plusRef.current && Platform.OS === "web") {
+          // Everyone new is seen: start over, now including people passed on before (likes never return).
+          revisitRef.current = true;
+          setRevisiting(true);
+          cursorRef.current = null;
+          exhaustedRef.current = false;
+          seenRef.current = new Set([...deckNowRef.current, ...fresh].map((profile) => profile.uid));
+        }
       }
       fresh.forEach((profile) => seenRef.current.add(profile.uid));
       setDeck((current) => (reset ? fresh : [...current, ...fresh]));
@@ -337,6 +354,12 @@ function DiscoveryExperience() {
   useEffect(() => {
     void load(true);
   }, [load, preferencesKey]);
+
+  // A Plus pass that starts while the deck is empty (bought from the prompt below) opens up
+  // everyone passed on before straight away.
+  useEffect(() => {
+    if (plus && status === "ready" && exhausted && !deck.length && !revisitRef.current && !filterRef.current) void load(true);
+  }, [deck.length, exhausted, load, plus, status]);
 
   useEffect(() => {
     if (status === "ready" && deck.length < REFILL_BELOW && !exhausted) {
@@ -555,7 +578,7 @@ function DiscoveryExperience() {
               <SecondaryButton onPress={() => setFilter(null)}>Show everyone</SecondaryButton>
             </EmptyState>
           ) : !top && Platform.OS === "web" ? (
-            <DiscoverEmpty onReload={() => load(true)} />
+            <DiscoverEmpty onReload={() => load(true)} plus={plus} revisited={revisiting} onGetPlus={() => navigation.navigate("Premium")} />
           ) : !top ? (
             <EmptyState
               testID="discover-empty"

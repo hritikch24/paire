@@ -2,6 +2,10 @@
 
 Last updated: 2026-10-17
 
+## See everyone again with Paire Plus (2026-10-17)
+- **Free members** who have seen everyone in their range get a Paire Plus offer on the web instead of "You're all caught up" (with "Expand search" still there).
+- **Plus members** go straight on: once everyone new is seen, the feed brings back the people they passed on (never likes, matches or blocks), and they can like them this time. A pass bought from the prompt opens this up immediately. Server: `getDiscoverFeed({ revisit })` (Plus only) and second-look swipes in `swipe`. Tests: `integration/revisitFeed.integration.test.ts`.
+
 ## CCAvenue payments (2026-10-17)
 - **Web payments move to CCAvenue** (UPI, cards, netbanking, wallets) for Unlimited Chat (₹49) and Paire Plus passes. The server prices and owns each order and grants only after CCAvenue's order status API confirms it. Duplicates and payments for deleted accounts are refunded automatically; refunds and chargebacks end what the order bought. Members return to the chat they paid from with their draft kept. Details: `docs/ccavenue.md`.
 - **Replaces direct UPI:** while CCAvenue sells, UPI to paire.in@ybl isn't offered for new orders; already-submitted UPI payments are still confirmed by moderators. Site, Terms, Refunds and Privacy copy name CCAvenue.

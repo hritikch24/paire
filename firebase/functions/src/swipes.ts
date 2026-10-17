@@ -83,8 +83,10 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
       supers: Math.max(0, limits.supersPerDay - used.supers)
     });
 
-    // Retries of the same swipe are idempotent.
-    if (existingSnap.exists) {
+    // Retries of the same swipe are idempotent. Paire Plus members can swipe again on
+    // someone they passed on (they see them again once everyone new is seen); likes stay final.
+    const secondLook = existingSnap.get("type") === "nope" && type !== "nope" && limits.priority;
+    if (existingSnap.exists && !secondLook) {
       const active = matchSnap.exists && matchSnap.get("active") !== false;
       return { matched: false, matchId: active ? matchId : null, remaining: remaining(), me: null };
     }
