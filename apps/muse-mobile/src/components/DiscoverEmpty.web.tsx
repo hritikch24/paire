@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Text, YStack } from "tamagui";
-import { PrimaryButton } from "./MuseButton";
+import { PrimaryButton, SecondaryButton } from "./MuseButton";
 import { showToast } from "./Toast";
 import { friendlyError } from "../services/errors";
 import { updateSettings } from "../services/profileService";
@@ -9,7 +9,20 @@ import { useAuthStore } from "../store/authStore";
 import { MIN_AGE, MAX_AGE } from "../utils/age";
 import { withSettingsDefaults } from "../utils/profile";
 
-export function DiscoverEmpty({ onReload }: { onReload: () => Promise<void> }) {
+type Props = {
+  onReload: () => Promise<void>;
+  /** A Paire Plus pass is running. */
+  plus: boolean;
+  /** The feed has already gone back through people passed on before (Plus). */
+  revisited: boolean;
+  onGetPlus: () => void;
+};
+
+/**
+ * Everyone who fits has been seen. Without Plus: offer Plus, which brings back
+ * everyone passed on before (to like this time). With Plus: they've seen those too.
+ */
+export function DiscoverEmpty({ onReload, plus, revisited, onGetPlus }: Props) {
   const uid = useAuthStore((state) => state.user?.uid);
   const settings = withSettingsDefaults(useAuthStore((state) => state.settings));
   const [busy, setBusy] = useState(false);
@@ -38,9 +51,31 @@ export function DiscoverEmpty({ onReload }: { onReload: () => Promise<void> }) {
     }
   };
 
+  if (!plus && !isSupportView) {
+    return (
+      <YStack testID="discover-empty-plus" flex={1} alignItems="center" justifyContent="center" paddingVertical="$5" paddingHorizontal="$3" gap="$3">
+        <Text fontSize="$5" fontWeight="700" textAlign="center">You've seen everyone for now</Text>
+        <Text fontSize="$2" color="$textMuted" textAlign="center" maxWidth={300} lineHeight={20}>
+          Get Paire Plus to see everyone in your range again, including people you passed on, and like them this time. Plus also gives you 100 likes and 5 Super Likes a day.
+        </Text>
+        <YStack width="100%" maxWidth={280} gap="$2">
+          <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>Get Paire Plus</PrimaryButton>
+          <SecondaryButton testID="discover-expand" loading={busy} disabled={!uid} onPress={() => void expand()}>
+            {wider ? `Expand search to ages ${ageMin}–${ageMax}` : "Check for new people"}
+          </SecondaryButton>
+        </YStack>
+      </YStack>
+    );
+  }
+
   return (
     <YStack testID="discover-empty" flex={1} alignItems="center" justifyContent="center" paddingVertical="$5" paddingHorizontal="$3" gap="$3">
       <Text fontSize="$5" fontWeight="700" textAlign="center">You're all caught up</Text>
+      {plus && revisited ? (
+        <Text testID="discover-revisited" fontSize="$2" color="$textMuted" textAlign="center" maxWidth={280}>
+          You've also seen everyone you passed on before.
+        </Text>
+      ) : null}
       <Text testID="discover-expand-description" fontSize="$2" color="$textMuted" textAlign="center" maxWidth={280}>
         {wider ? `Try ages ${ageMin}–${ageMax}${settings.locationEnabled && maxDistanceKm !== null ? ` within ${maxDistanceKm} km` : settings.locationEnabled ? " at any distance" : ""}.` : "New people will appear here when they join."}
       </Text>

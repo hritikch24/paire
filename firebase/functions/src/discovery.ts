@@ -98,8 +98,12 @@ export const onModerationWritten = onDocumentWritten(
   }
 );
 
-/** Uids among `candidates` the viewer already swiped on, blocked, or was blocked by. */
-export async function loadExclusions(uid: string, candidates: string[]): Promise<Set<string>> {
+/**
+ * Uids among `candidates` the viewer already swiped on, blocked, or was blocked by.
+ * With `includePassed` (Paire Plus "see them again"), people the viewer only passed
+ * on stay in; likes, Super Likes and blocks never come back.
+ */
+export async function loadExclusions(uid: string, candidates: string[], includePassed = false): Promise<Set<string>> {
   if (!candidates.length) return new Set();
   const refs = candidates.flatMap((candidate) => [
     db.doc(`swipes/${uid}/outgoing/${candidate}`),
@@ -109,7 +113,9 @@ export async function loadExclusions(uid: string, candidates: string[]): Promise
   const snaps = await db.getAll(...refs);
   const excluded = new Set<string>();
   candidates.forEach((candidate, index) => {
-    if (snaps.slice(index * 3, index * 3 + 3).some((snap) => snap.exists)) {
+    const [swiped, blocked, blockedBy] = snaps.slice(index * 3, index * 3 + 3);
+    const passedOnly = includePassed && swiped.get("type") === "nope";
+    if ((swiped.exists && !passedOnly) || blocked.exists || blockedBy.exists) {
       excluded.add(candidate);
     }
   });
@@ -138,7 +144,7 @@ export const getDiscoverFeed = onCall(
   async (request): Promise<{ profiles: DiscoverProfile[]; cursor: FeedCursor | null }> => {
     const uid = await requireReadAuth(request);
     await requireVerifiedUsers([uid], undefined, uid, isSupportSession(request));
-    const { cursor: startCursor, ageGap, garba } = parseFeedInput(request.data);
+    const { cursor: startCursor, ageGap, garba, revisit } = parseFeedInput(request.data);
     await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "feedCalls", LIMITS.feedCallsPerDay);
 
     const [indexSnap, settingsSnap, viewerProfileSnap, billingSnap] = await db.getAll(
@@ -150,6 +156,8 @@ export const getDiscoverFeed = onCall(
     // Age-gap filtering, and seeing who holds which side, are Paire Plus features.
     const plus = limitsFor(billingSnap.data()).priority;
     if (ageGap && !plus) throw new HttpsError("permission-denied", "The age-gap filter comes with Paire Plus.");
+    // Seeing people you passed on again, once everyone new is seen, is a Paire Plus feature.
+    if (revisit && !plus) throw new HttpsError("permission-denied", "Seeing people again comes with Paire Plus.");
     const indexedViewer = indexSnap.exists
       ? (indexSnap.data() as DiscoveryEntry)
       : isSupportSession(request) ? null : await syncDiscoveryIndex(uid);
@@ -236,7 +244,8 @@ export const getDiscoverFeed = onCall(
       );
       const excluded = await loadExclusions(
         uid,
-        compatible.map((entry) => entry.uid)
+        compatible.map((entry) => entry.uid),
+        revisit
       );
       const currentVerified = await verifiedUsers(compatible.map((entry) => entry.uid));
       const incognito = await hiddenIncognito(uid, compatible);

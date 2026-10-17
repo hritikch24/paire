@@ -332,3 +332,17 @@ Final regression: 251 automated tests, all six Android UI flows and the combined
 
 ## 2026-10-17: Paire Plus by UPI; Razorpay checkout off
 - Plus passes are now paid by UPI to paire.in@ybl with moderator approval (`4e4f908`). The pay panel offers a QR code and, on phones, PhonePe / Google Pay / Paytm / any-UPI-app buttons. New Razorpay Plus orders are switched off (`razorpayPlusSales`); the webhook still handles earlier Razorpay payments. Website, pricing and legal copy updated. Deployed (Firebase functions, Vercel).
+
+## 2026-10-17: CCAvenue payments (Unlimited Chat and Plus)
+- New web checkout through CCAvenue (UPI, cards, netbanking, wallets): `firebase/functions/src/ccavenue.ts` (`createCcavenueOrder`, `confirmCcavenueOrder`, `ccavenueResponse`, `settleCcavenueOrder`), `lib/ccavenue.ts` (AES-128-CBC per CCAvenue's kit, request building, status verdicts). Grants only on CCAvenue's order status API, exactly once; pending, duplicate (auto-refund), orphaned, refunded, chargeback and test-money cases handled. Records in `ccavenueOrders`, shown in member admin and metrics.
+- App (web only): `services/ccavenueService.ts`, `hooks/useCcavenueReturn.ts`; `ChatAccessCard` and `PremiumScreen` buttons; drafts and the chat survive the full-page redirect (`sessionStorage`).
+- Return address `www.paire.in/pay/ccavenue/` via a `vercel.json` rewrite, because CCAvenue only accepts the site its keys are registered for.
+- CCAvenue replaces direct UPI (paire.in@ybl) for new orders while it sells; submitted UPI orders stay reviewable. Site, llms.txt, Terms, Refunds and Privacy copy updated.
+- Switches: `MUSE_CCAVENUE_ENABLED`, `MUSE_CCAVENUE_LIVE`, `CCAVENUE_*`, secret `CCAVENUE_WORKING_KEY`, `runtime/trust.ccavenueSales` (`scripts/set-runtime-flags.mjs --ccavenue-sales`).
+- Tests: `test/ccavenue.test.ts` (encryption against an OpenSSL vector), `integration/ccavenuePayments.integration.test.ts` (fake CCAvenue API), app draft test. Functions 234 and app 106 unit tests pass. One rules test and one end-to-end test that fail on `main` too (rules expression limit when sending in chats) are unchanged. No real CCAvenue payment made yet.
+
+## 2026-10-17: See everyone again with Paire Plus
+- Web Discover: when a free member has seen everyone, `DiscoverEmpty.web.tsx` offers Paire Plus ("see everyone in your range again, including people you passed on") with Expand search as the second choice. Plus members continue automatically into people they passed on; "You've also seen everyone you passed on before" when that runs out.
+- Server: `parseFeedInput` takes `revisit`; `getDiscoverFeed` allows it only with Plus and `loadExclusions(..., includePassed)` keeps passes (likes, Super Likes and blocks still excluded). `swipe` lets a Plus member turn an earlier pass into a like or Super Like; repeats stay idempotent and free members can't change a pass.
+- Paire Plus screen lists "See everyone again" (web).
+- Tests: `integration/revisitFeed.integration.test.ts` (free refused, passes return for Plus, likes never return, second-look like matches, blocks excluded); feed-input unit tests updated. The one end-to-end test that fails on `main` too leaves `requireVerification` on, which can make a later UPI test fail when run in the same emulator session.

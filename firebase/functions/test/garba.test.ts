@@ -76,7 +76,7 @@ describe("Garba Nights", () => {
   });
 
   test("the feed takes one filter at a time", () => {
-    expect(parseFeedInput({ cursor: null, garba: true })).toEqual({ cursor: null, ageGap: null, garba: true });
+    expect(parseFeedInput({ cursor: null, garba: true })).toEqual({ cursor: null, ageGap: null, garba: true, revisit: false });
     expect(() => parseFeedInput({ garba: "yes" })).toThrow("garba is invalid.");
     expect(() => parseFeedInput({ garba: true, ageGap: "older" })).toThrow("Choose one filter at a time.");
   });

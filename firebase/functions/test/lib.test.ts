@@ -297,12 +297,15 @@ describe("input validation", () => {
   });
 
   it("parses optional feed cursors", () => {
-    expect(parseFeedInput(undefined)).toEqual({ cursor: null, ageGap: null, garba: false });
+    expect(parseFeedInput(undefined)).toEqual({ cursor: null, ageGap: null, garba: false, revisit: false });
     expect(parseFeedInput({ cursor: { lastActiveAt: 5, uid: "abc" } })).toEqual({
       cursor: { lastActiveAt: 5, uid: "abc" },
       ageGap: null,
-      garba: false
+      garba: false,
+      revisit: false
     });
     expect(() => parseFeedInput({ cursor: { lastActiveAt: "5", uid: "abc" } })).toThrow();
+    expect(parseFeedInput({ cursor: null, revisit: true })).toMatchObject({ revisit: true });
+    expect(() => parseFeedInput({ revisit: "yes" })).toThrow("revisit is invalid.");
   });
 });

@@ -31,9 +31,9 @@ describe("age-gap dating", () => {
   });
 
   test("the feed accepts only known filter values", () => {
-    expect(parseFeedInput({ cursor: null, ageGap: "older" })).toEqual({ cursor: null, ageGap: "older", garba: false });
-    expect(parseFeedInput({ cursor: null })).toEqual({ cursor: null, ageGap: null, garba: false });
-    expect(parseFeedInput(undefined)).toEqual({ cursor: null, ageGap: null, garba: false });
+    expect(parseFeedInput({ cursor: null, ageGap: "older" })).toEqual({ cursor: null, ageGap: "older", garba: false, revisit: false });
+    expect(parseFeedInput({ cursor: null })).toEqual({ cursor: null, ageGap: null, garba: false, revisit: false });
+    expect(parseFeedInput(undefined)).toEqual({ cursor: null, ageGap: null, garba: false, revisit: false });
     expect(() => parseFeedInput({ ageGap: "sugarDaddy" })).toThrow("ageGap is invalid.");
   });
 });
