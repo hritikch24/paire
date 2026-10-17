@@ -36,7 +36,7 @@ export const core = [
 <p>Questions, press or partnerships: see our <a href="/contact/">contact page</a>.</p>`,
     faq: [
       ["Is Paire an Indian app?", "Yes. Paire is built in India, starting in Delhi NCR, and designed for how people date in India: notes with every like, women-first controls, no caste filters and prices in rupees."],
-      ["Is Paire free?", "Joining, 25 likes a day, matching, seeing who likes you, reading messages and every privacy and safety control are free. Sending messages needs Paire Plus (passes from ₹20 that never auto-renew) or a one-time ₹49 Unlimited Chat unlock."],
+      ["Is Paire free?", "Joining, 10 likes a day, matching, seeing who likes you, reading messages and every privacy and safety control are free. Sending messages needs Paire Plus (passes from ₹20 that never auto-renew) or a one-time ₹49 Unlimited Chat unlock."],
       ["Is Paire only for serious relationships?", "No. Paire covers everything from casual dating to marriage-minded relationships. You set your intention and can choose to see only people who want the same."]
     ],
     related: ["features/", "verification/", "pricing/", "guides/best-dating-apps-india/"]
@@ -44,11 +44,11 @@ export const core = [
   {
     path: "pricing/", crumb: "Pricing", published: D, updated: D, eyebrow: "PRICING",
     title: "Paire Pricing — Free Dating App, Plus Passes from ₹20 (No Auto-Renew)",
-    description: "Paire is free to join and match: 25 likes a day, see who likes you, read your messages. To send messages, get Paire Plus (₹20 a day, ₹99 a week or ₹299 for 30 days) or Unlimited Chat for ₹49 once. Nothing auto-renews, and men and women pay the same.",
+    description: "Paire is free to join and match: 10 likes a day, see who likes you, read your messages. To send messages, get Paire Plus (₹20 a day, ₹99 a week or ₹299 for 30 days) or Unlimited Chat for ₹49 once. Nothing auto-renews, and men and women pay the same.",
     h1: "Free first. <em>Fair always.</em>",
     lede: "Joining, matching and safety on Paire are free. To send messages, choose a short Paire Plus pass or a one-time ₹49 Unlimited Chat unlock. Both end or stay on their own terms: nothing to cancel, no surprise renewals.",
     summary: [
-      "Free forever: 25 likes a day (each with a note), 1 Super Like a day, see everyone who likes you, mutual matching, reading every message you receive, every privacy and safety control.",
+      "Free forever: 10 likes a day (each with a note), 1 Super Like a day, see everyone who likes you, mutual matching, reading every message you receive, every privacy and safety control.",
       "Sending messages: your own Paire Plus pass, or Unlimited Chat for ₹49 once (all current and future matches, no expiry). Each person needs their own access to send.",
       "Paire Plus: ₹20 for 24 hours, ₹99 for 7 days, ₹299 for 30 days.",
       "Plus adds unlimited messaging while it runs, 100 likes and 5 Super Likes a day, priority likes and the age-gap filter.",
@@ -57,7 +57,7 @@ export const core = [
     body: `
 <h2>What's free</h2>
 <table><thead><tr><th>Feature</th><th>Free</th><th>Paire Plus</th></tr></thead><tbody>
-<tr><td>Likes per day (each can carry a note)</td><td>25</td><td>100</td></tr>
+<tr><td>Likes per day (each can carry a note)</td><td>10</td><td>100</td></tr>
 <tr><td>Super Likes per day</td><td>1</td><td>5</td></tr>
 <tr><td>See everyone who likes you</td><td>Yes</td><td>Yes</td></tr>
 <tr><td>Read the messages you receive</td><td>Yes</td><td>Yes</td></tr>
@@ -96,7 +96,7 @@ export const core = [
     lede: "Paire is built around conversations that start well and people who are who they say they are. Here is every feature, and what it costs (mostly nothing).",
     body: `
 <h2>Likes with notes (Sparks)</h2>
-<p>Every like on Paire can carry a short note, so the other person sees why you liked them. Notes are screened for abuse before they are delivered. Everyone gets 25 likes and 1 Super Like a day for free, which keeps likes considered.</p>
+<p>Every like on Paire can carry a short note, so the other person sees why you liked them. Notes are screened for abuse before they are delivered. Everyone gets 10 likes and 1 Super Like a day for free, which keeps likes considered.</p>
 <h2>See who likes you, free</h2>
 <p>Your "Likes you" list shows everyone who has liked you, with their note. On many apps this is a paid feature; on Paire it is free for everyone.</p>
 <h2>Women-first controls</h2>

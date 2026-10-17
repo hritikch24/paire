@@ -735,7 +735,7 @@ describe("stale discovery cards", () => {
     await updateDoc(doc(b.db, "users", b.uid), { isDiscoverable: true });
     await admin.doc(`moderation/${b.uid}`).set({ emailVerified: true,  cohort: "test" });
     await expect(a.call("swipe", { targetUid: b.uid, type: "like" })).rejects.toThrow(/no longer available/);
-    expect(await a.call("getDailyAllowance")).toMatchObject({ remaining: { likes: 25 } });
+    expect(await a.call("getDailyAllowance")).toMatchObject({ remaining: { likes: 10 } });
     await admin.doc(`moderation/${b.uid}`).set({ emailVerified: true,  cohort: "public" });
     await a.call("swipe", { targetUid: b.uid, type: "like" });
     await updateDoc(doc(a.db, "users", a.uid, "private", "settings"), { showMe: ["woman"] });
@@ -1008,5 +1008,71 @@ describe("India v2: sparks and her rules", () => {
     const feed = await him.call<FeedResult>("getDiscoverFeed", {});
     expect(feed.profiles.map((profile) => profile.uid)).not.toContain(her.uid);
     await expect(him.call("swipe", { targetUid: her.uid, type: "like", note: "Hello" })).rejects.toThrow(/no longer available/);
+  });
+});
+
+
+describe("shared profile links and browser push ownership", () => {
+  test("the tenth free like succeeds and the eleventh is refused without resetting existing usage", async () => {
+    const viewer = await makeClient("ten-like-viewer");
+    const first = await makeClient("ten-like-first");
+    const second = await makeClient("ten-like-second");
+    await onboard(viewer, { name: "Viewer", gender: "woman", showMe: ["man"], age: 28 });
+    await onboard(first, { name: "First", gender: "man", showMe: ["woman"], age: 30 });
+    await onboard(second, { name: "Second", gender: "man", showMe: ["woman"], age: 30 });
+    const day = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const ref = admin.doc(`limits/${viewer.uid}/daily/${day}`);
+    await ref.set({ likes: 9 });
+    expect(await viewer.call("swipe", { targetUid: first.uid, type: "like" })).toMatchObject({ remaining: { likes: 0 } });
+    await expect(viewer.call("swipe", { targetUid: second.uid, type: "like" })).rejects.toMatchObject({ code: "functions/resource-exhausted" });
+    expect((await ref.get()).get("likes")).toBe(10);
+    expect(await viewer.call("getDailyAllowance")).toMatchObject({ limits: { likes: 10 }, remaining: { likes: 0 } });
+  });
+
+  test("shared profiles require matching eligibility and keep private photos, blocks and visibility private", async () => {
+    const viewer = await makeClient("share-viewer");
+    const target = await makeClient("share-target");
+    await onboard(viewer, { name: "Share viewer", gender: "woman", showMe: ["man"], age: 28 });
+    await onboard(target, { name: "Share target", gender: "man", showMe: ["woman"], age: 30 });
+    const fetch = () => viewer.call<{ profile: Record<string, unknown> | null }>("getSharedProfile", { uid: target.uid });
+    expect((await fetch()).profile).toMatchObject({ uid: target.uid, displayName: "Share target" });
+    await admin.doc(`users/${target.uid}/private/settings`).set({ privatePhotos: true }, { merge: true });
+    const privateView = (await fetch()).profile!;
+    expect(privateView.photoUrls).toEqual([]);
+    expect(privateView).not.toHaveProperty("email");
+    expect(privateView).not.toHaveProperty("location");
+    await admin.doc(`users/${target.uid}`).update({ isDiscoverable: false });
+    expect((await fetch()).profile).toBeNull();
+    await admin.doc(`users/${target.uid}`).update({ isDiscoverable: true });
+    await admin.doc(`users/${target.uid}/private/settings`).set({ incognito: true }, { merge: true });
+    expect((await fetch()).profile).toBeNull();
+    await admin.doc(`users/${target.uid}/private/settings`).set({ incognito: false, showMe: ["man"] }, { merge: true });
+    expect((await fetch()).profile).toBeNull();
+    await admin.doc(`users/${target.uid}/private/settings`).set({ showMe: ["woman"] }, { merge: true });
+    await admin.doc(`blocks/${target.uid}/blocked/${viewer.uid}`).set({ targetUid: viewer.uid });
+    expect((await fetch()).profile).toBeNull();
+    await expect(viewer.call("getSharedProfile", { uid: "bad/id" })).rejects.toMatchObject({ code: "functions/invalid-argument" });
+  });
+
+  test("browser subscriptions stay server-only, bind to the current account, and reject unsafe endpoints", async () => {
+    const first = await makeClient("push-first");
+    const second = await makeClient("push-second");
+    const { createECDH, randomBytes, createHash } = await import("node:crypto");
+    const curve = createECDH("prime256v1"); curve.generateKeys();
+    const subscription = { endpoint: `https://fcm.googleapis.com/fcm/send/fictional-${first.uid}`, keys: { auth: randomBytes(16).toString("base64url"), p256dh: curve.getPublicKey().toString("base64url") } };
+    const ref = admin.doc(`webPushSubscriptions/${createHash("sha256").update(subscription.endpoint).digest("hex")}`);
+    expect(await first.call("getWebPushConfig")).toMatchObject({ available: true });
+    await expect(first.call("registerWebPush", { subscription: { ...subscription, endpoint: "https://127.0.0.1/private" } })).rejects.toMatchObject({ code: "functions/invalid-argument" });
+    await first.call("registerWebPush", { subscription, uid: second.uid });
+    expect((await ref.get()).get("uid")).toBe(first.uid);
+    await expect(getDoc(doc(first.db, ref.path))).rejects.toMatchObject({ code: "permission-denied" });
+    await second.call("unregisterWebPush", { endpoint: subscription.endpoint });
+    expect((await ref.get()).exists).toBe(true);
+    await second.call("registerWebPush", { subscription });
+    expect((await ref.get()).get("uid")).toBe(second.uid);
+    await first.call("unregisterWebPush", { endpoint: subscription.endpoint });
+    expect((await ref.get()).exists).toBe(true);
+    await second.call("unregisterWebPush", { endpoint: subscription.endpoint });
+    expect((await ref.get()).exists).toBe(false);
   });
 });

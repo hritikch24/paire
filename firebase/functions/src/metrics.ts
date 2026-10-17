@@ -78,6 +78,8 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
 
   // Accounts (Firebase Auth), without the shared test accounts
   const testUids = new Set((await db.collection("moderation").where("cohort", "==", "test").get()).docs.map((doc) => doc.id));
+  const excludedReturnUids = new Set(testUids);
+  const returning = { signIns24h: 0, signIns7d: 0, active24h: 0, active7d: 0 };
   const accounts = { total: 0, google: 0, email: 0, emailConfirmed: 0, signedInToday: 0, signedIn7d: 0, new7d: 0 };
   type Person = { uid: string; at: number; via: "Google" | "Email"; authName?: string };
   const newPeople: Person[] = [], seenPeople: Person[] = [];
@@ -93,6 +95,12 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
       if (user.emailVerified) accounts.emailConfirmed++;
       const created = Date.parse(user.metadata.creationTime);
       const seen = Date.parse(user.metadata.lastRefreshTime || user.metadata.lastSignInTime || "");
+      if (user.customClaims?.moderator === true || user.disabled) excludedReturnUids.add(user.uid);
+      const signedIn = Date.parse(user.metadata.lastSignInTime || "");
+      if (!excludedReturnUids.has(user.uid) && signedIn - created >= dayMs) {
+        if (signedIn <= now && now - signedIn < dayMs) returning.signIns24h++;
+        if (signedIn <= now && now - signedIn < 7 * dayMs) returning.signIns7d++;
+      }
       const person = { uid: user.uid, via: user.providerData.some((provider) => provider.providerId === "google.com") ? "Google" as const : "Email" as const, authName: user.displayName };
       if (now - created < 7 * dayMs) newPeople.push({ ...person, at: created });
       if (now - seen < dayMs) seenPeople.push({ ...person, at: seen });
@@ -138,6 +146,16 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
     count(db.collection("moderation").where("verification.status", "==", "verified")),
     db.collection("razorpayOrders").where("status", "==", "paid").select("amountPaise").get()
   ]);
+  const activeMembers = await users.where("lastActiveAt", ">=", since(7 * dayMs)).select("createdAt", "lastActiveAt").get();
+  for (const doc of activeMembers.docs) {
+    if (excludedReturnUids.has(doc.id) || doc.id.startsWith("support_")) continue;
+    const active = Number(doc.get("lastActiveAt"));
+    const created = Number(doc.get("createdAt"));
+    if (active <= now && active - created >= dayMs) {
+      returning.active7d++;
+      if (now - active < dayMs) returning.active24h++;
+    }
+  }
   const upiPaid = await db.collection("upiUnlockOrders").where("status", "==", "approved").select("amountPaise", "kind").get();
   const sum = (docs: DocumentSnapshot[]) => Math.round(docs.reduce((total, doc) => total + (Number(doc.get("amountPaise")) || 0), 0) / 100);
   const upiPlus = upiPaid.docs.filter((doc) => doc.get("kind") === "plus");
@@ -158,6 +176,7 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
       pages: top(pages), sources: top(sources), devices: top(devices)
     },
     accounts,
+    returning,
     people: { newSignups: newPeople.map(describe), recentLogins: seenPeople.map(describe) },
     profiles: {
       total: profiles - testDocs.length,

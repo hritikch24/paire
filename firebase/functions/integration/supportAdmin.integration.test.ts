@@ -81,7 +81,7 @@ test("separate support identity reads the target, blocks actions, keeps the owne
   await expect(getDoc(doc(support.db, "supportSessions", started.sessionId))).rejects.toMatchObject({ code: "permission-denied" });
   await expect(updateDoc(doc(support.db, "users", target.uid), { displayName: "Changed" })).rejects.toMatchObject({ code: "permission-denied" });
   await expect(support.call("swipe", { targetUid: outsider.uid, type: "like" })).rejects.toMatchObject({ code: "functions/permission-denied" });
-  for (const name of ["deleteAccount", "createUpiUnlockOrder", "presenceBeat", "touchActivity", "syncAccountChecks", "adminListMembers", "adminStartSupportSession"]) {
+  for (const name of ["deleteAccount", "createUpiUnlockOrder", "presenceBeat", "touchActivity", "syncAccountChecks", "registerWebPush", "unregisterWebPush", "getWebPushConfig", "adminListMembers", "adminStartSupportSession"]) {
     await expect(support.call(name, { uid: outsider.uid, gender: "woman", reason })).rejects.toMatchObject({ code: "functions/permission-denied" });
   }
   await support.call("getDailyAllowance");

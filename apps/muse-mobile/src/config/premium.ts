@@ -12,7 +12,7 @@ export type PremiumPlanId = (typeof PREMIUM_PLANS)[number]["id"];
 
 /** Free and Plus daily allowances; mirrors firebase/functions/src/config.ts. */
 export const ALLOWANCE = {
-  free: { likes: 25, supers: 1 },
+  free: { likes: 10, supers: 1 },
   plus: { likes: 100, supers: 5 }
 } as const;
 

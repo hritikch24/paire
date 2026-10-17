@@ -102,7 +102,7 @@ ${NOTE}`,
     body: `
 <h2>Side by side</h2>
 <table><thead><tr><th></th><th>Paire</th><th>Hinge</th></tr></thead><tbody>
-<tr><td>Likes</td><td>${paireColumn.notes}; 25 a day free</td><td>Like a photo or prompt, optionally with a comment; limited free likes per day</td></tr>
+<tr><td>Likes</td><td>${paireColumn.notes}; 10 a day free</td><td>Like a photo or prompt, optionally with a comment; limited free likes per day</td></tr>
 <tr><td>Who likes you</td><td>${paireColumn.likes}, all at once</td><td>Free members see likes one at a time; seeing all at once is part of paid tiers</td></tr>
 <tr><td>Controls for women</td><td>${paireColumn.women}</td><td>Standard settings for everyone</td></tr>
 <tr><td>Verification</td><td>${paireColumn.verify}</td><td>Selfie verification available</td></tr>

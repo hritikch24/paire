@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | pending | Signed-in profile share links, opt-in browser match/message push, returning-member activity/sign-in counts and 10 daily free likes (Plus remains 100). | local |
 | 2026-10-17 | `3247544` | Compact browser Discover empty state with one Expand search action, explicit wider age/distance limits, automatic feed reload and no overlapping footer/setup prompts; feed uses current limits before index sync completes. Full verification (452 tests), empty-state/expansion browser QA and card-layout regression passed. | pushed, Vercel, Firebase (`getDiscoverFeed`) |
 | 2026-10-17 | `a4392a0` | Legal postal address masked behind a black bar with an accessible reveal control on Contact and Privacy; narrow-screen legal tables and links wrap. Address supplied through the production environment; 452 automated checks and mobile/desktop reveal checks passed. | pushed, Vercel |
 | 2026-10-17 | — | Configured runtime token signing and enabled owner support access only for hritikchaudhary016@gmail.com, selected by the owner. | Firebase live |

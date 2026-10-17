@@ -1,6 +1,7 @@
 import { logger } from "firebase-functions";
 import { db, messaging } from "./admin";
 import { UserSettings } from "./types";
+import { sendWebPushToUser } from "./webPush";
 import { notificationCopy } from "./lib/notificationPrivacy";
 
 export type PushKind = "matches" | "messages";
@@ -33,6 +34,8 @@ export async function sendPushToUser(uid: string, message: PushMessage): Promise
     ]);
     const settings = settingsSnap.data() as UserSettings | undefined;
     if (settings?.notifications?.[message.kind] === false) return;
+
+    await sendWebPushToUser(uid, message, settings);
 
     // Device tokens from expo-notifications are FCM tokens on Android only.
     const devices = devicesSnap.docs.filter((doc) => {

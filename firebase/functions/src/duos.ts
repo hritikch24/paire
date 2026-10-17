@@ -1,3 +1,4 @@
+import { WEB_PUSH_SECRETS } from "./webPush";
 import { DocumentSnapshot, FieldValue, Timestamp, Transaction } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { db } from "./admin";
@@ -149,7 +150,7 @@ const NO_SUCH_CODE = "That code has expired or doesn't exist. Ask your friend fo
  * A friend enters your code: this sends you a request to confirm. Tries are
  * limited per day, so codes can't be found by guessing.
  */
-export const acceptDuoInvite = onCall({ region: REGION }, async (request) => {
+export const acceptDuoInvite = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async (request) => {
   const uid = requireAuth(request);
   await requireVerifiedUsers([uid]);
   const code = normaliseInviteCode((request.data as { code?: unknown } | null)?.code);
@@ -212,7 +213,7 @@ export const acceptDuoInvite = onCall({ region: REGION }, async (request) => {
 });
 
 /** The inviter confirms (or declines) the friend who entered their code. */
-export const answerDuoRequest = onCall({ region: REGION }, async (request) => {
+export const answerDuoRequest = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async (request) => {
   const uid = requireAuth(request);
   const accept = (request.data as { accept?: unknown } | null)?.accept === true;
   const myInviteRef = db.doc(`users/${uid}/private/duoInvite`);
@@ -398,7 +399,7 @@ async function endDuo(duoId: string, endedBy: string, reason: "left" | "block"):
   return members.filter((member) => member !== endedBy);
 }
 
-export const leaveDuo = onCall({ region: REGION }, async (request) => {
+export const leaveDuo = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async (request) => {
   const uid = requireAuth(request);
   const { id, duo } = await requireActiveDuo(uid);
   const [partner] = await endDuo(id, uid, "left");
@@ -558,7 +559,7 @@ export const getDuoFeed = onCall(
  * Either friend's like counts for the pair. When the other pair already liked
  * yours, the four-person chat is created in the same transaction.
  */
-export const duoSwipe = onCall({ region: REGION }, async (request) => {
+export const duoSwipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async (request) => {
   const uid = requireAuth(request);
   const { targetDuoId, type } = parseDuoSwipeInput(request.data);
   const { id: myDuoId, duo: myDuo } = await requireActiveDuo(uid);

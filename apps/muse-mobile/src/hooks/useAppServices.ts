@@ -1,7 +1,7 @@
 import { isSupportView } from "../services/supportMode";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { showToast } from "../components/Toast";
 import { features } from "../config/features";
 import { chatTitle, subscribeToMatches } from "../services/matchService";
@@ -10,6 +10,7 @@ import {
   isMatchAlertSuppressed,
   isPushRegistered,
   registerPushToken,
+  unregisterPushToken,
   showLocalAlert
 } from "../services/notificationService";
 import { useAuthStore } from "../store/authStore";
@@ -39,6 +40,7 @@ export function usePushRegistration() {
   useEffect(() => {
     if (isSupportView || !uid) return;
     void registerPushToken(uid);
+    if (Platform.OS === "web") return () => { void unregisterPushToken(uid).catch(() => undefined); };
     const subscription = Notifications.addPushTokenListener(() => {
       void registerPushToken(uid);
     });
@@ -56,7 +58,7 @@ export function usePushRegistration() {
 export function useMatchAlerts() {
   const uid = useAuthStore((state) => state.user?.uid);
   useEffect(() => {
-    if (isSupportView || !uid || !features.notifications) return;
+    if (isSupportView || !uid || (!features.notifications && Platform.OS !== "web")) return;
     // Snapshot of what's already known, so existing matches and messages don't alert.
     let lastSeen: Map<string, number> | null = null;
 
@@ -64,7 +66,7 @@ export function useMatchAlerts() {
       if (!state.loaded || state.failed) return;
       const previous = lastSeen;
       lastSeen = new Map(state.matches.map((match) => [match.id, match.lastMessage?.createdAt ?? 0]));
-      if (!previous || isPushRegistered()) return;
+      if (!previous || (Platform.OS !== "web" && isPushRegistered())) return;
 
       for (const match of state.matches) {
         const name = chatTitle(match, uid);
@@ -100,6 +102,10 @@ export function useMatchAlerts() {
 const MESSAGE_ALERT_DELAY_MS = 1500;
 
 async function alert(channel: "matches" | "messages", title: string, body: string, data: Record<string, string>) {
+  if (Platform.OS === "web") {
+    if (useAuthStore.getState().settings?.notifications?.[channel] === false) return;
+    if (isPushRegistered() && AppState.currentState !== "active") return;
+  }
   const shown = await showLocalAlert(channel, title, body, data).catch(() => false);
   // Notifications turned off: at least tell them while they're in the app.
   if (!shown && AppState.currentState === "active") showToast(`${title}: ${body}`);

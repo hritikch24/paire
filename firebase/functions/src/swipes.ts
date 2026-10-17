@@ -1,3 +1,4 @@
+import { WEB_PUSH_SECRETS } from "./webPush";
 import { FieldValue } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { db } from "./admin";
@@ -34,7 +35,7 @@ const isPositive = (type: unknown) => type === "like" || type === "super";
  * match in the same transaction. This is the only way swipes and matches are
  * written, so a "match" always means a real mutual like.
  */
-export const swipe = onCall({ region: REGION }, async (request): Promise<SwipeResult> => {
+export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async (request): Promise<SwipeResult> => {
   const uid = requireAuth(request);
   const { targetUid, type, note } = parseSwipeInput(request.data);
   if (targetUid === uid) {

@@ -36,3 +36,6 @@ export { adminGetMember, adminListMembers } from "./memberAdmin";
 export { adminStartSupportSession, adminEndSupportSession, adminGetSupportHistory, getSupportSessionState, cleanupSupportSessions } from "./supportAdmin";
 export { createCallSession } from "./calls";
 export { cleanupPhotoChecks } from "./verificationCleanup";
+
+export { getWebPushConfig, registerWebPush, unregisterWebPush } from "./webPush";
+export { getSharedProfile } from "./sharedProfiles";

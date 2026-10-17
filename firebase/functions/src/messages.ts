@@ -1,3 +1,4 @@
+import { WEB_PUSH_SECRETS } from "./webPush";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
@@ -147,7 +148,7 @@ async function recordFlag(
  * Only medium+ flags are kept for moderators. Disclosed in the Privacy Policy.
  */
 export const onMessageCreated = onDocumentCreated(
-  { document: "matches/{matchId}/messages/{messageId}", region: REGION, secrets: ["ANTHROPIC_API_KEY"] },
+  { document: "matches/{matchId}/messages/{messageId}", region: REGION, secrets: ["ANTHROPIC_API_KEY", ...WEB_PUSH_SECRETS] },
   async (event) => {
     const message = event.data?.data() as { senderId?: string; text?: string } | undefined;
     // "system" notes ("Riya left the chat") are written by the server and need neither.

@@ -107,6 +107,15 @@
           "value": "no-store"
         }
       ]
+    },
+    {
+      "source": "/paire-push-sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
     }
   ]
 }

@@ -1,3 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
+import { callFunction } from "../services/firebase";
+import { DiscoverProfile } from "../types/models";
+import { SparkComposer } from "../components/SparkComposer";
 import { Alert } from "../services/dialog";
 import { useAppDimensions } from "../utils/useAppDimensions";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -37,14 +41,18 @@ export function ProfileViewScreen() {
   const background = theme.background?.val ?? "#FBF8F6";
   const fetched = useMemberProfile(source === "match" ? uid : undefined);
 
+  const shared = useQuery({ queryKey: ["shared-profile", me?.uid, uid], enabled: source === "shared" && Boolean(uid), retry: false,
+    queryFn: () => callFunction<{ profile: DiscoverProfile | null }>("getSharedProfile", { uid }) });
+  const [composeShared, setComposeShared] = useState(false);
   const profile: ProfileViewData | null | undefined =
-    passed ?? (source === "self" ? me : source === "match" ? (fetched.isLoading ? undefined : fetched.data) : null);
+    passed ?? (source === "self" ? me : source === "match" ? (fetched.isLoading ? undefined : fetched.data) : source === "shared" ? (shared.isLoading ? undefined : shared.data?.profile ?? null) : null);
 
   const [answering, setAnswering] = useState(false);
 
   const swipe = (type: SwipeType) => {
     if (!profile) return;
-    if (source === "likes") {
+    if (source === "shared" && type !== "nope") { setComposeShared(true); return; }
+    if (source === "likes" || source === "shared") {
       void answerLike(type);
       return;
     }
@@ -55,11 +63,11 @@ export function ProfileViewScreen() {
   };
 
   /** Someone from "Likes you": a like back is an instant match. */
-  const answerLike = async (type: SwipeType) => {
+  const answerLike = async (type: SwipeType, note?: string | null) => {
     if (!profile || answering) return;
     setAnswering(true);
     try {
-      const result = await sendSwipe(profile.uid, type);
+      const result = await sendSwipe(profile.uid, type, note);
       void queryClient.invalidateQueries({ queryKey: LIKES_YOU_KEY });
       if (result.matched && result.matchId) {
         suppressMatchAlert(result.matchId);
@@ -78,7 +86,7 @@ export function ProfileViewScreen() {
       setAnswering(false);
     }
   };
-  const showActions = source === "discover" || source === "likes";
+  const showActions = source === "discover" || source === "likes" || source === "shared";
 
   const confirmBlock = () => {
     if (!profile) return;
@@ -166,6 +174,9 @@ export function ProfileViewScreen() {
         </XStack>
       ) : null}
 
+      {source === "shared" && composeShared && shared.data?.profile ? (
+        <SparkComposer profile={shared.data.profile} kind="like" onClose={() => setComposeShared(false)} onSend={(note) => { setComposeShared(false); void answerLike("like", note); }} />
+      ) : null}
       <ActionSheet
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}

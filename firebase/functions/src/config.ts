@@ -10,7 +10,7 @@ export const REGION = process.env.FUNCTIONS_REGION || "us-central1";
  * is a considered one, which cuts the flood women get and makes each like count.
  */
 export const LIMITS = {
-  likesPerDay: 25,
+  likesPerDay: 10,
   supersPerDay: 1,
   passesPerDay: 1000,
   feedCallsPerDay: 500,

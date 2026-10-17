@@ -1,3 +1,4 @@
+import { useWebLinks } from "../hooks/useWebLinks";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { features } from "../config/features";
 import { useMatchAlerts, useMatchesSubscription, usePushRegistration } from "../hooks/useAppServices";
@@ -31,6 +32,7 @@ const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export function AppStack() {
   // Background work for a signed-in, onboarded member.
+  useWebLinks();
   useMatchesSubscription();
   usePushRegistration();
   useMatchAlerts();

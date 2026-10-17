@@ -1,6 +1,7 @@
+import { ProfileSharing } from "../components/ProfileSharing";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Linking, Pressable } from "react-native";
+import { Linking, Platform, Pressable } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/Icon";
@@ -60,6 +61,7 @@ export function ProfileScreen() {
             </SecondaryButton>
           </YStack>
         </XStack>
+        <ProfileSharing />
       </YStack>
 
       {percent < 100 ? (
@@ -101,6 +103,7 @@ export function ProfileScreen() {
         <SettingsSection>
           <SettingsRow icon="images-outline" label="Photos" value={`${profile.photoUrls.length}/6`} onPress={() => navigation.navigate("EditPhotos")} showDivider={false} />
           <SettingsRow icon="options-outline" label="Discovery preferences" onPress={() => navigation.navigate("Settings")} />
+          {Platform.OS === "web" ? <SettingsRow testID="profile-notifications" icon="notifications-outline" label="Browser notifications" description="New matches and messages" onPress={() => navigation.navigate("Settings")} /> : null}
           <SettingsRow testID="profile-privacy" icon="lock-closed-outline" label="Privacy & control" description="Incognito, private photos, notes only, I'll message first" onPress={() => navigation.navigate("Settings")} />
           <SettingsRow testID="profile-safety" icon="shield-checkmark-outline" label="Safety center" onPress={() => navigation.navigate("SafetyCenter")} />
           <SettingsRow icon="sparkles-outline" label="How vibe matching works" onPress={() => navigation.navigate("VibeGuide")} />

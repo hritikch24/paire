@@ -1,3 +1,4 @@
+import { WebNotifications } from "../components/WebNotifications";
 import { Alert } from "../services/dialog";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -333,6 +334,8 @@ export function SettingsScreen() {
             />
           ) : null}
         </SettingsSection>
+
+        <WebNotifications />
 
         {features.notifications ? (
           <SettingsSection

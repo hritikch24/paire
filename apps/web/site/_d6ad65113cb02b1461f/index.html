@@ -61,6 +61,10 @@
     <p class="m-section">ACCOUNTS &amp; LOGINS</p>
     <div class="m-grid" id="accounts"></div>
 
+    <p class="m-section">MEMBERS COMING BACK</p>
+    <div class="m-grid" id="returning"></div>
+    <p class="m-sub">A return means activity or an explicit sign-in at least 24 hours after joining. These counts exclude staff, test and disabled accounts. Activity includes sessions that stay signed in; explicit sign-ins exclude token refreshes. Hidden activity may not be counted.</p>
+
     <p class="m-section">WHO JOINED AND WHO'S ON</p>
     <div class="m-panels m-two">
       <div class="m-panel"><h3>New sign-ups, last 7 days</h3><ul class="m-people" id="new-people"></ul></div>
@@ -125,6 +129,7 @@
       cards("visits", [[fmt(m.visits.today.visitors), "visitors today"], [fmt(m.visits.today.views), "page views today"], [fmt(m.visits.last7.visitors), "visitors, last 7 days"], [fmt(m.visits.last7.views), "page views, last 7 days"]]);
       cards("accounts", [[fmt(m.accounts.total), "accounts in total"], [fmt(m.accounts.signedInToday), "logged in, last 24 hours"], [fmt(m.accounts.signedIn7d), "logged in, last 7 days"], [fmt(m.accounts.new7d), "new accounts, last 7 days"], [fmt(m.accounts.google), "use Google sign-in"], [fmt(m.accounts.emailConfirmed), "emails confirmed"]]);
       cards("profiles", [[fmt(m.profiles.total), "profiles created"], [`${fmt(m.profiles.women)} / ${fmt(m.profiles.men)}`, "women / men"], [fmt(m.profiles.active24h), "active in the app, 24 hours"], [fmt(m.profiles.active7d), "active in the app, 7 days"], [fmt(m.profiles.verified), "photo-verified"], [fmt(m.activity.matches), `matches (${fmt(m.activity.matches24h)} today)`], [fmt(m.activity.messages), "messages sent"], [fmt(m.activity.swipes), "likes & passes"], [`₹${fmt(m.plus.rupees)}`, `Plus sales (${fmt(m.plus.orders)} orders)`], [`₹${fmt(m.unlimitedChat?.rupees ?? 0)}`, `Unlimited Chat sales (${fmt(m.unlimitedChat?.orders ?? 0)} orders)`]]);
+      cards("returning", [[fmt(m.returning?.active24h ?? 0), "returning members active, 24 hours"], [fmt(m.returning?.active7d ?? 0), "returning members active, 7 days"], [fmt(m.returning?.signIns24h ?? 0), "returning sign-ins, 24 hours"], [fmt(m.returning?.signIns7d ?? 0), "returning sign-ins, 7 days"]]);
       people("new-people", m.people?.newSignups ?? [], "No new sign-ups this week.");
       people("seen-people", m.people?.recentLogins ?? [], "Nobody logged in today.");
       const max = Math.max(1, ...m.visits.daily.map((d) => Math.max(d.views, d.visitors, d.signups)));
