@@ -4,7 +4,7 @@ import { db } from "./admin";
 import { DUOS, LIMITS, REGION } from "./config";
 import { syncDiscoveryIndex } from "./discovery";
 import { requireVerifiedUsers, verifiedUsers } from "./trust";
-import { requireAuth } from "./lib/auth";
+import { requireAuth, requireReadAuth, isSupportSession } from "./lib/auth";
 import { toDiscoverProfile, viewerTraits } from "./lib/discovery";
 import { publicSnippet } from "./duoSnippets";
 import { Traits } from "./lib/insights";
@@ -473,13 +473,13 @@ export async function purgeDuoData(uid: string): Promise<void> {
 export const getDuoFeed = onCall(
   { region: REGION, memory: "512MiB", timeoutSeconds: 30 },
   async (request): Promise<{ duos: DuoCard[] }> => {
-    const uid = requireAuth(request);
-  await requireVerifiedUsers([uid]);
-    await consumeDailyQuota(uid, "duoFeedCalls", LIMITS.duoFeedCallsPerDay);
+    const uid = await requireReadAuth(request);
+    await requireVerifiedUsers([uid], undefined, uid, isSupportSession(request));
+    await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "duoFeedCalls", LIMITS.duoFeedCallsPerDay);
     const { id: myDuoId, duo: myDuo } = await requireActiveDuo(uid);
-    await requireVerifiedUsers(myDuo.members, undefined, uid);
+    await requireVerifiedUsers(myDuo.members, undefined, uid, isSupportSession(request));
     // Keeps active pairs near the top of everyone else's deck, without a write per call.
-    if (Date.now() - (myDuo.lastActiveAt ?? 0) > DUOS.activityRefreshMinutes * 60 * 1000) {
+    if (!isSupportSession(request) && Date.now() - (myDuo.lastActiveAt ?? 0) > DUOS.activityRefreshMinutes * 60 * 1000) {
       await db.doc(`duos/${myDuoId}`).update({ lastActiveAt: Date.now() });
     }
 
@@ -492,7 +492,7 @@ export const getDuoFeed = onCall(
     const candidates = candidatesSnap.docs.filter((doc) => doc.id !== myDuoId).map((doc) => doc.data() as Duo);
     const entries = await discoveryEntries(
       [...myDuo.members, ...candidates.flatMap((duo) => duo.members)],
-      myDuo.members
+      isSupportSession(request) ? [] : myDuo.members
     );
     const mine = myDuo.members.map((member) => entries.get(member));
     if (mine.some((entry) => !entry)) return { duos: [] };
@@ -684,17 +684,17 @@ export const undoDuoSwipe = onCall({ region: REGION }, async (request) => {
  * No distances: everyone here has already matched.
  */
 export const getChatProfiles = onCall({ region: REGION }, async (request): Promise<{ profiles: DiscoverProfile[] }> => {
-  const uid = requireAuth(request);
+  const uid = await requireReadAuth(request);
   const { matchId } = parseMatchInput(request.data);
   const snap = await db.doc(`matches/${matchId}`).get();
   const participants = (snap.get("participants") as string[] | undefined) ?? [];
   if (!snap.exists || !participants.includes(uid) || snap.get("kind") !== "duo" || snap.get("active") === false) {
     throw new HttpsError("permission-denied", "This chat isn't available.");
   }
-  await consumeDailyQuota(uid, "chatProfiles", LIMITS.chatProfilesPerDay);
+  await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "chatProfiles", LIMITS.chatProfilesPerDay);
   const blocked = await blockedAround([uid]);
   const others = participants.filter((member) => member !== uid && !blocked.has(member));
-  const entries = await discoveryEntries([uid, ...others], [uid]);
+  const entries = await discoveryEntries([uid, ...others], isSupportSession(request) ? [] : [uid]);
   const snaps = await db.getAll(...[uid, ...others].map((member) => db.doc(`users/${member}`)));
   const byUid = new Map(snaps.map((doc) => [doc.id, doc.data() as Partial<PublicProfile> | undefined]));
   const traits = traitsOf(entries.get(uid), byUid.get(uid));

@@ -1,3 +1,4 @@
+import { isSupportView } from "../services/supportMode";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import { AppState } from "react-native";
@@ -36,7 +37,7 @@ export function useUnreadTotal(): number {
 export function usePushRegistration() {
   const uid = useAuthStore((state) => state.user?.uid);
   useEffect(() => {
-    if (!uid) return;
+    if (isSupportView || !uid) return;
     void registerPushToken(uid);
     const subscription = Notifications.addPushTokenListener(() => {
       void registerPushToken(uid);
@@ -55,7 +56,7 @@ export function usePushRegistration() {
 export function useMatchAlerts() {
   const uid = useAuthStore((state) => state.user?.uid);
   useEffect(() => {
-    if (!uid || !features.notifications) return;
+    if (isSupportView || !uid || !features.notifications) return;
     // Snapshot of what's already known, so existing matches and messages don't alert.
     let lastSeen: Map<string, number> | null = null;
 

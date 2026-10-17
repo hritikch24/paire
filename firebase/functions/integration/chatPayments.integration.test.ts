@@ -31,6 +31,8 @@ const { razorpayWebhook, createPlusOrder } = require("../src/razorpay") as typeo
 const { syncChatAccess } = require("../src/chatEntitlement") as typeof import("../src/chatEntitlement");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const upi = require("../src/upiPayments") as typeof import("../src/upiPayments");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const memberAdmin = require("../src/memberAdmin") as typeof import("../src/memberAdmin");
 
 type FakePayment = { id: string; order_id: string; status: string; amount: number; currency: string; amount_refunded: number; refund_status: string | null };
 const fake = {
@@ -474,5 +476,28 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     expect(await unlockOf(uid)).toBeUndefined();
     expect((await admin.doc(`upiUtrs/${reference}`).get()).exists).toBe(false);
     await expect(moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "approve" })).rejects.toThrow(/submitted/);
+  });
+});
+
+describe("member admin", () => {
+  const asModerator = <T,>(fn: { run: (request: any) => T }, data: unknown) => // eslint-disable-line @typescript-eslint/no-explicit-any
+    fn.run({ data, auth: { uid: "mod1", token: { moderator: true } }, rawRequest: {}, acceptsStreaming: false });
+
+  test("only moderators can see members; women and men are listed separately, with payments", async () => {
+    const woman = await buyer();
+    const man = await buyer();
+    await admin.doc(`users/${woman}`).set({ gender: "woman", createdAt: Date.now(), photoUrls: ["https://example.com/w.jpg"] }, { merge: true });
+    await admin.doc(`users/${man}`).set({ gender: "man", createdAt: Date.now() }, { merge: true });
+    await expect(call(memberAdmin.adminListMembers, woman, { gender: "woman" })).rejects.toThrow(/Moderator access/);
+    await expect(call(memberAdmin.adminGetMember, woman, { uid: man })).rejects.toThrow(/Moderator access/);
+    const women = await asModerator(memberAdmin.adminListMembers, { gender: "woman" });
+    const men = await asModerator(memberAdmin.adminListMembers, { gender: "man" });
+    expect(women.members.map((member) => member.uid)).toContain(woman);
+    expect(women.members.map((member) => member.uid)).not.toContain(man);
+    expect(men.members.map((member) => member.uid)).toContain(man);
+    await admin.doc(`upiUnlockOrders/ADMINTST`).set({ uid: woman, kind: "chat", amountPaise: 4937, status: "submitted", createdAt: Date.now() });
+    const detail = await asModerator(memberAdmin.adminGetMember, { uid: woman });
+    expect(detail.profile.photoUrls).toEqual(["https://example.com/w.jpg"]);
+    expect(detail.payments).toContainEqual(expect.objectContaining({ source: "upi", product: "Unlimited Chat", amountInr: 49.37, status: "submitted" }));
   });
 });

@@ -2,7 +2,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall, CallableRequest } from "firebase-functions/v2/https";
 import { db } from "./admin";
 import { REGION } from "./config";
-import { requireAuth } from "./lib/auth";
+import { requireAuth, requireReadAuth } from "./lib/auth";
 import { parseReport, parseReview } from "./lib/reports";
 import { dailyLimitRef } from "./quota";
 
@@ -61,7 +61,7 @@ export const submitReport = onCall({ region: REGION }, async (request) => {
 
 /** Returns only the caller's progress; no evidence, staff notes or target actions. */
 export const getMyReports = onCall({ region: REGION }, async (request) => {
-  const uid = requireAuth(request);
+  const uid = await requireReadAuth(request);
   const page = cursor(request.data);
   let query = db.collection("reports").where("reporterId", "==", uid).orderBy("createdAt", "desc").orderBy("__name__", "desc").limit(21);
   if (page) query = query.startAfter(page.timestamp, page.id);

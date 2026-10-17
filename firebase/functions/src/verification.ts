@@ -3,7 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { bucket, db } from "./admin";
 import { REGION } from "./config";
-import { requireAuth } from "./lib/auth";
+import { requireAuth, requireReadAuth } from "./lib/auth";
 import { diditCaptureAvailable, ignoreDiditEvent, ownedPhotoPath, passedLiveCheck, validDiditSignature } from "./lib/didit";
 import { VerificationApproval, verificationState } from "./lib/verification";
 import { consumeDailyQuota } from "./quota";
@@ -16,7 +16,7 @@ const samePhotos = (a: unknown, b: unknown) => Array.isArray(a) && Array.isArray
 
 /** Only the caller's state; no biometrics, legal identity or rejection evidence. */
 export const getVerificationStatus = onCall({ region: REGION, secrets: ["DIDIT_API_KEY"] }, async (request) => {
-  const uid = requireAuth(request);
+  const uid = await requireReadAuth(request);
   const [profile, moderation] = await db.getAll(db.doc(`users/${uid}`), db.doc(`moderation/${uid}`));
   const approval = moderation.get("verification") as VerificationApproval | undefined;
   // Didit when it's configured, otherwise Paire's own selfie check.

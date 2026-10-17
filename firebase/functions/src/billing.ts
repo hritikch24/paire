@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { db } from "./admin";
 import { REGION } from "./config";
-import { requireAuth } from "./lib/auth";
+import { requireReadAuth, isSupportSession } from "./lib/auth";
 import { parsePasses, sameSecret, validRevenueCatSignature } from "./lib/billing";
 import { chatPolicy, syncChatAccess, upiSalesOpen } from "./chatEntitlement";
 import { consumeDailyQuota } from "./quota";
@@ -33,6 +33,8 @@ export type PremiumStatus = {
   webPurchaseAvailable: boolean;
   /** UPI straight to Paire (scan the QR or open a UPI app). */
   upiPurchaseAvailable: boolean;
+  /** An earlier Razorpay checkout never went through (nothing was charged): say so, and offer UPI. */
+  previousPaymentFailed?: boolean;
   purchaseBlockReason?: "verification-required";
 };
 
@@ -98,9 +100,17 @@ export async function syncPremium(uid: string): Promise<PremiumStatus> {
 
 /** Never accepts a client-supplied entitlement, price, receipt status or duration. */
 export const getPremiumStatus = onCall({ region: REGION, secrets: ["REVENUECAT_SECRET_KEY", "RAZORPAY_KEY_SECRET"], timeoutSeconds: 30 }, async (request): Promise<PremiumStatus> => {
-  const uid = requireAuth(request);
-  await consumeDailyQuota(uid, "billingChecks", 100);
-  const status = await syncPremium(uid);
+  const uid = await requireReadAuth(request);
+  await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "billingChecks", 100);
+  const cached = isSupportSession(request) ? await db.doc(`billing/${uid}`).get() : null;
+  const expiresAt = billingEnabled() ? Number(cached?.get("expiresAt")) || 0 : 0;
+  const status: PremiumStatus = cached
+    ? { active: expiresAt > Date.now(), expiresAt: expiresAt > Date.now() ? expiresAt : null, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false }
+    : await syncPremium(uid);
+  if (!status.active) {
+    const orders = await db.collection("razorpayOrders").where("uid", "==", uid).limit(20).get();
+    if (orders.docs.some((doc) => doc.get("status") === "created") && !orders.docs.some((doc) => doc.get("status") === "paid")) status.previousPaymentFailed = true;
+  }
   if ((status.purchaseAvailable || status.webPurchaseAvailable || status.upiPurchaseAvailable) && !(await verifiedUsers([uid])).has(uid)) {
     return { ...status, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, purchaseBlockReason: "verification-required" };
   }

@@ -6,7 +6,7 @@ import { db } from "./admin";
 import { razorpayConfigured, syncPremium } from "./billing";
 import { chatPolicy, syncChatAccess } from "./chatEntitlement";
 import { CHAT_UNLOCK, REGION } from "./config";
-import { requireAuth } from "./lib/auth";
+import { requireAuth, requireReadAuth, isSupportSession } from "./lib/auth";
 import { ChatAccessMirror, entitled, paidChatEnforced, razorpayMode, RazorpayMode, unlockPaymentVerdict, UnlockPayment, unlockReceipt } from "./lib/chatAccess";
 import { isRazorpayId, validCheckoutSignature } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
@@ -111,12 +111,13 @@ export type ChatAccessStatus = {
 };
 
 /** Authoritative state for the app: never trusts anything the client says. */
-export async function chatAccessStatus(uid: string): Promise<ChatAccessStatus> {
+export async function chatAccessStatus(uid: string, readOnly = false): Promise<ChatAccessStatus> {
   const billing = await db.doc(`billing/${uid}`).get();
   const fresh = typeof billing.get("checkedAt") === "number" && Date.now() - billing.get("checkedAt") < 5 * 60_000;
   // syncPremium also refreshes the chat mirror; otherwise refresh it here.
-  if (!fresh) await syncPremium(uid).catch(() => null);
-  const access = await syncChatAccess(uid);
+  if (!fresh && !readOnly) await syncPremium(uid).catch(() => null);
+  const cached = readOnly ? await db.doc(`moderation/${uid}`).get() : null;
+  const access = cached ? (cached.get("chatAccess") as ChatAccessMirror | undefined) ?? null : await syncChatAccess(uid);
   const policy = await chatPolicy();
   const now = Date.now();
   const graceOpen = policy.enforceFrom > 0 && policy.legacyGraceUntil > now;
@@ -134,11 +135,11 @@ export async function chatAccessStatus(uid: string): Promise<ChatAccessStatus> {
 }
 
 export const getChatAccess = onCall({ region: REGION, secrets: SECRETS, timeoutSeconds: 30 }, async (request): Promise<ChatAccessStatus> => {
-  const uid = requireAuth(request);
-  await consumeDailyQuota(uid, "chatAccessChecks", CHAT_UNLOCK.accessChecksPerDay);
+  const uid = await requireReadAuth(request);
+  await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "chatAccessChecks", CHAT_UNLOCK.accessChecksPerDay);
   // "Check payment status": settle an open or settling checkout with Razorpay first.
-  if ((request.data as { reconcile?: unknown } | null)?.reconcile === true && razorpayConfigured()) await reconcileCheckout(uid);
-  return chatAccessStatus(uid);
+  if (!isSupportSession(request) && (request.data as { reconcile?: unknown } | null)?.reconcile === true && razorpayConfigured()) await reconcileCheckout(uid);
+  return chatAccessStatus(uid, isSupportSession(request));
 });
 
 type RefundResult = { id?: string };

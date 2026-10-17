@@ -95,6 +95,57 @@ function matchDoc(active = true) {
   };
 }
 
+describe("read-only support access", () => {
+  const expiresAt = () => Date.now() + 15 * 60_000;
+  async function supportAccess() {
+    const expiry = expiresAt();
+    await seed({
+      "supportOperators/owner": { enabled: true },
+      "supportSessions/session1": { actorUid: "owner", targetUid: "alexa", supportUid: "support_session1", expiresAt: expiry, endedAt: null },
+      "users/alexa": validProfile("alexa"),
+      "users/alexa/private/info": { email: "fiction@example.com" },
+      "users/alexa/private/settings": { showMe: ["man"] },
+      "users/alexa/devices/phone": { token: "private-push-token" },
+      "users/stranger/private/info": { email: "stranger@example.com" },
+      "matches/alexa_jules": matchDoc(),
+      "matches/alexa_jules/messages/one": { senderId: "jules", text: "Fictional message", createdAt: firebase.firestore.Timestamp.now() },
+      "matches/other_pair": { ...matchDoc(), participants: ["stranger", "other"] }
+    });
+    const context = testEnv.authenticatedContext("support_session1", { supportSession: "session1", supportTarget: "alexa", supportExpiresAt: expiry });
+    return { db: context.firestore(), context, expiry };
+  }
+  test("reads the member's profile/settings/chats, and cannot read unrelated data, device tokens or audit records", async () => {
+    const { db } = await supportAccess();
+    for (const path of ["users/alexa", "users/alexa/private/info", "users/alexa/private/settings", "matches/alexa_jules", "matches/alexa_jules/messages/one"]) await assertSucceeds(db.doc(path).get());
+    await assertSucceeds(db.collection("matches").where("participants", "array-contains", "alexa").get());
+    for (const path of ["users/stranger/private/info", "matches/other_pair", "supportSessions/session1", "users/alexa/devices/phone"]) await assertFails(db.doc(path).get());
+  });
+  test("all write paths stay blocked, including read receipts and private data deletion", async () => {
+    const { db, context } = await supportAccess();
+    await assertFails(db.doc("users/alexa").update({ bio: "changed" }));
+    await assertFails(db.doc("users/alexa/private/info").delete());
+    await assertFails(db.doc("users/alexa/private/settings").set({ showMe: ["woman"] }));
+    await assertFails(db.doc("users/alexa/devices/phone").delete());
+    await assertFails(db.doc("matches/alexa_jules").update({ "unread.alexa": 0, "lastReadAt.alexa": serverTimestamp() }));
+    await assertFails(db.doc("matches/alexa_jules").update({ active: false, endedBy: "alexa", endedAt: serverTimestamp(), endReason: "unmatch" }));
+    await assertFails(db.doc("matches/alexa_jules/messages/new").set({ senderId: "alexa", text: "must not send", createdAt: serverTimestamp() }));
+    await assertFails(context.storage().ref("user-uploads/alexa/photos/new.jpg").put(new Uint8Array([1]), { contentType: "image/jpeg" }).then(() => undefined));
+    await assertFails(context.storage().ref("user-uploads/support_session1/photos/new.jpg").put(new Uint8Array([1]), { contentType: "image/jpeg" }).then(() => undefined));
+    await assertFails(db.doc("supportSessions/session1").update({ endedAt: null, expiresAt: expiresAt() }));
+  });
+  test("expired, ended, mismatched, missing and revoked sessions lose reads", async () => {
+    const { db, expiry } = await supportAccess();
+    for (const change of [{ endedAt: Date.now() }, { expiresAt: Date.now() - 1 }, { targetUid: "stranger" }, { supportUid: "other" }]) {
+      await seed({ "supportSessions/session1": { actorUid: "owner", targetUid: "alexa", supportUid: "support_session1", expiresAt: expiry, endedAt: null, ...change } });
+      await assertFails(db.doc("users/alexa/private/info").get());
+    }
+    await seed({ "supportSessions/session1": { actorUid: "owner", targetUid: "alexa", supportUid: "support_session1", expiresAt: expiry, endedAt: null }, "supportOperators/owner": { enabled: false } });
+    await assertFails(db.doc("users/alexa/private/info").get());
+    const missing = testEnv.authenticatedContext("support_none", { supportSession: "missing", supportTarget: "alexa", supportExpiresAt: expiry }).firestore();
+    await assertFails(missing.doc("users/alexa").get());
+  });
+});
+
 describe("profiles", () => {
   test("owners can create a valid adult profile", async () => {
     await assertSucceeds(dbFor("alexa").doc("users/alexa").set(validProfile("alexa")));

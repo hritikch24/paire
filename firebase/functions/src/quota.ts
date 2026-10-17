@@ -3,7 +3,7 @@ import { HttpsError } from "firebase-functions/v2/https";
 import { onCall } from "firebase-functions/v2/https";
 import { db } from "./admin";
 import { REGION } from "./config";
-import { requireAuth } from "./lib/auth";
+import { requireReadAuth } from "./lib/auth";
 import { nextDailyReset, remainingAllowance } from "./lib/allowance";
 import { swipeLimits } from "./premium";
 import { dayKey } from "./lib/ids";
@@ -12,7 +12,7 @@ export const dailyLimitRef = (uid: string) => db.doc(`limits/${uid}/daily/${dayK
 
 /** Read-only: checking the allowance never consumes it. */
 export const getDailyAllowance = onCall({ region: REGION }, async (request) => {
-  const uid = requireAuth(request);
+  const uid = await requireReadAuth(request);
   const limits = await swipeLimits(uid);
   const now = Date.now();
   const snap = await db.doc(`limits/${uid}/daily/${dayKey(new Date(now))}`).get();

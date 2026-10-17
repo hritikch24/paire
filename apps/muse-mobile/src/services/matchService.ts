@@ -1,3 +1,4 @@
+import { isSupportView } from "./supportMode";
 import {
   collection,
   doc,
@@ -141,6 +142,7 @@ export function waitingForFirstMove(match: Match, uid: string): string | null {
 
 /** Clears your unread badge and lets the other person see "Seen". */
 export async function markMatchRead(matchId: string, uid: string) {
+  if (isSupportView) return;
   await updateDoc(doc(db, "matches", matchId), {
     [`unread.${uid}`]: 0,
     [`lastReadAt.${uid}`]: serverTimestamp()

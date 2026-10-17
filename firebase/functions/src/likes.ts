@@ -3,7 +3,7 @@ import { db } from "./admin";
 import { REGION } from "./config";
 import { loadExclusions } from "./discovery";
 import { requireVerifiedUsers, verifiedUsers } from "./trust";
-import { requireAuth } from "./lib/auth";
+import { requireReadAuth, isSupportSession } from "./lib/auth";
 import { toDiscoverProfile, viewerTraits } from "./lib/discovery";
 import { isValidLatLng } from "./lib/geo";
 import { isMutualCandidate } from "./lib/prefs";
@@ -19,8 +19,8 @@ const MAX_LIKERS = 60;
  * hidden, and anyone who no longer fits both people's preferences.
  */
 export const getLikesYou = onCall({ region: REGION }, async (request): Promise<{ profiles: DiscoverProfile[] }> => {
-  const uid = requireAuth(request);
-  await requireVerifiedUsers([uid]);
+  const uid = await requireReadAuth(request);
+  await requireVerifiedUsers([uid], undefined, uid, isSupportSession(request));
 
   const [likesSnap, viewerEntrySnap, viewerProfileSnap, settingsSnap] = await Promise.all([
     // Newest likes first, so the cap never hides recent likes (or their notes) from popular members.

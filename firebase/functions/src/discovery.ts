@@ -3,7 +3,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { db } from "./admin";
 import { FEED, LIMITS, PRESENCE, REGION } from "./config";
-import { requireAuth } from "./lib/auth";
+import { requireReadAuth, isSupportSession } from "./lib/auth";
 import { buildDiscoveryEntry, toDiscoverProfile, viewerTraits } from "./lib/discovery";
 import { isValidLatLng } from "./lib/geo";
 import { rankCandidate } from "./lib/insights";
@@ -136,10 +136,10 @@ const scoreOf = (profile: DiscoverProfile) =>
 export const getDiscoverFeed = onCall(
   { region: REGION, memory: "512MiB", timeoutSeconds: 30, secrets: ["ANTHROPIC_API_KEY"] },
   async (request): Promise<{ profiles: DiscoverProfile[]; cursor: FeedCursor | null }> => {
-    const uid = requireAuth(request);
-    await requireVerifiedUsers([uid]);
+    const uid = await requireReadAuth(request);
+    await requireVerifiedUsers([uid], undefined, uid, isSupportSession(request));
     const { cursor: startCursor, ageGap, garba } = parseFeedInput(request.data);
-    await consumeDailyQuota(uid, "feedCalls", LIMITS.feedCallsPerDay);
+    await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "feedCalls", LIMITS.feedCallsPerDay);
 
     const [indexSnap, settingsSnap, viewerProfileSnap, billingSnap] = await db.getAll(
       db.doc(`discovery/${uid}`),
@@ -152,7 +152,7 @@ export const getDiscoverFeed = onCall(
     if (ageGap && !plus) throw new HttpsError("permission-denied", "The age-gap filter comes with Paire Plus.");
     const viewer = indexSnap.exists
       ? (indexSnap.data() as DiscoveryEntry)
-      : await syncDiscoveryIndex(uid);
+      : isSupportSession(request) ? null : await syncDiscoveryIndex(uid);
     if (!viewer || !viewer.gender || viewer.age === null) {
       throw new HttpsError("failed-precondition", "Finish your profile to start discovering people.");
     }

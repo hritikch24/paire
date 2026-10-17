@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { getServerOrigin } from "../services/testServer";
 import { env } from "./env";
 
@@ -37,5 +38,5 @@ export const legal = {
   /** Set EXPO_PUBLIC_SUPPORT_EMAIL for release builds (checked by scripts/release-preflight.sh). */
   supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL?.trim() || "",
   /** Bump when the Terms or Privacy Policy change materially. */
-  termsVersion: "2026-10-12"
+  termsVersion: Platform.OS === "web" ? "2026-10-17-support-v1" : "2026-10-12"
 };

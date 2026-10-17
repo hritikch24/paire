@@ -14,6 +14,7 @@ import {
   getReactNativePersistence,
   initializeAuth
 } from "./authSdk";
+import { isSupportView } from "./supportMode";
 import {
   connectFirestoreEmulator,
   getFirestore,
@@ -37,11 +38,14 @@ if (env.testServer) {
   void loadServerOrigin();
 }
 
-const app = getApps().length ? getApp() : initializeApp(env.firebase);
+// A support tab has its own Firebase registry and memory-only auth. It cannot replace
+// the owner's persistent session in this or any other tab.
+const appName = isSupportView ? "paire-support" : "[DEFAULT]";
+const app = getApps().some((item) => item.name === appName) ? getApp(appName) : initializeApp(env.firebase, appName);
 
 export const auth =
   Platform.OS === "web"
-    ? getAuth(app)
+    ? isSupportView ? initializeAuth(app) : getAuth(app)
     : initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
 
 export const db =
@@ -79,6 +83,7 @@ export const storageBucket = env.firebase.storageBucket;
 
 /** Calls an HTTPS callable Cloud Function and returns its data. */
 export async function callFunction<TResult>(name: string, data?: unknown, timeout = 30_000): Promise<TResult> {
+  if (isSupportView && !SUPPORT_READ_FUNCTIONS.has(name)) throw new Error("Support sessions are read-only. Exit support access to make changes.");
   const options = { timeout };
   const callable = env.testServer
     ? httpsCallableFromURL(functions, `${PLACEHOLDER_ORIGIN}/${env.firebase.projectId}/${env.functionsRegion}/${name}`, options)
@@ -86,3 +91,9 @@ export async function callFunction<TResult>(name: string, data?: unknown, timeou
   const result = await callable(data ?? {});
   return result.data as TResult;
 }
+
+// Convenience for the UI; server authorization and database rules enforce the boundary independently.
+const SUPPORT_READ_FUNCTIONS = new Set([
+  "getDiscoverFeed", "getLikesYou", "getDailyAllowance", "getPresence", "getVerificationStatus",
+  "getMyReports", "getUpiUnlockOrder", "getDuoFeed", "getChatProfiles", "getPremiumStatus", "getChatAccess", "getSupportSessionState", "adminEndSupportSession"
+]);

@@ -1,3 +1,4 @@
+import { isSupportView } from "../services/supportMode";
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { currentApproximateLocation } from "../services/locationService";
@@ -17,7 +18,7 @@ export function useLocationHeartbeat() {
   const lastRun = useRef(0);
 
   useEffect(() => {
-    if (!uid || !enabled) return;
+    if (isSupportView || !uid || !enabled) return;
 
     const refresh = async () => {
       const now = Date.now();

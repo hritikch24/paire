@@ -19,6 +19,7 @@ import config from "../../tamagui.config";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { BrowserLayout } from "../components/BrowserLayout";
 import { ToastHost } from "../components/Toast";
+import { SupportSessionBoundary } from "../components/SupportSessionBoundary";
 import { env } from "../config/env";
 import { useAuthSession } from "../hooks/useAuthSession";
 import { useNotificationRouting } from "../hooks/useNotificationRouting";
@@ -150,7 +151,7 @@ function AppContent() {
       {/* The saved theme loads in a few ms; waiting avoids a flash of the default one. */}
       {appearanceLoaded ? (
         <Theme name={palette}>
-          <BrowserLayout><ErrorBoundary>{content}</ErrorBoundary></BrowserLayout>
+          <BrowserLayout><ErrorBoundary><SupportSessionBoundary>{content}</SupportSessionBoundary></ErrorBoundary></BrowserLayout>
           <ToastHost />
         </Theme>
       ) : (

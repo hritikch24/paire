@@ -1,3 +1,4 @@
+import { isSupportView } from "../services/supportMode";
 import { useIsFocused } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -15,7 +16,7 @@ export function usePresenceSession() {
   const uid = useAuthStore((state) => state.user?.uid);
   const sharing = useAuthStore((state) => state.settings?.showPresence !== false);
   useEffect(() => {
-    if (!uid || !sharing) return;
+    if (isSupportView || !uid || !sharing) return;
     startPresence(uid);
     // Moving between screens is an interaction.
     const unsubscribe = navigationRef.addListener("state", markPresenceActivity);

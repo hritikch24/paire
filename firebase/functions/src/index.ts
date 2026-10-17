@@ -32,5 +32,7 @@ export { confirmPlusPayment, createPlusOrder, razorpayWebhook } from "./razorpay
 export { createChatUnlockOrder, confirmChatUnlock, getChatAccess } from "./chatAccess";
 export { createUpiUnlockOrder, getUpiReviewQueue, getUpiUnlockOrder, reviewUpiPayment, submitUpiPayment } from "./upiPayments";
 export { getPresence, presenceBeat, touchActivity } from "./presence";
+export { adminGetMember, adminListMembers } from "./memberAdmin";
+export { adminStartSupportSession, adminEndSupportSession, adminGetSupportHistory, getSupportSessionState, cleanupSupportSessions } from "./supportAdmin";
 export { createCallSession } from "./calls";
 export { cleanupPhotoChecks } from "./verificationCleanup";

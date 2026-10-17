@@ -12,8 +12,38 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSupport() {
+      return request.auth != null && 'supportSession' in request.auth.token;
+    }
+
+    function viewerUid() {
+      return isSupport() ? request.auth.token.supportTarget : request.auth.uid;
+    }
+
+    function activeSupportSession() {
+      let session = get(/databases/$(database)/documents/supportSessions/$(request.auth.token.supportSession)).data;
+      return session.supportUid == request.auth.uid
+        && session.targetUid == request.auth.token.supportTarget
+        && session.expiresAt == request.auth.token.supportExpiresAt
+        && session.expiresAt > request.time.toMillis()
+        && session.endedAt == null
+        && get(/databases/$(database)/documents/supportOperators/$(session.actorUid)).data.enabled == true;
+    }
+
     function signedIn() {
       return request.auth != null;
+    }
+
+    function mayWrite() {
+      return !('supportSession' in request.auth.token);
+    }
+
+    function readSignedIn() {
+      return signedIn() && (!isSupport() || activeSupportSession());
+    }
+
+    function isReadUser(uid) {
+      return readSignedIn() && viewerUid() == uid;
     }
 
     function isUser(uid) {
@@ -84,7 +114,7 @@ service cloud.firestore {
     }
 
     function hasActiveMatchWith(uid) {
-      let path = matchPath(pairId(request.auth.uid, uid));
+      let path = matchPath(pairId(viewerUid(), uid));
       return exists(path) && get(path).data.active == true;
     }
 
@@ -227,9 +257,9 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isUser(uid) || (signedIn() && hasActiveMatchWith(uid));
-      allow create: if isUser(uid) && emailConfirmed() && validProfile(request.resource.data, uid);
-      allow update: if isUser(uid)
+      allow read: if isReadUser(uid) || (readSignedIn() && hasActiveMatchWith(uid));
+      allow create: if mayWrite() && isUser(uid) && emailConfirmed() && validProfile(request.resource.data, uid);
+      allow update: if mayWrite() && isUser(uid)
         && emailConfirmed()
         && validProfile(request.resource.data, uid)
         && !changedKeys().hasAny(['uid', 'createdAt']);
@@ -237,13 +267,15 @@ service cloud.firestore {
       allow delete: if false;
 
       match /private/{docId} {
-        allow read, delete: if isUser(uid);
-        allow create, update: if isUser(uid) && validPrivate(docId, request.resource.data);
+        allow read: if isReadUser(uid);
+        allow delete: if mayWrite() && isUser(uid);
+        allow create, update: if mayWrite() && isUser(uid) && validPrivate(docId, request.resource.data);
       }
 
       match /devices/{deviceId} {
-        allow read, delete: if isUser(uid);
-        allow create, update: if isUser(uid)
+        allow read: if !isSupport() && isUser(uid);
+        allow delete: if mayWrite() && isUser(uid);
+        allow create, update: if mayWrite() && isUser(uid)
           && request.resource.data.keys().hasOnly(['token', 'platform', 'updatedAt'])
           && isStr(request.resource.data.token, 1, 4096)
           && request.resource.data.platform in ['android', 'ios'];
@@ -253,12 +285,12 @@ service cloud.firestore {
     // ------------------------------------------------ server-written collections
 
     match /swipes/{uid}/outgoing/{targetUid} {
-      allow read: if isUser(uid);
+      allow read: if isReadUser(uid);
       allow write: if false;
     }
 
     match /blocks/{uid}/blocked/{targetUid} {
-      allow read: if isUser(uid);
+      allow read: if isReadUser(uid);
       allow write: if false;
     }
 
@@ -370,10 +402,10 @@ service cloud.firestore {
     }
 
     match /matches/{matchId} {
-      allow read: if isParticipant(resource.data);
+      allow read: if readSignedIn() && viewerUid() in resource.data.participants;
       // Matches are created only by the swipe Cloud Function after a mutual like.
       allow create, delete: if false;
-      allow update: if isParticipant(resource.data)
+      allow update: if mayWrite() && isParticipant(resource.data)
         && ((verifiedParticipants(resource.data.participants) && isSendUpdate()) || isReadUpdate() || isUnmatch());
 
       match /messages/{messageId} {
@@ -381,8 +413,8 @@ service cloud.firestore {
           return get(matchPath(matchId)).data;
         }
 
-        allow read: if signedIn() && request.auth.uid in parentMatch().participants;
-        allow create: if signedIn()
+        allow read: if readSignedIn() && viewerUid() in parentMatch().participants;
+        allow create: if mayWrite() && signedIn()
           && request.auth.uid in parentMatch().participants
           && parentMatch().active == true
           && mayOpen(parentMatch())
@@ -398,7 +430,7 @@ service cloud.firestore {
       // Muse AI warnings on messages, written by Cloud Functions. Only the
       // person who received the message can read them, never the sender.
       match /safety/{messageId} {
-        allow read: if signedIn() && request.auth.uid in resource.data.recipientIds;
+        allow read: if readSignedIn() && viewerUid() in resource.data.recipientIds;
         allow write: if false;
       }
     }
@@ -415,14 +447,14 @@ service cloud.firestore {
     // Two friends dating together; created and changed only by Cloud Functions.
     // Only while the duo lasts: ex-partners can't keep reading it.
     match /duos/{duoId} {
-      allow read: if signedIn() && request.auth.uid in resource.data.members && resource.data.status == 'active';
+      allow read: if readSignedIn() && viewerUid() in resource.data.members && resource.data.status == 'active';
       allow write: if false;
     }
 
     // Likes and passes of a duo: both members can see them (and undo via a function).
     match /duoSwipes/{duoId}/outgoing/{targetDuoId} {
-      allow read: if signedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/duos/$(duoId)).data.members
+      allow read: if readSignedIn()
+        && viewerUid() in get(/databases/$(database)/documents/duos/$(duoId)).data.members
         && get(/databases/$(database)/documents/duos/$(duoId)).data.status == 'active';
       allow write: if false;
     }

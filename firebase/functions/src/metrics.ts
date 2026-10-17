@@ -86,7 +86,7 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
   do {
     const batch = await adminAuth().listUsers(1000, pageToken);
     for (const user of batch.users) {
-      if (testUids.has(user.uid)) continue;
+      if (testUids.has(user.uid) || user.uid.startsWith("support_")) continue;
       accounts.total++;
       if (user.providerData.some((provider) => provider.providerId === "google.com")) accounts.google++;
       else accounts.email++;
@@ -138,6 +138,10 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
     count(db.collection("moderation").where("verification.status", "==", "verified")),
     db.collection("razorpayOrders").where("status", "==", "paid").select("amountPaise").get()
   ]);
+  const upiPaid = await db.collection("upiUnlockOrders").where("status", "==", "approved").select("amountPaise", "kind").get();
+  const sum = (docs: DocumentSnapshot[]) => Math.round(docs.reduce((total, doc) => total + (Number(doc.get("amountPaise")) || 0), 0) / 100);
+  const upiPlus = upiPaid.docs.filter((doc) => doc.get("kind") === "plus");
+  const upiChat = upiPaid.docs.filter((doc) => doc.get("kind") !== "plus");
   const [matches, matches24h, messages, swipes] = await Promise.all([
     count(db.collection("matches")),
     count(db.collection("matches").where("createdAt", ">=", Timestamp.fromMillis(since(dayMs)))),
@@ -164,7 +168,8 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
       verified
     },
     activity: { matches, matches24h, messages, swipes },
-    plus: { orders: plusPaid.size, rupees: Math.round(plusPaid.docs.reduce((sum, doc) => sum + (Number(doc.get("amountPaise")) || 0), 0) / 100) },
+    plus: { orders: plusPaid.size + upiPlus.length, rupees: sum(plusPaid.docs) + sum(upiPlus) },
+    unlimitedChat: { orders: upiChat.length, rupees: sum(upiChat) },
     testAccounts: testUids.size
   };
 }

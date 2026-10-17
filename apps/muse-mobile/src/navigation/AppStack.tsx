@@ -4,6 +4,7 @@ import { useMatchAlerts, useMatchesSubscription, usePushRegistration } from "../
 import { useLastActive } from "../hooks/useLastActive";
 import { useLocationHeartbeat } from "../hooks/useLocationHeartbeat";
 import { usePresenceSession } from "../hooks/usePresence";
+import { usePaymentNotice } from "../hooks/usePaymentNotice";
 import { CallScreen } from "../screens/CallScreen";
 import { ChatMembersScreen } from "../screens/ChatMembersScreen";
 import { ChatScreen } from "../screens/ChatScreen";
@@ -19,6 +20,8 @@ import { SafetyCenterScreen } from "../screens/SafetyCenterScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { PremiumScreen } from "../screens/PremiumScreen";
 import { UpiReviewScreen } from "../screens/UpiReviewScreen";
+import { MemberAdminScreen } from "../screens/MemberAdminScreen";
+import { MemberAdminDetailScreen } from "../screens/MemberAdminDetailScreen";
 import { VerificationScreen } from "../screens/VerificationScreen";
 import { VibeGuideScreen } from "../screens/VibeGuideScreen";
 import { MainTabs } from "./MainTabs";
@@ -33,6 +36,7 @@ export function AppStack() {
   useMatchAlerts();
   useLastActive();
   usePresenceSession();
+  usePaymentNotice();
   useLocationHeartbeat();
 
   return (
@@ -52,6 +56,8 @@ export function AppStack() {
       <Stack.Screen name="Verification" component={VerificationScreen} />
       <Stack.Screen name="Premium" component={PremiumScreen} />
       <Stack.Screen name="UpiReview" component={UpiReviewScreen} />
+      <Stack.Screen name="MemberAdmin" component={MemberAdminScreen} />
+      <Stack.Screen name="MemberAdminDetail" component={MemberAdminDetailScreen} />
       <Stack.Screen name="VibeGuide" component={VibeGuideScreen} />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />
       <Stack.Screen name="ChatMembers" component={ChatMembersScreen} />

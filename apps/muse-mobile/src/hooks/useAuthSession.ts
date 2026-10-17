@@ -1,3 +1,4 @@
+import { isSupportView, supportContext } from "../services/supportMode";
 import { onAuthStateChanged } from "../services/authSdk";
 import { doc, onSnapshot } from "@firebase/firestore/dist/index.cjs.js";
 import { useEffect } from "react";
@@ -23,7 +24,7 @@ export function useAuthSession() {
 
   // Ages are stored on the profile for matching: move it on after each birthday.
   useEffect(() => {
-    if (!uid || typeof profileAge !== "number" || !birthDate) return;
+    if (isSupportView || !uid || typeof profileAge !== "number" || !birthDate) return;
     const age = ageFromBirthDate(birthDate);
     if (age !== profileAge && age >= MIN_AGE && age <= MAX_AGE) {
       void updateProfile(uid, { age }).catch(() => undefined);
@@ -37,9 +38,21 @@ export function useAuthSession() {
         queryClient.clear();
         useMatchesStore.getState().reset();
       }
-      useAuthStore.getState().setUser(user);
+      // Keep Firebase authenticated as the disposable support identity; only the UI
+      // sees the target uid. Account credentials never belong to the member.
+      const details = supportContext.current;
+      const viewingUser = user && details ? new Proxy(user, { get(target, key) {
+        if (key === "uid") return details.uid;
+        if (key === "emailVerified") return details.emailVerified;
+        if (key === "email") return details.email;
+        if (key === "metadata") return details.metadata;
+        if (key === "displayName") return details.name;
+        const value = Reflect.get(target, key, target);
+        return typeof value === "function" ? value.bind(target) : value;
+      } }) : user;
+      useAuthStore.getState().setUser(viewingUser);
       // Let the server record an already-confirmed email (Google sign-ins, older accounts).
-      if (user?.emailVerified) void callFunction("syncAccountChecks").catch(() => undefined);
+      if (!isSupportView && user?.emailVerified) void callFunction("syncAccountChecks").catch(() => undefined);
     });
   }, []);
 
@@ -58,7 +71,7 @@ export function useAuthSession() {
         const data = snapshot.exists() ? (snapshot.data() as Partial<UserSettings>) : null;
         // Older accounts may list a gender Paire no longer offers; the rules check the whole
         // document on every write, so fix it once or every later settings change would fail.
-        if (Array.isArray(data?.showMe) && data.showMe.some((gender) => !isGender(gender))) {
+        if (!isSupportView && Array.isArray(data?.showMe) && data.showMe.some((gender) => !isGender(gender))) {
           const showMe = data.showMe.filter(isGender);
           void updateSettings(uid, { showMe: showMe.length ? showMe : [...GENDERS] }).catch(() => undefined);
         }

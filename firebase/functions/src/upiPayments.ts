@@ -8,7 +8,7 @@ import { billingEnabled, storeExpiryIfEnabled, syncPremium, webPassExpiry } from
 import { syncChatAccess, upiSalesOpen, upiVpa } from "./chatEntitlement";
 import { isPlusPlan, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
 import { CHAT_UNLOCK, REGION } from "./config";
-import { requireAuth } from "./lib/auth";
+import { requireAuth, requireReadAuth } from "./lib/auth";
 import { consumeDailyQuota } from "./quota";
 import { verifiedUsers } from "./trust";
 
@@ -184,7 +184,7 @@ export const submitUpiPayment = onCall({ region: REGION }, async (request): Prom
 
 /** The member's open UPI order (`kind`: "chat", default, or "plus"), for showing its state in the app. */
 export const getUpiUnlockOrder = onCall({ region: REGION }, async (request): Promise<{ order: UpiOrderView | null }> => {
-  const uid = requireAuth(request);
+  const uid = await requireReadAuth(request);
   const open = await openUpiOrder(uid, (request.data as { kind?: unknown } | null)?.kind === "plus" ? "plus" : "chat");
   return { order: open ? await viewOf(open) : null };
 });

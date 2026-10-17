@@ -387,6 +387,7 @@ export function SettingsScreen() {
           <SettingsRow icon="shield-checkmark-outline" label="Safety center" showDivider={false} onPress={() => navigation.navigate("SafetyCenter")} />
           <SettingsRow testID="settings-my-reports" icon="flag-outline" label="My reports" onPress={() => navigation.navigate("MyReports")} />
           <SettingsRow icon="people-outline" label="Community guidelines" onPress={() => void Linking.openURL(legal.guidelinesUrl)} />
+          {moderator ? <SettingsRow testID="settings-member-admin" icon="people-circle-outline" label="Member admin" onPress={() => navigation.navigate("MemberAdmin")} /> : null}
           {moderator ? <SettingsRow testID="settings-upi-review" icon="cash-outline" label="UPI payments to confirm" onPress={() => navigation.navigate("UpiReview")} /> : null}
         </SettingsSection>
 

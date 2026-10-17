@@ -2,7 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { db } from "./admin";
 import { PRESENCE, REGION } from "./config";
-import { requireAuth } from "./lib/auth";
+import { requireAuth, requireReadAuth } from "./lib/auth";
 import { pairId } from "./lib/ids";
 import {
   applyBeat,
@@ -111,7 +111,7 @@ type PresenceReply = {
 };
 
 export const getPresence = onCall({ region: REGION }, async (request): Promise<PresenceReply> => {
-  const viewer = requireAuth(request);
+  const viewer = await requireReadAuth(request);
   const config = await presenceConfig();
   const raw = (request.data as { uids?: unknown } | null)?.uids ?? [];
   if (!Array.isArray(raw) || raw.length > PRESENCE.maxTargets) throw new HttpsError("invalid-argument", `Ask about at most ${PRESENCE.maxTargets} people.`);

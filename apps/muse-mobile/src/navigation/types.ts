@@ -41,6 +41,8 @@ export type AppStackParamList = {
   Verification: undefined;
   Premium: undefined;
   UpiReview: undefined;
+  MemberAdmin: undefined;
+  MemberAdminDetail: { uid: string; name?: string };
   VibeGuide: undefined;
   Appearance: undefined;
   /** Everyone in a Duo chat: view, report or block. */

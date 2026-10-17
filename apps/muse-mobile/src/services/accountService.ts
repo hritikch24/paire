@@ -18,6 +18,11 @@ import { stopPresence } from "./presenceService";
 import { reauthenticateWithGoogle } from "./googleAuth";
 import { updatePrivateInfo } from "./profileService";
 import { queryClient } from "./queryClient";
+import { isSupportView } from "./supportMode";
+
+function requireAccountChanges() {
+  if (isSupportView) throw new Error("Support sessions are read-only. Exit support access to make account changes.");
+}
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -30,11 +35,13 @@ export function isValidEmail(email: string): boolean {
 }
 
 export async function signIn(email: string, password: string) {
+  requireAccountChanges();
   return signInWithEmailAndPassword(auth, normalizeEmail(email), password);
 }
 
 /** Creates the account and records which Terms/Privacy version the member accepted. */
 export async function signUp(email: string, password: string) {
+  requireAccountChanges();
   const credential = await createUserWithEmailAndPassword(auth, normalizeEmail(email), password);
   await updatePrivateInfo(credential.user.uid, {
     email: credential.user.email ?? normalizeEmail(email),
@@ -61,6 +68,7 @@ async function requestAuthEmail(kind: "verify" | "reset", email?: string): Promi
 }
 
 export async function resendVerificationEmail() {
+  requireAccountChanges();
   const user = auth.currentUser;
   if (!user) throw new Error("Not signed in");
   if (!(await requestAuthEmail("verify"))) await sendEmailVerification(user);
@@ -87,6 +95,7 @@ export async function checkEmailVerified(): Promise<"confirmed" | "pending" | "t
 }
 
 export async function sendPasswordReset(email: string) {
+  requireAccountChanges();
   if (!(await requestAuthEmail("reset", normalizeEmail(email)))) await sendPasswordResetEmail(auth, normalizeEmail(email));
 }
 
@@ -103,6 +112,12 @@ function clearLocalSession() {
 }
 
 export async function signOut() {
+  if (isSupportView) {
+    await callFunction("adminEndSupportSession").catch(() => undefined);
+    await firebaseSignOut(auth);
+    clearLocalSession();
+    return;
+  }
   // Best effort: the session's lease expires on its own if this doesn't arrive.
   await stopPresence();
   const uid = auth.currentUser?.uid;
@@ -143,6 +158,7 @@ export async function revalidateSession() {
  * wipe someone's account.
  */
 export async function deleteAccount(password: string | null) {
+  requireAccountChanges();
   if (password === null) await reauthenticateWithGoogle();
   else await reauthenticate(password);
   const uid = auth.currentUser?.uid;

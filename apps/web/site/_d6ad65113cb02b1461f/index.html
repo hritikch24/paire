@@ -53,6 +53,7 @@
     </div>
     <h1 class="m-title">How Paire is doing</h1>
     <p class="m-sub">Live numbers. Times and days are India time. The <span id="tests">12</span> shared test accounts are left out of people counts.</p>
+    <p class="m-sub"><a href="/app/" style="color:#a43754;font-weight:600">Member admin →</a> Photos, details and payments for each member, women and men separately. Open the app, sign in with a moderator account, then go to Settings → Member admin (and Settings → UPI payments to confirm). Kept out of this page because it has no sign-in.</p>
 
     <p class="m-section">WEBSITE VISITS</p>
     <div class="m-grid" id="visits"></div>
@@ -123,7 +124,7 @@
       $("tests").textContent = m.testAccounts;
       cards("visits", [[fmt(m.visits.today.visitors), "visitors today"], [fmt(m.visits.today.views), "page views today"], [fmt(m.visits.last7.visitors), "visitors, last 7 days"], [fmt(m.visits.last7.views), "page views, last 7 days"]]);
       cards("accounts", [[fmt(m.accounts.total), "accounts in total"], [fmt(m.accounts.signedInToday), "logged in, last 24 hours"], [fmt(m.accounts.signedIn7d), "logged in, last 7 days"], [fmt(m.accounts.new7d), "new accounts, last 7 days"], [fmt(m.accounts.google), "use Google sign-in"], [fmt(m.accounts.emailConfirmed), "emails confirmed"]]);
-      cards("profiles", [[fmt(m.profiles.total), "profiles created"], [`${fmt(m.profiles.women)} / ${fmt(m.profiles.men)}`, "women / men"], [fmt(m.profiles.active24h), "active in the app, 24 hours"], [fmt(m.profiles.active7d), "active in the app, 7 days"], [fmt(m.profiles.verified), "photo-verified"], [fmt(m.activity.matches), `matches (${fmt(m.activity.matches24h)} today)`], [fmt(m.activity.messages), "messages sent"], [fmt(m.activity.swipes), "likes & passes"], [`₹${fmt(m.plus.rupees)}`, `Plus sales (${fmt(m.plus.orders)} orders)`]]);
+      cards("profiles", [[fmt(m.profiles.total), "profiles created"], [`${fmt(m.profiles.women)} / ${fmt(m.profiles.men)}`, "women / men"], [fmt(m.profiles.active24h), "active in the app, 24 hours"], [fmt(m.profiles.active7d), "active in the app, 7 days"], [fmt(m.profiles.verified), "photo-verified"], [fmt(m.activity.matches), `matches (${fmt(m.activity.matches24h)} today)`], [fmt(m.activity.messages), "messages sent"], [fmt(m.activity.swipes), "likes & passes"], [`₹${fmt(m.plus.rupees)}`, `Plus sales (${fmt(m.plus.orders)} orders)`], [`₹${fmt(m.unlimitedChat?.rupees ?? 0)}`, `Unlimited Chat sales (${fmt(m.unlimitedChat?.orders ?? 0)} orders)`]]);
       people("new-people", m.people?.newSignups ?? [], "No new sign-ups this week.");
       people("seen-people", m.people?.recentLogins ?? [], "Nobody logged in today.");
       const max = Math.max(1, ...m.visits.daily.map((d) => Math.max(d.views, d.visitors, d.signups)));

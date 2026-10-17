@@ -124,6 +124,12 @@ export function PremiumScreen() {
             );
           })}
         </YStack>
+        {premium.data?.previousPaymentFailed && !openOrder ? (
+          <YStack testID="premium-previous-failed" padding="$3" borderRadius="$4" backgroundColor="$primarySoft" gap="$1">
+            <Text fontWeight="700">Your earlier payment didn't go through</Text>
+            <Text fontSize="$2" lineHeight={20}>You weren't charged. Plus is now paid by UPI: choose a pass, then scan the QR code or open PhonePe, Google Pay or Paytm.</Text>
+          </YStack>
+        ) : null}
         {message ? <Text accessibilityLiveRegion="polite" color="$textMuted" lineHeight={22}>{message}</Text> : null}
         {byUpi && openOrder && !upiSubmitted && !premium.data?.active ? (
           <UpiPayPanel order={openOrder} onSubmitted={(next) => { setShownOrder(next); void upiOrder.refetch(); }} />

@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | pending (uncommitted) | Finish member admin, email/uid lookup, owner-only 15-minute read-only support views with separate identities, expiry/revocation, audit history, rules and Terms/Privacy disclosure. Includes the inherited member-admin/payment-notice/UPI-metrics work left by Claude. | local; not yet pushed or deployed |
 | 2026-10-17 | `ecd152b` | UPI payments: buyers just tap "I've paid"; the UTR is optional. Moderators match the exact amount (unique paise) and time. | pushed, Vercel, Firebase |
 | 2026-10-17 | — | `razorpayPlusSales` off: **no Razorpay checkout anywhere** for new purchases. Earlier Razorpay payments still confirm and refund through the webhook. | live |
 | 2026-10-17 | `4e4f908` | Paire Plus paid by UPI to paire.in@ybl, like Unlimited Chat (moderator approves; approval starts the pass, revoke ends it). The pay panel has a QR plus PhonePe / Google Pay / Paytm / any-UPI-app buttons on phones. Site and legal copy no longer offer Razorpay. | pushed, Vercel, Firebase |

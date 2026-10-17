@@ -1,3 +1,4 @@
+import { isSupportView } from "../services/supportMode";
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { callFunction } from "../services/firebase";
@@ -19,7 +20,7 @@ export function useLastActive() {
   const lastRun = useRef(0);
 
   useEffect(() => {
-    if (!uid || !ready) return;
+    if (isSupportView || !uid || !ready) return;
 
     const heartbeat = () => {
       const now = Date.now();
