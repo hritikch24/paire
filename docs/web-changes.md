@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | `8582c84` | End of Discover: a simple Paire Plus offer from ₹20 a day for free members; the offer and the Plus screen no longer mention passed profiles coming back (the feature still works for Plus). Web only. | pushed |
 | 2026-10-17 | `25f9031` | Discover: free members who have seen everyone get a Paire Plus offer; Plus members then see people they passed on again (never likes, matches or blocks) and can like them. Needs the functions deploy (`getDiscoverFeed`, `swipe`) and the web app. | pushed |
 | 2026-10-17 | `2f794d7` | CCAvenue replaces direct UPI (paire.in@ybl) for new orders while CCAvenue sells; submitted UPI orders still confirmable. Pricing, llms.txt, Terms, Refunds and Privacy copy name CCAvenue (Infibeam Avenues). | pushed |
 | 2026-10-17 | `c47a2eb` | CCAvenue returns buyers through `www.paire.in/pay/ccavenue/` (Vercel rewrite to `ccavenueResponse`), the site its keys are registered for. | pushed |
