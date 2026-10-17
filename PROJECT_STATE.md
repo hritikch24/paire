@@ -1,8 +1,16 @@
 # Muse: project state
 
-Last updated: 2026-10-12
+Last updated: 2026-10-17
 
-## Presence and paid chat (2026-10-17, LIVE)
+## CCAvenue payments (2026-10-17)
+- **Web payments move to CCAvenue** (UPI, cards, netbanking, wallets) for Unlimited Chat (₹49) and Paire Plus passes. The server prices and owns each order and grants only after CCAvenue's order status API confirms it. Duplicates and payments for deleted accounts are refunded automatically; refunds and chargebacks end what the order bought. Members return to the chat they paid from with their draft kept. Details: `docs/ccavenue.md`.
+- **Replaces direct UPI:** while CCAvenue sells, UPI to paire.in@ybl isn't offered for new orders; already-submitted UPI payments are still confirmed by moderators. Site, Terms, Refunds and Privacy copy name CCAvenue.
+- **Return address:** `https://www.paire.in/pay/ccavenue/`, which `vercel.json` forwards to the `ccavenueResponse` function (CCAvenue only accepts the site its keys are registered for).
+- **Switches:** `MUSE_CCAVENUE_ENABLED`, `MUSE_CCAVENUE_LIVE`, `CCAVENUE_ENV`/keys in the functions `.env`, the `CCAVENUE_WORKING_KEY` secret, and `runtime/trust.ccavenueSales` (`--ccavenue-sales on|off`).
+- **Validation:** CCAvenue unit tests (encryption checked against OpenSSL) and emulator tests against a fake CCAvenue API. Not yet verified with a real CCAvenue payment.
+- **Needs you:** one real ₹49 payment and refund on www.paire.in, CCAvenue's order status and refund APIs enabled for the access code, a regenerated working key (the current one was shared in a chat), and legal review of the updated copy.
+
+## Presence and paid chat (2026-10-17, LIVE; payments since moved to UPI, then CCAvenue: see above)
 - **Live since 2026-10-17 01:29 IST** (owner's request): presence on; sending needs Plus or Unlimited Chat (**₹49** once) with no grace period for older chats; live ₹49 sales on the current Razorpay key. Deployed: Firebase functions, rules and indexes, plus Vercel. Change log: `docs/web-changes.md`.
 - Not yet verified with a real payment. Make one real ₹49 purchase and refund it from the Razorpay dashboard to confirm the live path, and add the `payment.dispute.*` webhook events.
 - **Activity-based presence:** online only while a foreground session had a meaningful interaction within 2 minutes (configurable) and its heartbeat lease holds; multi-tab and multi-device; matches only; "Show when I'm active" hides it everywhere, including discovery. Off until `runtime/presence.enabled`.

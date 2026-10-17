@@ -52,6 +52,10 @@ How it works: the server sets the price (₹20 / ₹99 / ₹299), creates the Ra
 
 Unlimited Chat (₹49 once, sending messages in every match) uses the same keys and webhook, and has its own switches (`MUSE_CHAT_UNLOCK_ENABLED`, `MUSE_CHAT_UNLOCK_LIVE`, `runtime/trust.unlockSales`). Read `docs/presence-and-paid-chat.md` before turning on paid chat or presence. Production charges need a Razorpay merchant account approved for Paire itself.
 
+## 2b. CCAvenue (current web checkout)
+
+Unlimited Chat and Plus are now paid through CCAvenue (UPI, cards, netbanking, wallets); it replaces direct UPI for new orders. Keys and switches: `MUSE_CCAVENUE_ENABLED`, `MUSE_CCAVENUE_LIVE`, `CCAVENUE_ENV`, `CCAVENUE_MERCHANT_ID`, `CCAVENUE_ACCESS_CODE` in the functions `.env`; the secret `CCAVENUE_WORKING_KEY`; and `runtime/trust.ccavenueSales`. The keys must be registered for `https://www.paire.in`; CCAvenue returns buyers to `/pay/ccavenue/`, which `vercel.json` forwards to `ccavenueResponse`. Full setup and rollout: `docs/ccavenue.md`.
+
 ## 3. Vercel (the website and web app)
 
 Import the repo. `vercel.json` holds the build settings. Add these environment variables (Production and Preview):

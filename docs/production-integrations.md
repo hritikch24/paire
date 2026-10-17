@@ -25,9 +25,13 @@ Implemented on 2026-10-10. Muse remains the name. The app starts free with the e
 
 Primary references: [Didit session API](https://docs.didit.me/sessions-api/create-session), [V2 callbacks](https://docs.didit.me/integration/webhooks), [privacy erasure](https://docs.didit.me/sessions-api/delete-session).
 
-## Web payments (Razorpay)
+## Web payments (CCAvenue)
 
-Paire Plus on the web uses Razorpay. Setup, variables and the webhook are in [launch-web.md §2](launch-web.md#2-razorpay-paire-plus-on-the-web). The flow: `createPlusOrder` (server price, server-only `razorpayOrders/{orderId}`) → Razorpay Checkout → `confirmPlusPayment`. That step checks the HMAC of `order_id|payment_id`, then re-reads the payment from the Razorpay API (captured, same order, amount and currency) before granting the pass once. `razorpayWebhook` (HMAC of the raw body) covers late captures and `refund.processed`. Passes queue rather than overlap. `syncPremium` combines store and web expiries into `billing/{uid}`.
+Unlimited Chat and Paire Plus on the web are paid through CCAvenue (UPI, cards, netbanking, wallets). The server prices each order, the browser form-POSTs CCAvenue's encrypted request, and access is granted only after CCAvenue's order status API confirms the payment. Setup, switches and tests: [ccavenue.md](ccavenue.md).
+
+## Web payments (Razorpay, earlier)
+
+Paire Plus on the web used Razorpay (new Razorpay checkouts are off; earlier payments still confirm and refund). Setup, variables and the webhook are in [launch-web.md §2](launch-web.md#2-razorpay-paire-plus-on-the-web). The flow: `createPlusOrder` (server price, server-only `razorpayOrders/{orderId}`) → Razorpay Checkout → `confirmPlusPayment`. That step checks the HMAC of `order_id|payment_id`, then re-reads the payment from the Razorpay API (captured, same order, amount and currency) before granting the pass once. `razorpayWebhook` (HMAC of the raw body) covers late captures and `refund.processed`. Passes queue rather than overlap. `syncPremium` combines store and web expiries into `billing/{uid}`.
 
 ## Premium accounts and products
 
