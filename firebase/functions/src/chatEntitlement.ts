@@ -53,9 +53,13 @@ export const upiVpa = () => {
   return /^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9]{2,64}$/.test(vpa) ? vpa : null;
 };
 
-/** UPI checkout is on: a valid UPI ID is configured and runtime/trust.upiSales is set. */
+/**
+ * Direct UPI checkout is on: a valid UPI ID is configured, runtime/trust.upiSales is set,
+ * and CCAvenue isn't selling (CCAvenue takes UPI too, and confirms it automatically, so it
+ * replaces direct UPI for new orders). Open UPI orders can still be paid and reviewed.
+ */
 export async function upiSalesOpen(): Promise<boolean> {
-  return Boolean(upiVpa()) && (await chatPolicy()).upiSales;
+  return Boolean(upiVpa()) && (await chatPolicy()).upiSales && !(await ccavenueSalesOpen());
 }
 
 /**

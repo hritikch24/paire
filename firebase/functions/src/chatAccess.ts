@@ -14,7 +14,7 @@ import { razorpay } from "./razorpayClient";
 import { verifiedUsers } from "./trust";
 import { openUpiOrder, upiSalesOpen } from "./upiPayments";
 import { openCcavenueOrder } from "./ccavenue";
-import { ccavenueSalesOpen } from "./chatEntitlement";
+import { ccavenueSalesOpen, upiVpa } from "./chatEntitlement";
 
 /**
  * Unlimited Chat: ₹49 once, for the buyer's account only, unlocks sending in
@@ -93,7 +93,8 @@ async function unlockOffer(uid: string, access: ChatAccessMirror | null): Promis
   if (access?.unlimited) return { status: "owned", priceInr, methods };
   const checkout = await db.doc(`chatUnlockCheckout/${uid}`).get();
   if (checkout.get("state") === "pending" && Date.now() - (Number(checkout.get("updatedAt")) || 0) < CHAT_UNLOCK.checkoutReuseMs) return { status: "pending", priceInr, methods };
-  const upiOrder = methods.includes("upi") ? await openUpiOrder(uid) : null;
+  // Even after direct UPI gives way to CCAvenue, a UPI payment already submitted is still being confirmed.
+  const upiOrder = methods.includes("upi") || upiVpa() ? await openUpiOrder(uid) : null;
   if (upiOrder?.get("status") === "submitted") return { status: "pending", priceInr, methods, upiPending: true };
   // Any open CCAvenue order the bank is still confirming, even if sales were paused since.
   const ccavenueOrder = await openCcavenueOrder(uid, "chat");

@@ -33,6 +33,8 @@ const cc = require("../src/ccavenue") as typeof import("../src/ccavenue");
 const chat = require("../src/chatAccess") as typeof import("../src/chatAccess");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const billing = require("../src/billing") as typeof import("../src/billing");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const upi = require("../src/upiPayments") as typeof import("../src/upiPayments");
 
 const API = "https://apitest.ccavenue.com/apis/servlet/DoWebTrans";
 type FakeOrder = { order_no: string; reference_no: string; order_status: string; order_amt: number; order_currncy: string };
@@ -238,6 +240,30 @@ describe("settling a payment", () => {
     await respond({ encResp: encResp("PAFORGEDTEST0001") });
     expect(await unlockOf(real)).toBeUndefined();
     expect(await orderOf("PAFORGEDTEST0001")).toMatchObject({ status: "rejected" });
+  });
+});
+
+describe("CCAvenue replaces direct UPI", () => {
+  test("while CCAvenue sells, new direct-UPI orders aren't offered, but a submitted one is still confirmed", async () => {
+    const previousVpa = process.env.MUSE_UPI_VPA;
+    process.env.MUSE_UPI_VPA = "paire.in@ybl";
+    try {
+      const waiting = await buyer();
+      await admin.doc("runtime/trust").set({ requireVerification: false, upiSales: true, ccavenueSales: false });
+      const created = await call(upi.createUpiUnlockOrder, waiting);
+      if (created.status !== "order") throw new Error("expected a UPI order");
+      await call(upi.submitUpiPayment, waiting, { orderId: created.order.orderId });
+
+      await admin.doc("runtime/trust").set({ requireVerification: false, upiSales: true, ccavenueSales: true });
+      const fresh = await buyer();
+      expect((await chat.chatAccessStatus(fresh)).unlock.methods).toEqual(["ccavenue"]);
+      await expect(call(upi.createUpiUnlockOrder, fresh)).rejects.toThrow(/aren't available/);
+      expect(await call(billing.getPremiumStatus, fresh)).toMatchObject({ upiPurchaseAvailable: false, ccavenuePurchaseAvailable: true });
+      expect((await chat.chatAccessStatus(waiting)).unlock).toMatchObject({ status: "pending", upiPending: true });
+    } finally {
+      if (previousVpa === undefined) delete process.env.MUSE_UPI_VPA;
+      else process.env.MUSE_UPI_VPA = previousVpa;
+    }
   });
 });
 

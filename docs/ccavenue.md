@@ -52,9 +52,9 @@ Everything below needs you. Nothing deploys or switches on by itself.
 4. Deploy: `firebase deploy --only functions,firestore`, then deploy the website and browser app (Vercel).
 5. **Runtime switch:** `node scripts/set-runtime-flags.mjs --project muse-352ba --ccavenue-sales on --confirm`. Roll back instantly with `--ccavenue-sales off`. Payments already taken still confirm, and refunds still apply.
 6. **Sandbox first.** Use `CCAVENUE_ENV=test` and CCAvenue's test keys on test-cohort accounts: a successful payment, a cancelled one, a pending one, a refund from the dashboard, and two tabs. Then switch to the live keys with `MUSE_CCAVENUE_LIVE=true`.
-7. **Legal copy.** Terms §4, the Refund policy and the Privacy policy (service providers) currently say web payments go by UPI to paire.in@ybl. Add CCAvenue (Avenues India Pvt Ltd) as a payment processor before taking live payments.
+7. **Legal copy** (Terms §4, Refunds, Privacy, the pricing pages) now names CCAvenue (Infibeam Avenues Limited). Have it checked along with the rest of the legal review, and deploy the site together with the functions.
 
-When CCAvenue is on alongside UPI, the app shows UPI first, with **Pay by card, netbanking or wallet** as a second button. When CCAvenue is the only method, it becomes the main button.
+**CCAvenue replaces direct UPI.** CCAvenue takes UPI too and confirms it automatically, so while CCAvenue sales are on, direct UPI to paire.in@ybl (`upiSales`) is no longer offered for new orders, whatever its switch says. UPI orders already paid and submitted stay pending until a moderator confirms them in **Settings → UPI payments to confirm**. If CCAvenue is switched off, direct UPI comes back (if `upiSales` is still on). The site, Terms, Refund and Privacy copy now describe CCAvenue.
 
 ## Tests
 

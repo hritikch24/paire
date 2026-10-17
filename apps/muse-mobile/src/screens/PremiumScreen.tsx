@@ -52,14 +52,14 @@ export function PremiumScreen() {
   // UPI straight to Paire when it's on (scan or open PhonePe/any UPI app); otherwise Razorpay on the
   // web, or the store's localised product in the app.
   const byUpi = premium.data?.upiPurchaseAvailable === true;
-  const upiOrder = useQuery({ queryKey: ["upi-plus-order", uid], queryFn: () => fetchOpenUpiOrder("plus"), enabled: Boolean(uid && byUpi), retry: 1 });
+  const upiOrder = useQuery({ queryKey: ["upi-plus-order", uid], queryFn: () => fetchOpenUpiOrder("plus"), enabled: Boolean(uid && (byUpi || webCheckout)), retry: 1 });
   const [shownOrder, setShownOrder] = useState<UpiOrder | null>(null);
   const openOrder = shownOrder ?? upiOrder.data ?? null;
   const upiSubmitted = openOrder?.status === "submitted";
   // CCAvenue (cards, UPI, netbanking, wallets) on the web: its own button, or the main one when it's the only way.
   const byCcavenue = ccavenueCheckout && premium.data?.ccavenuePurchaseAvailable === true;
   const ccavenueOnly = byCcavenue && !byUpi && premium.data?.webPurchaseAvailable !== true;
-  const canPurchase = byUpi ? ready && !upiSubmitted : ccavenueOnly ? ready : webCheckout ? ready && premium.data?.webPurchaseAvailable === true : Boolean(product && ready && premium.data?.purchaseAvailable);
+  const canPurchase = byUpi ? ready && !upiSubmitted : ccavenueOnly ? ready && !upiSubmitted : webCheckout ? ready && premium.data?.webPurchaseAvailable === true : Boolean(product && ready && premium.data?.purchaseAvailable);
   const payByCcavenue = async () => {
     setBusy(true); setMessage(null);
     try {
