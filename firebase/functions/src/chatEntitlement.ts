@@ -46,6 +46,17 @@ export async function syncChatAccess(uid: string): Promise<ChatAccessMirror | nu
   });
 }
 
+/** Paire's own UPI ID for direct payments (MUSE_UPI_VPA), if a valid one is configured. */
+export const upiVpa = () => {
+  const vpa = process.env.MUSE_UPI_VPA?.trim() ?? "";
+  return /^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9]{2,64}$/.test(vpa) ? vpa : null;
+};
+
+/** UPI checkout is on: a valid UPI ID is configured and runtime/trust.upiSales is set. */
+export async function upiSalesOpen(): Promise<boolean> {
+  return Boolean(upiVpa()) && (await chatPolicy()).upiSales;
+}
+
 /** Account deletion: the mirror goes; payment records stay for tax law. */
 export async function clearChatAccess(uid: string): Promise<void> {
   await db.doc(`chatUnlocks/${uid}`).delete();

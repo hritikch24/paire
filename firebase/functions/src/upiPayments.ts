@@ -4,7 +4,9 @@ import { logger } from "firebase-functions";
 import { CallableRequest, HttpsError, onCall } from "firebase-functions/v2/https";
 import QRCode from "qrcode";
 import { db } from "./admin";
-import { chatPolicy, syncChatAccess } from "./chatEntitlement";
+import { billingEnabled, storeExpiryIfEnabled, syncPremium, webPassExpiry } from "./billing";
+import { syncChatAccess, upiSalesOpen, upiVpa } from "./chatEntitlement";
+import { isPlusPlan, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { consumeDailyQuota } from "./quota";
@@ -32,22 +34,22 @@ const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 type UpiStatus = "awaiting_payment" | "submitted" | "approved" | "rejected" | "expired" | "revoked";
 
-export const upiVpa = () => {
-  const vpa = process.env.MUSE_UPI_VPA?.trim() ?? "";
-  return /^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9]{2,64}$/.test(vpa) ? vpa : null;
-};
 const payeeName = () => (process.env.MUSE_UPI_PAYEE_NAME?.trim() || "Paire").slice(0, 50);
 
-/** UPI checkout is on: a valid UPI ID is configured and runtime/trust.upiSales is set. */
-export async function upiSalesOpen(): Promise<boolean> {
-  return Boolean(upiVpa()) && (await chatPolicy()).upiSales;
-}
+export { upiSalesOpen };
 
-/** The member's newest UPI order that's still open (waiting for payment or for review). */
-export async function openUpiOrder(uid: string) {
+type Kind = "chat" | "plus";
+const kindOf = (doc: DocumentSnapshot): Kind => (doc.get("kind") === "plus" ? "plus" : "chat");
+
+/** What an order buys, for people: "Unlimited Chat" or "Paire Plus · 7 days". */
+const productLabel = (doc: DocumentSnapshot) => (kindOf(doc) === "plus" ? PLUS_PASSES[doc.get("plan") as PlusPlan]?.label ?? "Paire Plus" : "Unlimited Chat");
+
+/** The member's newest UPI order of this kind that's still open (waiting for payment or for review). */
+export async function openUpiOrder(uid: string, kind: Kind = "chat") {
   const snap = await db.collection("upiUnlockOrders").where("uid", "==", uid).where("status", "in", ["awaiting_payment", "submitted"]).get();
   const now = Date.now();
   const open = snap.docs
+    .filter((doc) => kindOf(doc) === kind)
     .filter((doc) => doc.get("status") === "submitted" || (Number(doc.get("createdAt")) || 0) + ORDER_PAY_WINDOW_MS > now)
     .sort((a, b) => (Number(b.get("createdAt")) || 0) - (Number(a.get("createdAt")) || 0));
   return open[0] ?? null;
@@ -55,13 +57,15 @@ export async function openUpiOrder(uid: string) {
 
 const newOrderId = () => Array.from({ length: 8 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
 
-function upiLink(vpa: string, amountPaise: number, orderId: string): string {
-  const params = new URLSearchParams({ pa: vpa, pn: payeeName(), am: (amountPaise / 100).toFixed(2), cu: "INR", tn: `Paire chat ${orderId}` });
+function upiLink(vpa: string, amountPaise: number, orderId: string, kind: Kind): string {
+  const params = new URLSearchParams({ pa: vpa, pn: payeeName(), am: (amountPaise / 100).toFixed(2), cu: "INR", tn: `${kind === "plus" ? "Paire Plus" : "Paire chat"} ${orderId}` });
   return `upi://pay?${params.toString().replace(/\+/g, "%20")}`;
 }
 
 export type UpiOrderView = {
   orderId: string;
+  kind: Kind;
+  product: string;
   status: UpiStatus;
   amountPaise: number;
   amountLabel: string;
@@ -76,9 +80,11 @@ export type UpiOrderView = {
 async function viewOf(doc: DocumentSnapshot): Promise<UpiOrderView> {
   const vpa = String(doc.get("vpa"));
   const amountPaise = Number(doc.get("amountPaise"));
-  const link = upiLink(vpa, amountPaise, doc.id);
+  const link = upiLink(vpa, amountPaise, doc.id, kindOf(doc));
   return {
     orderId: doc.id,
+    kind: kindOf(doc),
+    product: productLabel(doc),
     status: doc.get("status"),
     amountPaise,
     amountLabel: `₹${(amountPaise / 100).toFixed(2)}`,
@@ -91,9 +97,9 @@ async function viewOf(doc: DocumentSnapshot): Promise<UpiOrderView> {
   };
 }
 
-/** Holds a free amount between ₹49.01 and ₹49.99 for this order, so it's easy to find in the bank statement. */
-async function reserveAmount(orderId: string, now: number): Promise<number> {
-  const candidates = Array.from(new Set(Array.from({ length: 12 }, () => CHAT_UNLOCK.amountPaise + 1 + randomInt(99))));
+/** Holds a free amount (the price plus 1–99 paise) for this order, so it's easy to find in the bank statement. */
+async function reserveAmount(orderId: string, basePaise: number, now: number): Promise<number> {
+  const candidates = Array.from(new Set(Array.from({ length: 12 }, () => basePaise + 1 + randomInt(99))));
   return db.runTransaction(async (tx) => {
     const slots = await tx.getAll(...candidates.map((amount) => db.doc(`upiSlots/${amount}`)));
     const free = candidates.find((_, index) => !slots[index].exists || (Number(slots[index].get("until")) || 0) < now);
@@ -104,34 +110,44 @@ async function reserveAmount(orderId: string, now: number): Promise<number> {
   });
 }
 
-export const createUpiUnlockOrder = onCall({ region: REGION, timeoutSeconds: 30 }, async (request): Promise<{ status: "owned" } | { status: "order"; order: UpiOrderView }> => {
+/**
+ * Starts (or reopens) a UPI order: Unlimited Chat by default, or a Paire Plus
+ * pass with `plan` ("day" | "week" | "month"). The server sets the price.
+ */
+export const createUpiUnlockOrder = onCall({ region: REGION, secrets: ["REVENUECAT_SECRET_KEY", "RAZORPAY_KEY_SECRET"], timeoutSeconds: 30 }, async (request): Promise<{ status: "owned" } | { status: "order"; order: UpiOrderView }> => {
   const uid = requireAuth(request);
+  const plan = (request.data as { plan?: unknown } | null)?.plan;
+  if (plan !== undefined && !isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass.");
+  const kind: Kind = plan ? "plus" : "chat";
   const vpa = upiVpa();
-  if (!vpa || !(await upiSalesOpen())) throw new HttpsError("failed-precondition", "UPI payments aren't available right now. You haven't been charged.", { reason: "sales-off" });
+  if (!vpa || !(await upiSalesOpen()) || (kind === "plus" && !billingEnabled())) throw new HttpsError("failed-precondition", "UPI payments aren't available right now. You haven't been charged.", { reason: "sales-off" });
   const [user, moderation, unlock] = await db.getAll(db.doc(`users/${uid}`), db.doc(`moderation/${uid}`), db.doc(`chatUnlocks/${uid}`));
   if (!user.exists) throw new HttpsError("failed-precondition", "Finish creating your profile first.");
   if (moderation.get("status") === "banned") throw new HttpsError("permission-denied", "This account is unavailable. Contact support for help.");
-  if (unlock.get("status") === "active") {
+  if (kind === "chat" && unlock.get("status") === "active") {
     await syncChatAccess(uid);
     return { status: "owned" };
   }
-  // One open order at a time: reopening the panel shows the same amount and QR, never a second charge.
-  const open = await openUpiOrder(uid);
+  // One open order of each kind at a time: reopening shows the same amount and QR, never a second charge.
+  const open = await openUpiOrder(uid, kind);
   if (open) return { status: "order", order: await viewOf(open) };
   await consumeDailyQuota(uid, "upiUnlockOrders", CHAT_UNLOCK.ordersPerDay);
-  if ((await db.collection("matches").where("participants", "array-contains", uid).limit(1).get()).empty) {
+  if (kind === "chat" && (await db.collection("matches").where("participants", "array-contains", uid).limit(1).get()).empty) {
     throw new HttpsError("failed-precondition", "Unlimited Chat opens up once you have a mutual match.", { reason: "no-match" });
   }
+  if (kind === "plus" && (await syncPremium(uid)).active) throw new HttpsError("failed-precondition", "Your Plus pass is already active.");
   if (!(await verifiedUsers([uid])).has(uid)) throw new HttpsError("failed-precondition", "Verify your photos first, so you can use it straight away.", { reason: "verification-required" });
 
   const now = Date.now();
   let orderId = newOrderId();
   while ((await db.doc(`upiUnlockOrders/${orderId}`).get()).exists) orderId = newOrderId();
-  const amountPaise = await reserveAmount(orderId, now);
+  const base = kind === "plus" ? PLUS_PASSES[plan as PlusPlan].amountPaise : CHAT_UNLOCK.amountPaise;
+  const amountPaise = await reserveAmount(orderId, base, now);
   const ref = db.doc(`upiUnlockOrders/${orderId}`);
   await ref.set({
     uid,
-    product: CHAT_UNLOCK.product,
+    kind,
+    ...(kind === "plus" ? { plan, product: "paire_plus" } : { product: CHAT_UNLOCK.product }),
     amountPaise,
     currency: "INR",
     vpa,
@@ -164,10 +180,10 @@ export const submitUpiPayment = onCall({ region: REGION }, async (request): Prom
   return { status: "submitted", order: await viewOf(await ref.get()) };
 });
 
-/** The member's open UPI order, for showing its state in the app. */
+/** The member's open UPI order (`kind`: "chat", default, or "plus"), for showing its state in the app. */
 export const getUpiUnlockOrder = onCall({ region: REGION }, async (request): Promise<{ order: UpiOrderView | null }> => {
   const uid = requireAuth(request);
-  const open = await openUpiOrder(uid);
+  const open = await openUpiOrder(uid, (request.data as { kind?: unknown } | null)?.kind === "plus" ? "plus" : "chat");
   return { order: open ? await viewOf(open) : null };
 });
 
@@ -177,7 +193,7 @@ function requireModerator(request: CallableRequest<unknown>): string {
   return uid;
 }
 
-export type UpiReviewItem = { orderId: string; status: UpiStatus; amountLabel: string; utr: string | null; memberName: string; submittedAt: number | null; createdAt: number };
+export type UpiReviewItem = { orderId: string; product: string; status: UpiStatus; amountLabel: string; utr: string | null; memberName: string; submittedAt: number | null; createdAt: number };
 
 /** Payments waiting for a moderator: check each against the bank statement (amount + UTR). */
 export const getUpiReviewQueue = onCall({ region: REGION }, async (request): Promise<{ items: UpiReviewItem[] }> => {
@@ -186,6 +202,7 @@ export const getUpiReviewQueue = onCall({ region: REGION }, async (request): Pro
   const users = snap.empty ? [] : await db.getAll(...snap.docs.map((doc) => db.doc(`users/${doc.get("uid")}`)));
   const items = snap.docs.map((doc, index) => ({
     orderId: doc.id,
+    product: productLabel(doc),
     status: doc.get("status") as UpiStatus,
     amountLabel: `₹${(Number(doc.get("amountPaise")) / 100).toFixed(2)}`,
     utr: (doc.get("utr") as string | undefined) ?? null,
@@ -202,17 +219,24 @@ export const getUpiReviewQueue = onCall({ region: REGION }, async (request): Pro
  * reject: no such payment (or wrong amount) → nothing unlocked; the member can resubmit.
  * revoke: undo an approval after a refund or reversal (refund the money by hand).
  */
-export const reviewUpiPayment = onCall({ region: REGION }, async (request): Promise<{ status: UpiStatus }> => {
+export const reviewUpiPayment = onCall({ region: REGION, secrets: ["REVENUECAT_SECRET_KEY", "RAZORPAY_KEY_SECRET"] }, async (request): Promise<{ status: UpiStatus }> => {
   const moderator = requireModerator(request);
   const { orderId, decision, note } = (request.data ?? {}) as { orderId?: unknown; decision?: unknown; note?: unknown };
   if (typeof orderId !== "string" || !ORDER_ID.test(orderId)) throw new HttpsError("invalid-argument", "That order isn't valid.");
   if (decision !== "approve" && decision !== "reject" && decision !== "revoke") throw new HttpsError("invalid-argument", "Choose approve, reject or revoke.");
   const ref = db.doc(`upiUnlockOrders/${orderId}`);
+  const first = await ref.get();
+  if (!first.exists) throw new HttpsError("not-found", "We couldn't find that order.");
+  const kind = kindOf(first);
+  // A Plus pass queues after any pass already running (web or store), so nobody loses days.
+  const storeExpiry = kind === "plus" && decision === "approve" ? await storeExpiryIfEnabled(String(first.get("uid"))) : 0;
   let uid: string | null = null;
   const status = await db.runTransaction(async (tx): Promise<UpiStatus> => {
     const order = await tx.get(ref);
     if (!order.exists) throw new HttpsError("not-found", "We couldn't find that order.");
     uid = order.get("uid") as string;
+    const ledgerRef = db.doc(`webPassLedger/${uid}`);
+    const ledger = kind === "plus" ? await tx.get(ledgerRef) : null;
     const [unlock, user] = await tx.getAll(db.doc(`chatUnlocks/${uid}`), db.doc(`users/${uid}`));
     const now = Date.now();
     const audit = { reviewedBy: moderator, reviewedAt: now, reviewNote: typeof note === "string" ? note.slice(0, 300) : null, updatedAt: FieldValue.serverTimestamp() };
@@ -220,6 +244,13 @@ export const reviewUpiPayment = onCall({ region: REGION }, async (request): Prom
       if (order.get("status") === "approved") return "approved";
       if (order.get("status") !== "submitted") throw new HttpsError("failed-precondition", "Only payments with a submitted UPI reference can be approved.");
       if (!user.exists) throw new HttpsError("failed-precondition", "This account was deleted. Refund the payment by hand.");
+      if (kind === "plus") {
+        const queuedUntil = Math.max(Number(ledger?.get("until")) || 0, storeExpiry);
+        const { startsAt, expiresAt } = passWindow(now, PLUS_PASSES[order.get("plan") as PlusPlan].days, queuedUntil);
+        tx.set(ledgerRef, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
+        tx.update(ref, { ...audit, status: "approved", startsAt, expiresAt });
+        return "approved";
+      }
       if (unlock.get("status") !== "active") {
         tx.set(db.doc(`chatUnlocks/${uid}`), {
           status: "active",
@@ -246,13 +277,17 @@ export const reviewUpiPayment = onCall({ region: REGION }, async (request): Prom
       return "rejected";
     }
     if (order.get("status") !== "approved") throw new HttpsError("failed-precondition", "Only approved payments can be revoked.");
-    if (unlock.get("status") === "active" && unlock.get("orderId") === orderId) {
+    if (kind === "chat" && unlock.get("status") === "active" && unlock.get("orderId") === orderId) {
       tx.update(db.doc(`chatUnlocks/${uid}`), { status: "revoked", revokedAt: now, revokedReason: "refund", updatedAt: FieldValue.serverTimestamp() });
     }
     tx.update(ref, { ...audit, status: "revoked" });
     return "revoked";
   });
-  if (uid) await syncChatAccess(uid);
-  logger.info("UPI payment reviewed", { orderId, decision });
+  if (uid && kind === "plus") {
+    // A revoked pass pulls the queue back to the passes that remain.
+    if (decision === "revoke") await db.doc(`webPassLedger/${uid}`).set({ until: await webPassExpiry(uid), updatedAt: FieldValue.serverTimestamp() });
+    await syncPremium(uid);
+  } else if (uid) await syncChatAccess(uid);
+  logger.info("UPI payment reviewed", { orderId, decision, kind });
   return { status };
 });

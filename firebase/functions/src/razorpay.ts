@@ -3,7 +3,7 @@ import { logger } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { db } from "./admin";
 import { handleChatUnlockWebhook } from "./chatAccess";
-import { razorpayConfigured, storeExpiryIfEnabled, syncPremium, webBillingEnabled, webPassExpiry } from "./billing";
+import { razorpayConfigured, razorpayPlusOpen, storeExpiryIfEnabled, syncPremium, webPassExpiry } from "./billing";
 import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import {
@@ -100,7 +100,7 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
   const uid = requireAuth(request);
   const plan = (request.data as { plan?: unknown } | null)?.plan;
   if (!isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass.");
-  if (!webBillingEnabled()) throw new HttpsError("failed-precondition", "Payments aren't available yet. You haven't been charged.");
+  if (!(await razorpayPlusOpen())) throw new HttpsError("failed-precondition", "Card payments aren't available right now. You haven't been charged.");
   await consumeDailyQuota(uid, "plusOrders", 20);
   if (!(await verifiedUsers([uid])).has(uid)) {
     throw new HttpsError("failed-precondition", "Verify your photos before buying a pass, so you can use it straight away.");

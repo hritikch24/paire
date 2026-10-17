@@ -12,6 +12,8 @@ export type PremiumStatus = {
   purchaseAvailable: boolean;
   /** Razorpay checkout on the web. */
   webPurchaseAvailable?: boolean;
+  /** UPI straight to Paire: scan the QR or open a UPI app. */
+  upiPurchaseAvailable?: boolean;
   purchaseBlockReason?: "verification-required";
 };
 export const fetchPremiumStatus = () => callFunction<PremiumStatus>("getPremiumStatus");

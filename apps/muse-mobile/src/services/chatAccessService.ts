@@ -65,6 +65,9 @@ export async function purchaseChatUnlock(theme: string): Promise<"owned" | "pend
 /** A UPI order for Unlimited Chat: pay this exact amount to Paire's UPI ID, then submit the UTR. */
 export type UpiOrder = {
   orderId: string;
+  kind: "chat" | "plus";
+  /** "Unlimited Chat" or "Paire Plus · 7 days". */
+  product: string;
   status: "awaiting_payment" | "submitted" | "approved" | "rejected" | "expired" | "revoked";
   amountPaise: number;
   amountLabel: string;
@@ -76,9 +79,14 @@ export type UpiOrder = {
   utr: string | null;
 };
 
-/** Your open UPI order (the same one each time, so you're never asked to pay twice). */
-export async function startUpiUnlock(): Promise<{ status: "owned" } | { status: "order"; order: UpiOrder }> {
-  return callFunction("createUpiUnlockOrder");
+/** Your open UPI order (the same one each time, so you're never asked to pay twice). With `plan`, a Paire Plus pass. */
+export async function startUpiUnlock(plan?: "day" | "week" | "month"): Promise<{ status: "owned" } | { status: "order"; order: UpiOrder }> {
+  return callFunction("createUpiUnlockOrder", plan ? { plan } : {});
+}
+
+/** Your open UPI order of this kind, if any (waiting for payment or for confirmation). */
+export async function fetchOpenUpiOrder(kind: "chat" | "plus"): Promise<UpiOrder | null> {
+  return (await callFunction<{ order: UpiOrder | null }>("getUpiUnlockOrder", { kind })).order;
 }
 
 /** Chat unlocks only after Paire confirms the payment arrived with this reference. */
@@ -86,7 +94,7 @@ export async function submitUpiReference(orderId: string, utr: string): Promise<
   return (await callFunction<{ order: UpiOrder }>("submitUpiPayment", { orderId, utr })).order;
 }
 
-export type UpiReviewItem = { orderId: string; status: string; amountLabel: string; utr: string | null; memberName: string; submittedAt: number | null; createdAt: number };
+export type UpiReviewItem = { orderId: string; product: string; status: string; amountLabel: string; utr: string | null; memberName: string; submittedAt: number | null; createdAt: number };
 export const fetchUpiReviewQueue = async () => (await callFunction<{ items: UpiReviewItem[] }>("getUpiReviewQueue")).items;
 export const reviewUpiPayment = (orderId: string, decision: "approve" | "reject" | "revoke", note?: string) =>
   callFunction<{ status: string }>("reviewUpiPayment", { orderId, decision, note });

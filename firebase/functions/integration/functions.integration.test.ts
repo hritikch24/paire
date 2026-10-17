@@ -710,9 +710,9 @@ describe("production trust boundaries", () => {
 
   it("never accepts a client-supplied premium entitlement or selfie approval", async () => {
     const member = await makeClient("paid-forgery");
-    expect(await member.call("getPremiumStatus", { active: true, expiresAt: Number.MAX_SAFE_INTEGER, plan: "month", uid: "other" })).toEqual({ active: false, expiresAt: null, purchaseAvailable: false, webPurchaseAvailable: false });
+    expect(await member.call("getPremiumStatus", { active: true, expiresAt: Number.MAX_SAFE_INTEGER, plan: "month", uid: "other" })).toEqual({ active: false, expiresAt: null, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false });
     // Web checkout stays closed until Razorpay and billing are configured, and orders are server-only.
-    await expect(member.call("createPlusOrder", { plan: "week" })).rejects.toThrow(/aren't available yet/);
+    await expect(member.call("createPlusOrder", { plan: "week" })).rejects.toThrow(/aren't available/);
     await expect(member.call("createPlusOrder", { plan: "forever" })).rejects.toThrow(/1-day, 7-day or 30-day/);
     await expect(member.call("confirmPlusPayment", { orderId: "order_FAKE1234", paymentId: "pay_FAKE1234", signature: "x" })).rejects.toThrow(/aren't available yet/);
     await expect(setDoc(doc(member.db, "razorpayOrders", "order_FAKE1234"), { uid: member.uid, status: "paid", expiresAt: Date.now() + 60000 })).rejects.toMatchObject({ code: "permission-denied" });

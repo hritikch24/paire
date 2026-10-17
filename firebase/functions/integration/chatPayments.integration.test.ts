@@ -26,7 +26,7 @@ const admin = getFirestore();
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const chat = require("../src/chatAccess") as typeof import("../src/chatAccess");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { razorpayWebhook } = require("../src/razorpay") as typeof import("../src/razorpay");
+const { razorpayWebhook, createPlusOrder } = require("../src/razorpay") as typeof import("../src/razorpay");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { syncChatAccess } = require("../src/chatEntitlement") as typeof import("../src/chatEntitlement");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -425,6 +425,33 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId, decision: "revoke" });
     expect(await unlockOf(uid)).toMatchObject({ status: "revoked" });
     expect(await mirrorOf(uid)).toMatchObject({ unlimited: false });
+  });
+
+  test("Paire Plus by UPI: the plan's own amount, and approval starts the pass (revoke ends it)", async () => {
+    const uid = await buyer({ matched: false });
+    await expect(call(upi.createUpiUnlockOrder, uid, { plan: "forever" })).rejects.toThrow(/1-day, 7-day or 30-day/);
+    const created = await call(upi.createUpiUnlockOrder, uid, { plan: "week" });
+    if (created.status !== "order") throw new Error("expected an order");
+    expect(created.order).toMatchObject({ kind: "plus", product: "Paire Plus · 7 days" });
+    expect(created.order.amountPaise).toBeGreaterThan(9900);
+    expect(created.order.amountPaise).toBeLessThan(10000);
+    // A Plus order and an Unlimited Chat order are separate.
+    const reference = utr();
+    await call(upi.submitUpiPayment, uid, { orderId: created.order.orderId, utr: reference });
+    expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt") ?? 0).toBeLessThan(Date.now());
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "approve" });
+    const order = (await admin.doc(`upiUnlockOrders/${created.order.orderId}`).get()).data()!;
+    expect(order.expiresAt - order.startsAt).toBe(7 * 24 * 60 * 60 * 1000);
+    expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(order.expiresAt);
+    expect(await mirrorOf(uid)).toMatchObject({ premiumUntil: order.expiresAt });
+    await expect(call(upi.createUpiUnlockOrder, uid, { plan: "day" })).rejects.toThrow(/already active/);
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "revoke" });
+    expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(0);
+  });
+
+  test("new Razorpay Plus sales can be switched off", async () => {
+    await admin.doc("runtime/trust").set({ requireVerification: false, upiSales: true, razorpayPlusSales: false });
+    await expect(call(createPlusOrder, await buyer(), { plan: "week" })).rejects.toThrow(/Card payments aren't available/);
   });
 
   test("a rejected payment unlocks nothing and frees its UTR", async () => {

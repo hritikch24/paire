@@ -74,7 +74,7 @@ export const core = [
 <li><strong>₹99 for 7 days</strong>: about ₹14 a day. The most popular choice.</li>
 <li><strong>₹299 for 30 days</strong>: about ₹10 a day.</li>
 </ul>
-<p>Passes are paid once through Razorpay (UPI, cards or netbanking). They do not renew: when the time is up, your account simply goes back to free. Buying a new pass before the old one ends adds the time on.</p>
+<p>Passes are paid once by UPI, straight to Paire (paire.in@ybl): scan the QR code or open PhonePe, Google Pay, Paytm or any UPI app. They do not renew: when the time is up, your account simply goes back to free. Buying a new pass before the old one ends adds the time on.</p>
 <h2>Unlimited Chat: ₹49 once</h2>
 <p>Only want to chat? Unlimited Chat is a one-time ₹49 payment that lets you send messages in all your current and future mutual matches. It has no expiry, no renewal and no per-match charge, and it stays with your account on every device. It covers messaging only, not Plus's extra likes or filters. Each person needs their own access to send: you can message someone who hasn't paid, and they can read it, but they need Plus or their own unlock to reply. It's offered once you have your first mutual match, and you pay it by UPI from any UPI app directly to Paire (paire.in@ybl) inside the app.</p>
 <h2>Why we price it this way</h2>

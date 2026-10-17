@@ -12,8 +12,9 @@ type Props = {
 };
 
 /**
- * Pay Paire by UPI: this order's own QR and exact amount, then the UTR. Chat
- * unlocks only once Paire confirms the payment reached its account.
+ * Pay Paire by UPI: this order's own QR and exact amount (or straight into
+ * PhonePe, Google Pay, Paytm or any UPI app on a phone), then the UTR. Nothing
+ * unlocks until Paire confirms the payment reached its account.
  */
 export function UpiPayPanel({ order, onSubmitted }: Props) {
   const [utr, setUtr] = useState(order.utr ?? "");
@@ -22,6 +23,17 @@ export function UpiPayPanel({ order, onSubmitted }: Props) {
   const [copied, setCopied] = useState(false);
   const phoneWeb = Platform.OS === "web" && typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
   const canOpenApp = Platform.OS !== "web" || phoneWeb;
+  const what = order.kind === "plus" ? "starts your pass" : "unlocks chat";
+  // The same payment request, opened straight in a chosen app (or the phone's chooser).
+  const query = order.upiLink.slice(order.upiLink.indexOf("?"));
+  const apps = [
+    { label: "PhonePe", url: `phonepe://pay${query}` },
+    { label: "Google Pay", url: `tez://upi/pay${query}` },
+    { label: "Paytm", url: `paytmmp://pay${query}` },
+    { label: "Any UPI app", url: order.upiLink }
+  ];
+  const openApp = (url: string) =>
+    void Linking.openURL(url).catch(() => setError("That app didn't open. Try another one, or scan the QR code with any UPI app."));
 
   const copyId = async () => {
     try {
@@ -47,26 +59,33 @@ export function UpiPayPanel({ order, onSubmitted }: Props) {
   return (
     <YStack testID="upi-pay-panel" gap="$2" padding="$3" borderRadius="$4" borderWidth={1} borderColor="$border" backgroundColor="$backgroundStrong">
       <Text fontWeight="700">1. Pay exactly {order.amountLabel} by UPI</Text>
+      <Text fontSize="$2" fontWeight="600">{order.product}</Text>
       <Text fontSize="$2" color="$textMuted" lineHeight={20}>
         The paise identify your payment, so please don't round it. It goes to {order.payeeName} ({order.vpa}). Reference {order.orderId}.
       </Text>
       <XStack justifyContent="center" paddingVertical="$2">
         <Image source={{ uri: order.qrDataUrl }} style={{ width: 200, height: 200 }} accessibilityLabel={`UPI QR code to pay ${order.amountLabel} to ${order.payeeName}`} />
       </XStack>
+      <Text fontSize="$2" color="$textMuted" textAlign="center">Scan the QR code with PhonePe, Google Pay, Paytm, BHIM or your bank's app{canOpenApp ? ", or open an app directly:" : "."}</Text>
       {canOpenApp ? (
-        <PrimaryButton testID="upi-open-app" onPress={() => void Linking.openURL(order.upiLink).catch(() => setError("No UPI app opened. Scan the QR code from another phone, or pay the UPI ID directly."))}>
-          {`Pay ${order.amountLabel} in a UPI app`}
-        </PrimaryButton>
-      ) : (
-        <Text fontSize="$2" color="$textMuted" textAlign="center">Scan with any UPI app: Google Pay, PhonePe, Paytm, BHIM or your bank's app.</Text>
-      )}
+        <YStack gap="$2" testID="upi-open-app">
+          <PrimaryButton onPress={() => openApp(apps[0].url)}>{`Pay ${order.amountLabel} with PhonePe`}</PrimaryButton>
+          <XStack gap="$2" flexWrap="wrap">
+            {apps.slice(1).map((app) => (
+              <YStack key={app.label} flexGrow={1} flexBasis={120}>
+                <SecondaryButton onPress={() => openApp(app.url)}>{app.label}</SecondaryButton>
+              </YStack>
+            ))}
+          </XStack>
+        </YStack>
+      ) : null}
       {Platform.OS === "web" ? (
         <SecondaryButton onPress={() => void copyId()}>{copied ? "UPI ID copied" : `Copy UPI ID (${order.vpa})`}</SecondaryButton>
       ) : null}
 
       <Text fontWeight="700" marginTop="$2">2. Enter the UPI reference number</Text>
       <Text fontSize="$2" color="$textMuted" lineHeight={20}>
-        After paying, your UPI app shows a 12-digit UPI reference (UTR) or transaction ID. Paire checks it against the payment and then unlocks chat, usually within a few hours.
+        {`After paying, your UPI app shows a 12-digit UPI reference (UTR) or transaction ID. Paire checks it against the payment and then ${what}, usually within a few hours.`}
       </Text>
       <MuseInput testID="upi-utr" inputMode="numeric" maxLength={14} placeholder="12-digit UTR, e.g. 412345678901" value={utr} onChangeText={(value) => setUtr(value.replace(/[^0-9 ]/g, ""))} />
       <PrimaryButton testID="upi-submit" loading={busy} disabled={utr.replace(/\s/g, "").length !== 12} onPress={() => void submit()}>

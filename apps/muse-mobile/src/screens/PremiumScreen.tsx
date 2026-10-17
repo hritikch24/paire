@@ -26,6 +26,8 @@ import { fetchDailyAllowance } from "../services/discoveryService";
 import { trackConversion } from "../services/analytics";
 import { useAuthStore } from "../store/authStore";
 import { useChatAccess } from "../hooks/useChatAccess";
+import { UpiPayPanel } from "../components/UpiPayPanel";
+import { fetchOpenUpiOrder, startUpiUnlock, UpiOrder } from "../services/chatAccessService";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function PremiumScreen() {
@@ -46,10 +48,26 @@ export function PremiumScreen() {
   const chat = useChatAccess().data;
   const paidChat = Boolean(chat?.enforced || chat?.enforceFrom);
   const ready = Boolean(premium.data && !premium.isError && !premium.data.active);
-  // Web: Razorpay checkout at server prices. App: the store's localised product.
-  const canPurchase = webCheckout ? ready && premium.data?.webPurchaseAvailable === true : Boolean(product && ready && premium.data?.purchaseAvailable);
-  const priceLabel = webCheckout ? `₹${plan.priceInr}` : (product?.priceString ?? `₹${plan.priceInr}`);
+  // UPI straight to Paire when it's on (scan or open PhonePe/any UPI app); otherwise Razorpay on the
+  // web, or the store's localised product in the app.
+  const byUpi = premium.data?.upiPurchaseAvailable === true;
+  const upiOrder = useQuery({ queryKey: ["upi-plus-order", uid], queryFn: () => fetchOpenUpiOrder("plus"), enabled: Boolean(uid && byUpi), retry: 1 });
+  const [shownOrder, setShownOrder] = useState<UpiOrder | null>(null);
+  const openOrder = shownOrder ?? upiOrder.data ?? null;
+  const upiSubmitted = openOrder?.status === "submitted";
+  const canPurchase = byUpi ? ready && !upiSubmitted : webCheckout ? ready && premium.data?.webPurchaseAvailable === true : Boolean(product && ready && premium.data?.purchaseAvailable);
+  const priceLabel = webCheckout || byUpi ? `₹${plan.priceInr}` : (product?.priceString ?? `₹${plan.priceInr}`);
+  const payByUpi = async () => {
+    setBusy(true); setMessage(null);
+    try {
+      const result = await startUpiUnlock(plan.id);
+      if (result.status === "order") setShownOrder(result.order);
+    } catch (error) {
+      setMessage(friendlyError(error, "We couldn't start the UPI payment. Please try again."));
+    } finally { setBusy(false); }
+  };
   const act = async (restore = false) => {
+    if (!restore && byUpi) return payByUpi();
     if (!uid || (!restore && !webCheckout && !product)) return;
     setBusy(true); setMessage(null);
     try {
@@ -73,8 +91,8 @@ export function PremiumScreen() {
     <Screen scroll testID="premium-screen" header={<ScreenHeader title="Paire Plus" />} footer={
       <YStack gap="$2">
         <Text textAlign="center" fontSize="$2" color="$textMuted">{priceLabel} for {plan.detail.toLowerCase()} · one-time payment · no auto-renewal</Text>
-        <PrimaryButton testID="premium-purchase" loading={busy} disabled={!canPurchase} onPress={() => void act()}>{premium.data?.active ? "Your pass is active" : canPurchase ? `Get ${plan.label} · ${priceLabel}` : "Plus is coming soon"}</PrimaryButton>
-        <Text textAlign="center" fontSize="$1" color="$textMuted">{canPurchase ? (webCheckout ? "Pay securely with UPI, cards or netbanking via Razorpay." : "Pay securely through your app store.") : premium.data?.active ? `Available until ${new Date(premium.data.expiresAt!).toLocaleString("en-IN")}.` : "Purchases aren’t available yet. You won’t be charged."}</Text>
+        <PrimaryButton testID="premium-purchase" loading={busy} disabled={!canPurchase} onPress={() => void act()}>{premium.data?.active ? "Your pass is active" : upiSubmitted ? "Confirming your UPI payment" : canPurchase ? (byUpi ? `Pay ${priceLabel} by UPI · ${plan.label}` : `Get ${plan.label} · ${priceLabel}`) : "Plus is coming soon"}</PrimaryButton>
+        <Text textAlign="center" fontSize="$1" color="$textMuted">{upiSubmitted ? "We've got your UPI reference. Your pass starts as soon as we confirm the payment, usually within a few hours." : canPurchase ? (byUpi ? "Pay by UPI straight to Paire: scan the QR code, or open PhonePe, Google Pay, Paytm or any UPI app." : webCheckout ? "Pay securely with UPI, cards or netbanking via Razorpay." : "Pay securely through your app store.") : premium.data?.active ? `Available until ${new Date(premium.data.expiresAt!).toLocaleString("en-IN")}.` : "Purchases aren’t available yet. You won’t be charged."}</Text>
       </YStack>
     }>
       <YStack paddingTop="$4" gap="$5">
@@ -107,6 +125,9 @@ export function PremiumScreen() {
           })}
         </YStack>
         {message ? <Text accessibilityLiveRegion="polite" color="$textMuted" lineHeight={22}>{message}</Text> : null}
+        {byUpi && openOrder && !upiSubmitted && !premium.data?.active ? (
+          <UpiPayPanel order={openOrder} onSubmitted={(next) => { setShownOrder(next); void upiOrder.refetch(); }} />
+        ) : null}
         {premium.data?.purchaseBlockReason === "verification-required" ? <YStack gap="$2"><Text color="$textMuted">Verify your photos before buying a pass, so you can use it straight away.</Text><SecondaryButton onPress={() => navigation.navigate("Verification")}>Verify my photos</SecondaryButton></YStack> : null}
         <SecondaryButton onPress={() => void premium.refetch()} loading={premium.isFetching}>Refresh pass status</SecondaryButton>
         {nativeBillingAvailable ? <SecondaryButton loading={busy} onPress={() => void act(true)}>Restore purchases</SecondaryButton> : null}
@@ -130,7 +151,7 @@ export function PremiumScreen() {
           <Text fontSize="$2" color="$textMuted" lineHeight={21}>{paidChat ? "Joining, see everyone who likes you, mutual matching, likes with notes, reading every message you receive, Vibe first, Duos, AI icebreakers, every privacy control (incognito, private photos, notes only, I'll message first), photo verification, and reporting, blocking and unmatching. Sending messages needs Plus or Unlimited Chat. Prices are the same for men and women." : "See everyone who likes you, chat with your matches, likes with notes, Vibe first, Duos, AI icebreakers, every privacy control (incognito, private photos, notes only, I'll message first) and photo verification. Prices are the same for men and women."}</Text>
           {chat?.enforceFrom ? <Text fontSize="$2" color="$text" lineHeight={21}>{`From ${new Date(chat.enforceFrom).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}, sending messages will need Paire Plus or a one-time ₹${chat.unlock.priceInr} Unlimited Chat unlock. Reading messages stays free.`}</Text> : null}
           {allowance.data && !allowance.isError ? <Text fontSize="$2" color="$textMuted" lineHeight={21}>Your current allowance: {allowance.data.limits.likes} likes and {allowance.data.limits.supers} Super Likes per day. Resets daily at {resetTime}.</Text> : <Text fontSize="$2" color="$textMuted">Free discovery limits reset every day.</Text>}
-          <Text fontSize="$1" color="$textMuted">{webCheckout ? "Prices include taxes. You pay once through Razorpay; nothing renews." : "Store prices are shown before payment when passes are available."} Paying never guarantees a match, and safety is never for sale.</Text>
+          <Text fontSize="$1" color="$textMuted">{byUpi ? "Prices include taxes. You pay once by UPI, straight to Paire; nothing renews." : webCheckout ? "Prices include taxes. You pay once through Razorpay; nothing renews." : "Store prices are shown before payment when passes are available."} Paying never guarantees a match, and safety is never for sale.</Text>
           <Text fontSize="$1" color="$primary" accessibilityRole="link" onPress={() => void Linking.openURL(legal.refundsUrl)}>Cancellation and refund policy</Text>
         </YStack>
       </YStack>

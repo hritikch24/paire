@@ -30,8 +30,10 @@ export type ChatPolicy = {
   legacyGraceUntil: number;
   /** Unlimited Chat can be bought through Razorpay (also needs MUSE_CHAT_UNLOCK_ENABLED and Razorpay keys). */
   unlockSales: boolean;
-  /** Unlimited Chat can be paid by UPI into Paire's own account (also needs MUSE_UPI_VPA). */
+  /** Unlimited Chat and Plus can be paid by UPI into Paire's own account (also needs MUSE_UPI_VPA). */
   upiSales: boolean;
+  /** New Paire Plus passes can be bought through Razorpay. Missing = yes (as before). */
+  razorpayPlusSales: boolean;
 };
 
 export type ChatAccessMirror = { unlimited: boolean; premiumUntil: number };
@@ -45,7 +47,8 @@ export function parseChatPolicy(data: unknown): ChatPolicy {
     enforceFrom: ms(raw.enforceFrom),
     legacyGraceUntil: ms(raw.legacyGraceUntil),
     unlockSales: raw.unlockSales === true,
-    upiSales: raw.upiSales === true
+    upiSales: raw.upiSales === true,
+    razorpayPlusSales: raw.razorpayPlusSales !== false
   };
 }
 

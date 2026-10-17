@@ -4,7 +4,7 @@ import { db } from "./admin";
 import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { parsePasses, sameSecret, validRevenueCatSignature } from "./lib/billing";
-import { syncChatAccess } from "./chatEntitlement";
+import { chatPolicy, syncChatAccess, upiSalesOpen } from "./chatEntitlement";
 import { consumeDailyQuota } from "./quota";
 import { verifiedUsers } from "./trust";
 
@@ -19,6 +19,10 @@ export const razorpayConfigured = () =>
   Boolean(process.env.RAZORPAY_KEY_ID) && Boolean(process.env.RAZORPAY_KEY_SECRET && process.env.RAZORPAY_KEY_SECRET !== "disabled");
 /** New web passes (UPI, cards, netbanking) can be sold. */
 export const webBillingEnabled = () => billingEnabled() && razorpayConfigured();
+/** New Razorpay Plus checkouts (runtime/trust.razorpayPlusSales can switch them off; old payments are still honoured). */
+export const razorpayPlusOpen = async () => webBillingEnabled() && (await chatPolicy()).razorpayPlusSales;
+/** Plus passes paid by UPI into Paire's own account, confirmed by a moderator. */
+export const upiPlusOpen = async () => billingEnabled() && (await upiSalesOpen());
 
 export type PremiumStatus = {
   active: boolean;
@@ -27,6 +31,8 @@ export type PremiumStatus = {
   purchaseAvailable: boolean;
   /** Razorpay checkout (web). */
   webPurchaseAvailable: boolean;
+  /** UPI straight to Paire (scan the QR or open a UPI app). */
+  upiPurchaseAvailable: boolean;
   purchaseBlockReason?: "verification-required";
 };
 
@@ -60,8 +66,12 @@ export async function storeExpiryIfEnabled(uid: string, now = Date.now()): Promi
 
 /** Latest expiry among the member's paid, unrefunded web passes. 0 when none. */
 export async function webPassExpiry(uid: string, now = Date.now()): Promise<number> {
-  const paid = await db.collection("razorpayOrders").where("uid", "==", uid).where("status", "==", "paid").get();
-  return paid.docs.reduce((latest, doc) => {
+  const [paid, upi] = await Promise.all([
+    db.collection("razorpayOrders").where("uid", "==", uid).where("status", "==", "paid").get(),
+    // Plus passes paid by UPI and approved by a moderator (upiPayments.ts).
+    db.collection("upiUnlockOrders").where("uid", "==", uid).where("status", "==", "approved").get()
+  ]);
+  return [...paid.docs, ...upi.docs.filter((doc) => doc.get("kind") === "plus")].reduce((latest, doc) => {
     const expiresAt = doc.get("expiresAt");
     return typeof expiresAt === "number" && expiresAt > now ? Math.max(latest, expiresAt) : latest;
   }, 0);
@@ -72,7 +82,7 @@ export async function webPassExpiry(uid: string, now = Date.now()): Promise<numb
  * in billing/{uid}, which swipes read. Never trusts anything the client says.
  */
 export async function syncPremium(uid: string): Promise<PremiumStatus> {
-  const status = { purchaseAvailable: nativeBillingEnabled(), webPurchaseAvailable: webBillingEnabled() };
+  const status = { purchaseAvailable: nativeBillingEnabled(), webPurchaseAvailable: await razorpayPlusOpen(), upiPurchaseAvailable: await upiPlusOpen() };
   if (!billingEnabled()) return { active: false, expiresAt: null, ...status };
   const now = Date.now();
   const [store, web] = await Promise.all([
@@ -91,8 +101,8 @@ export const getPremiumStatus = onCall({ region: REGION, secrets: ["REVENUECAT_S
   const uid = requireAuth(request);
   await consumeDailyQuota(uid, "billingChecks", 100);
   const status = await syncPremium(uid);
-  if ((status.purchaseAvailable || status.webPurchaseAvailable) && !(await verifiedUsers([uid])).has(uid)) {
-    return { ...status, purchaseAvailable: false, webPurchaseAvailable: false, purchaseBlockReason: "verification-required" };
+  if ((status.purchaseAvailable || status.webPurchaseAvailable || status.upiPurchaseAvailable) && !(await verifiedUsers([uid])).has(uid)) {
+    return { ...status, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, purchaseBlockReason: "verification-required" };
   }
   return status;
 });

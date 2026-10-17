@@ -22,7 +22,7 @@ export function UpiReviewScreen() {
     setBusy(`${item.orderId}:${decision}`);
     try {
       await reviewUpiPayment(item.orderId, decision);
-      showToast(decision === "approve" ? `Approved ${item.amountLabel}: chat unlocked for ${item.memberName}.` : `Rejected ${item.orderId}.`, "success");
+      showToast(decision === "approve" ? `Approved ${item.amountLabel}: ${item.product} is on for ${item.memberName}.` : `Rejected ${item.orderId}.`, "success");
       await queue.refetch();
     } catch (error) {
       showToast(friendlyError(error, "That didn't work. Please try again."), "error");
@@ -46,6 +46,7 @@ export function UpiReviewScreen() {
               <Text fontSize="$7" fontWeight="700">{item.amountLabel}</Text>
               <Text color="$textMuted" fontSize="$2">{item.orderId}</Text>
             </XStack>
+            <Text fontWeight="600">{item.product}</Text>
             <Text selectable>UTR: <Text fontWeight="700" selectable>{item.utr ?? "—"}</Text></Text>
             <Text color="$textMuted" fontSize="$2">
               {item.memberName} · submitted {item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-IN") : "—"}
