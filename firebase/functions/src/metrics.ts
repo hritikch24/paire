@@ -160,6 +160,9 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
   const sum = (docs: DocumentSnapshot[]) => Math.round(docs.reduce((total, doc) => total + (Number(doc.get("amountPaise")) || 0), 0) / 100);
   const upiPlus = upiPaid.docs.filter((doc) => doc.get("kind") === "plus");
   const upiChat = upiPaid.docs.filter((doc) => doc.get("kind") !== "plus");
+  const ccavenuePaid = await db.collection("ccavenueOrders").where("status", "==", "paid").select("amountPaise", "kind").get();
+  const ccavenuePlus = ccavenuePaid.docs.filter((doc) => doc.get("kind") === "plus");
+  const ccavenueChat = ccavenuePaid.docs.filter((doc) => doc.get("kind") !== "plus");
   const [matches, matches24h, messages, swipes] = await Promise.all([
     count(db.collection("matches")),
     count(db.collection("matches").where("createdAt", ">=", Timestamp.fromMillis(since(dayMs)))),
@@ -187,8 +190,8 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
       verified
     },
     activity: { matches, matches24h, messages, swipes },
-    plus: { orders: plusPaid.size + upiPlus.length, rupees: sum(plusPaid.docs) + sum(upiPlus) },
-    unlimitedChat: { orders: upiChat.length, rupees: sum(upiChat) },
+    plus: { orders: plusPaid.size + upiPlus.length + ccavenuePlus.length, rupees: sum(plusPaid.docs) + sum(upiPlus) + sum(ccavenuePlus) },
+    unlimitedChat: { orders: upiChat.length + ccavenueChat.length, rupees: sum(upiChat) + sum(ccavenueChat) },
     testAccounts: testUids.size
   };
 }

@@ -19,12 +19,13 @@ function requireModerator(request: { auth?: { uid: string; token: Record<string,
 const PAGE = 30;
 const rupees = (paise: unknown) => (Number(paise) || 0) / 100;
 
-type Payment = { source: "razorpay" | "upi"; product: string; amountInr: number; status: string; at: number | null; utr?: string | null; expiresAt?: number | null };
+type Payment = { source: "razorpay" | "upi" | "ccavenue"; product: string; amountInr: number; status: string; at: number | null; utr?: string | null; expiresAt?: number | null };
 
 async function paymentsOf(uid: string): Promise<{ payments: Payment[]; plusUntil: number | null; unlimitedChat: boolean }> {
-  const [razorpay, upi, unlock, billing] = await Promise.all([
+  const [razorpay, upi, ccavenue, unlock, billing] = await Promise.all([
     db.collection("razorpayOrders").where("uid", "==", uid).get(),
     db.collection("upiUnlockOrders").where("uid", "==", uid).get(),
+    db.collection("ccavenueOrders").where("uid", "==", uid).get(),
     db.doc(`chatUnlocks/${uid}`).get(),
     db.doc(`billing/${uid}`).get()
   ]);
@@ -46,6 +47,15 @@ async function paymentsOf(uid: string): Promise<{ payments: Payment[]; plusUntil
       status: String(doc.get("status")).replace("_", " "),
       at: at(doc.get("createdAt")),
       utr: (doc.get("utr") as string | undefined) ?? null,
+      expiresAt: (doc.get("expiresAt") as number | undefined) ?? null
+    })),
+    ...ccavenue.docs.map((doc) => ({
+      source: "ccavenue" as const,
+      product: doc.get("kind") === "plus" ? `Plus · ${doc.get("plan")}` : "Unlimited Chat",
+      amountInr: rupees(doc.get("amountPaise")),
+      // "created" means the payment page was opened but never paid.
+      status: doc.get("status") === "created" ? (doc.get("awaiting") === true ? "bank confirming" : "not paid") : String(doc.get("status")),
+      at: at(doc.get("createdAt")),
       expiresAt: (doc.get("expiresAt") as number | undefined) ?? null
     }))
   ].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));

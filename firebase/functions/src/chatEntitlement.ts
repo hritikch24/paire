@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./admin";
+import { CcavenueMode, ccavenueMode } from "./lib/ccavenue";
 import { ChatAccessMirror, ChatPolicy, parseChatPolicy } from "./lib/chatAccess";
 
 let cachedPolicy: { policy: ChatPolicy; at: number } | null = null;
@@ -55,6 +56,23 @@ export const upiVpa = () => {
 /** UPI checkout is on: a valid UPI ID is configured and runtime/trust.upiSales is set. */
 export async function upiSalesOpen(): Promise<boolean> {
   return Boolean(upiVpa()) && (await chatPolicy()).upiSales;
+}
+
+/**
+ * The CCAvenue environment new orders may open in, if any: CCAVENUE_ENV with a
+ * merchant id and access code, plus MUSE_CCAVENUE_LIVE=true (explicit approval)
+ * for live money, or MUSE_BILLING_SANDBOX=true for the test environment.
+ */
+export function ccavenueSellingMode(): CcavenueMode | null {
+  const mode = ccavenueMode(process.env.CCAVENUE_ENV);
+  if (!mode || !process.env.CCAVENUE_MERCHANT_ID?.trim() || !process.env.CCAVENUE_ACCESS_CODE?.trim()) return null;
+  if (mode === "live") return process.env.MUSE_CCAVENUE_LIVE === "true" ? "live" : null;
+  return process.env.MUSE_BILLING_SANDBOX === "true" ? "test" : null;
+}
+
+/** CCAvenue checkout is on: MUSE_CCAVENUE_ENABLED, a selling mode, and runtime/trust.ccavenueSales. */
+export async function ccavenueSalesOpen(): Promise<boolean> {
+  return process.env.MUSE_CCAVENUE_ENABLED === "true" && ccavenueSellingMode() !== null && (await chatPolicy()).ccavenueSales;
 }
 
 /** Account deletion: the mirror goes; payment records stay for tax law. */

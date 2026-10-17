@@ -14,6 +14,8 @@ export type PremiumStatus = {
   webPurchaseAvailable?: boolean;
   /** UPI straight to Paire: scan the QR or open a UPI app. */
   upiPurchaseAvailable?: boolean;
+  /** CCAvenue on the web: cards, UPI, netbanking, wallets. */
+  ccavenuePurchaseAvailable?: boolean;
   /** An earlier card/Razorpay checkout didn't go through; nothing was charged. */
   previousPaymentFailed?: boolean;
   purchaseBlockReason?: "verification-required";

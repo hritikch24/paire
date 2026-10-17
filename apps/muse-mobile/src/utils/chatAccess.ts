@@ -15,6 +15,30 @@ export function sendLocked(access: ChatAccess | undefined, chatCreatedAt: number
 
 /** Composed messages survive checkout, cancellation and leaving the chat (for this app session). */
 const drafts = new Map<string, string>();
+const STASH = "paire.chatDrafts";
+
+/** Web: keeps drafts in this tab across a full-page payment redirect (CCAvenue). */
+export function stashDrafts() {
+  try {
+    if (drafts.size && typeof sessionStorage !== "undefined") sessionStorage.setItem(STASH, JSON.stringify([...drafts]));
+  } catch {
+    // Storage off (private mode): the draft is lost, never the payment.
+  }
+}
+
+/** Brings stashed drafts back once, when the app loads after the redirect. */
+export function restoreDrafts() {
+  try {
+    if (typeof sessionStorage === "undefined") return;
+    const saved = sessionStorage.getItem(STASH);
+    sessionStorage.removeItem(STASH);
+    for (const [matchId, text] of saved ? (JSON.parse(saved) as Array<[string, string]>) : []) {
+      if (typeof matchId === "string" && typeof text === "string" && !drafts.has(matchId)) drafts.set(matchId, text);
+    }
+  } catch {
+    // Nothing to restore.
+  }
+}
 export const draftFor = (matchId: string) => drafts.get(matchId) ?? "";
 export function saveDraft(matchId: string, text: string) {
   if (text) drafts.set(matchId, text);

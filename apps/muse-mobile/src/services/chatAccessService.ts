@@ -23,9 +23,11 @@ export type ChatAccess = {
     priceInr: number;
     reason?: "sales-off" | "no-match" | "verification-required" | "account";
     /** How it can be paid right now. */
-    methods?: Array<"razorpay" | "upi">;
+    methods?: Array<"razorpay" | "upi" | "ccavenue">;
     /** A UPI payment is waiting for Paire to confirm it. */
     upiPending?: boolean;
+    /** A CCAvenue payment the bank is still confirming. */
+    ccavenuePending?: boolean;
   };
   serverNow: number;
 };
