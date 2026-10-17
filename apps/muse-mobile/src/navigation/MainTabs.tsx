@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "tamagui";
@@ -33,7 +34,7 @@ export function MainTabs() {
         tabBarStyle: {
           backgroundColor: theme.backgroundStrong?.val,
           borderTopColor: theme.border?.val,
-          height: 74 + insets.bottom,
+          height: (Platform.OS === "web" ? 80 : 74) + insets.bottom,
           paddingTop: 6,
           paddingBottom: Math.max(insets.bottom, 8)
         }

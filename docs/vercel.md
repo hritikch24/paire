@@ -39,7 +39,7 @@ Build: `node apps/web/scripts/build.mjs` writes `apps/web/dist`. `vercel.json` a
 
 ## Every deploy
 
-Pushing to the connected branch deploys automatically (pull requests get preview URLs). From the CLI: `vercel --prod`. A build installs the app dependencies and exports the app, which takes a few minutes.
+The current `team-rockstar/paire` project is **not connected to Git** (verified 2026-10-17). Pushing to `main` does not deploy. Deploy manually from the repository root with `npx vercel deploy --prod --scope team-rockstar`, then `node apps/web/scripts/indexnow.mjs`. A build installs the browser dependencies and exports the app, which takes a few minutes. Git pushes would deploy automatically only after a Git connection is explicitly configured.
 
 Check after each deploy: the landing page loads; `/app/` shows Welcome; you can sign in, see Discover, send a like with a note, and open a chat; `/privacy/` loads.
 

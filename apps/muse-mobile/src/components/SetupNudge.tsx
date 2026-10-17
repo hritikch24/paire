@@ -1,7 +1,7 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
-import { Pressable } from "react-native";
+import { Platform, Pressable } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { features } from "../config/features";
 import { requestApproximateLocation } from "../services/locationService";
@@ -110,18 +110,18 @@ export function SetupNudge() {
     >
       <Icon name={nudge.icon} size={22} color="primary" />
       <YStack flex={1} gap={1}>
-        <Text fontSize="$3" fontWeight="700">
+        <Text fontSize={Platform.OS === "web" ? 12 : "$3"} fontWeight="700">
           {nudge.title}
         </Text>
-        <Text fontSize="$2" color="$textMuted">
-          {nudge.body}
+        <Text fontSize={Platform.OS === "web" ? 11 : "$2"} color="$textMuted" numberOfLines={Platform.OS === "web" ? 1 : undefined}>
+          {Platform.OS === "web" ? nudge.id === "photo" ? "Let them see the real you." : nudge.id === "location" ? "Share your approximate location." : "Keep up with new connections." : nudge.body}
         </Text>
       </YStack>
       <Pressable
         accessibilityRole="button"
         disabled={busy}
         onPress={() => void act()}
-        style={({ pressed }) => ({ opacity: pressed || busy ? 0.6 : 1 })}
+        style={({ pressed }) => ({ opacity: pressed || busy ? 0.6 : 1, ...(Platform.OS === "web" ? { minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center" } : {}) })}
       >
         <Text fontSize="$3" fontWeight="700" color="$primary">
           {nudge.action}
@@ -131,6 +131,7 @@ export function SetupNudge() {
         accessibilityRole="button"
         accessibilityLabel={`Dismiss: ${nudge.title}`}
         hitSlop={10}
+        style={Platform.OS === "web" ? { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" } : undefined}
         onPress={() => setDismissed((list) => [...list, nudge.id])}
       >
         <Icon name="close" size={18} color="textMuted" />

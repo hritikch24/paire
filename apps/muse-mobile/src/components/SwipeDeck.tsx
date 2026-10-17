@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Extrapolation,
@@ -68,6 +68,7 @@ export const SwipeDeck = forwardRef<SwipeDeckHandle, SwipeDeckProps>(function Sw
 
   return (
     <View
+      testID="discover-deck"
       style={styles.deck}
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
@@ -160,8 +161,12 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
 
   const pan = Gesture.Pan()
     .enabled(isTop)
-    .activeOffsetX([-12, 12])
-    .activeOffsetY([-12, 12])
+    .activeOffsetX([-12, 12]);
+  // Let a vertical browser gesture scroll short viewports. Super Like stays
+  // available through its button; native keeps its existing upward gesture.
+  if (Platform.OS === "web") pan.failOffsetY([-16, 16]);
+  else pan.activeOffsetY([-12, 12]);
+  pan
     .onChange((event) => {
       if (committed.value) return;
       x.value = event.translationX;
@@ -230,7 +235,7 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
   const interests = profile.interests
     .map((id) => museCardMap.get(id))
     .filter(Boolean)
-    .slice(0, 3);
+    .slice(0, Platform.OS === "web" ? 2 : 3);
   const vibes = profile.vibes
     .map((id) => vibeMap.get(id))
     .filter(Boolean)
@@ -247,8 +252,9 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
   const basicsLine = cardBasics(profile.basics, profile.languages);
 
   return (
-    <GestureDetector gesture={gesture}>
+    <GestureDetector gesture={gesture} touchAction={Platform.OS === "web" ? "pan-y" : undefined}>
       <Animated.View
+        testID={isTop ? "discover-card" : "discover-card-next"}
         style={[styles.card, { width: size.width, height: size.height }, cardStyle]}
         accessible={isTop}
         accessibilityRole="adjustable"
@@ -257,7 +263,7 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
             ? `Blind date profile, age ${profile.age}`
             : `${profile.displayName}, ${profile.age}${location ? `, ${location}` : ""}`
         }
-        accessibilityHint="Swipe right to like, left to pass, up to Super Like. Double tap to open the profile."
+        accessibilityHint={Platform.OS === "web" ? "Swipe right to like, left to pass. Use the star button for a Super Like. Tap the profile details to explore." : "Swipe right to like, left to pass, up to Super Like. Double tap to open the profile."}
         accessibilityActions={[
           { name: "activate", label: "Open profile" },
           { name: "like", label: "Like" },
@@ -376,6 +382,7 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
 
         <LinearGradient
           colors={["transparent", "rgba(10,6,12,0.55)", "rgba(10,6,12,0.88)"]}
+          testID="discover-card-info"
           style={styles.info}
           pointerEvents="none"
         >
@@ -430,7 +437,7 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
               </XStack>
             ) : null}
             {topReason && !blindMode ? (
-              <XStack alignItems="center" gap={6}>
+              <XStack testID="discover-card-reason" alignItems="center" gap={6}>
                 <Icon name="sparkles" size={14} color={colors.glow} />
                 <Text color={colors.glow} fontSize="$2" fontWeight="600" numberOfLines={1} flex={1}>
                   {topReason}

@@ -1,3 +1,5 @@
+import { DiscoverWebStyles } from "../components/DiscoverWebStyles";
+import { DiscoveryActions } from "../components/DiscoveryActions";
 import { VerificationGate } from "../components/VerificationGate";
 import { fetchPremiumStatus } from "../services/billingService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -5,7 +7,7 @@ import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navig
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView } from "react-native";
+import { Platform, Pressable, ScrollView } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { DuoMode } from "../components/duo/DuoMode";
 import { IconButton } from "../components/IconButton";
@@ -431,15 +433,16 @@ function DiscoveryExperience() {
   const hidden = me?.isDiscoverable === false;
 
   return (
-    <Screen edges={["top"]} padded={false}>
-      <XStack paddingHorizontal="$4" alignItems="center" justifyContent="space-between" minHeight={56} marginBottom="$2">
+    <Screen testID="discover-screen" edges={["top"]} padded={false}>
+      <DiscoverWebStyles />
+      <XStack testID="discover-header" paddingHorizontal="$4" alignItems="center" justifyContent="space-between" minHeight={56} marginBottom="$2">
         <YStack>
           <Text fontSize="$7" lineHeight={30} fontWeight="700" color="$primary" accessibilityRole="header">
             paire<Text color="$text">.</Text>
           </Text>
           <XStack alignItems="center" gap={4}>
             <Icon name="location-outline" size={12} color="primary" />
-            <Text fontSize="$1" color="$textMuted">
+            <Text testID="discover-city" fontSize="$1" color="$textMuted" numberOfLines={Platform.OS === "web" ? 1 : undefined}>
               {me?.city || "Starting in Delhi NCR · open to all"}
             </Text>
           </XStack>
@@ -469,7 +472,7 @@ function DiscoveryExperience() {
         </XStack>
       </XStack>
 
-      <XStack paddingHorizontal="$4" alignItems="center" justifyContent="space-between" gap="$2" marginBottom="$3">
+      <XStack testID="discover-intro" paddingHorizontal="$4" alignItems="center" justifyContent="space-between" gap="$2" marginBottom="$3">
         <YStack flex={1}>
           {filter === "garba" && mode !== "duo" ? (
             <>
@@ -492,6 +495,7 @@ function DiscoveryExperience() {
 
       {hidden ? (
         <XStack
+          testID="discover-hidden"
           marginHorizontal="$4"
           marginBottom="$2"
           padding="$3"
@@ -506,22 +510,22 @@ function DiscoveryExperience() {
         </XStack>
       ) : null}
 
-      <YStack paddingBottom="$2">
+      <YStack testID="discover-modes" paddingBottom="$2">
         <ModeSwitch mode={mode} onChange={changeMode} duoBadge={!duosSeen && !duo.duo} />
       </YStack>
 
       {mode !== "duo" ? (
-        <YStack paddingBottom="$2">
+        <YStack testID="discover-filters" paddingBottom="$2">
           <FeedFilters value={filter} locked={plusLocked} canSeekYounger={settings?.ageGap === "older"} garbaOpen={garbaOpen} onChange={chooseFilter} />
         </YStack>
       ) : null}
 
       {mode === "duo" ? <DuoMode state={duo} /> : null}
 
-      {mode !== "duo" ? <SetupNudge /> : null}
+      {Platform.OS !== "web" && mode !== "duo" ? <SetupNudge /> : null}
 
       {mode !== "duo" ? (
-        <YStack flex={1} paddingHorizontal="$3" paddingBottom="$2">
+        <YStack testID="discover-card-area" flex={1} paddingHorizontal="$3" paddingBottom="$2">
           {status === "loading" ? (
             <CardSkeleton />
           ) : status === "error" ? (
@@ -585,7 +589,17 @@ function DiscoveryExperience() {
         </XStack>
       ) : null}
 
-      {mode === "solo" && top ? (
+      {mode === "solo" && top && Platform.OS === "web" ? (
+        <DiscoveryActions
+          undoDisabled={!lastPass}
+          onUndo={() => void handleUndo()}
+          onPass={() => deckRef.current?.swipe("nope")}
+          onSuper={() => top.requiresNote ? setCompose({ profile: top, kind: "super" }) : deckRef.current?.swipe("super")}
+          onNote={() => setCompose({ profile: top, kind: "like" })}
+          onLike={() => top.requiresNote ? setCompose({ profile: top, kind: "like" }) : deckRef.current?.swipe("like")}
+        />
+      ) : null}
+      {mode === "solo" && top && Platform.OS !== "web" ? (
         <XStack justifyContent="center" alignItems="center" gap="$3" paddingTop="$2" paddingBottom="$2">
           <IconButton
             testID="discover-undo"
@@ -646,7 +660,7 @@ function DiscoveryExperience() {
       ) : null}
 
       {mode !== "duo" ? (
-        <XStack paddingHorizontal="$4" paddingBottom="$2" gap="$3" alignItems="center" justifyContent="space-between">
+        <XStack testID="discover-footer" paddingHorizontal="$4" paddingBottom="$2" gap="$3" alignItems="center" justifyContent="space-between">
           <Pressable accessibilityRole="button" accessibilityLabel="How vibe matching works" onPress={() => navigation.navigate("VibeGuide")} style={{ minHeight: 44, justifyContent: "center", flex: 1 }}>
             <XStack gap={5} alignItems="center"><Icon name="sparkles-outline" size={14} color="primary" /><Text color="$textMuted" fontSize="$1">Behind the vibe</Text></XStack>
           </Pressable>
@@ -655,6 +669,8 @@ function DiscoveryExperience() {
           </Pressable>
         </XStack>
       ) : null}
+
+      {Platform.OS === "web" && mode !== "duo" ? <SetupNudge /> : null}
 
       <GarbaSheet
         visible={garbaSheet && garbaOpen}

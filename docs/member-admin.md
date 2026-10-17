@@ -16,7 +16,7 @@ Session audits record the admin uid, member uid, reason, start/expiry/end time; 
 
 ## Rollout
 
-No deployment or production permission change is part of this implementation. Notify existing members of the Terms/Privacy support-access change before enabling access, as the current policy promises. Limit access to member-requested troubleshooting and record the related concern; a Terms clause alone is not a blanket justification to browse private conversations.
+Deployment does not automatically grant any member or moderator the separate owner support permission. Notify existing members of the Terms/Privacy support-access change before enabling access, as the current policy promises. Limit access to member-requested troubleshooting and record the related concern; a Terms clause alone is not a blanket justification to browse private conversations.
 
 When the owner requests rollout, deploy the backend **with rules and indexes first**, then the website/browser app. Do not deploy only the token-minting functions with older database rules. The runtime service account needs the Firebase Auth permissions used here and permission to sign custom tokens (`iam.serviceAccounts.signBlob`); provider signing errors cause the audited session to be ended without returning a credential. The emulator tests do not verify production IAM. Wait for the composite indexes to be ready.
 
