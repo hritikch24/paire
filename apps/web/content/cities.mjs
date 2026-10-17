@@ -48,7 +48,7 @@ export const cities = [
     ],
     getting: "The Delhi Metro reaches most date spots and is the easiest way to travel on your own. For late evenings use a ride app and share the trip with a friend.",
     safety: "In winter it gets dark early: plan daytime or early-evening meetings, and choose places near a Metro station.",
-    faq: [["Is Paire available across Delhi NCR?", "Yes. Paire started in Delhi NCR (Delhi, Noida, Gurugram, Faridabad and Ghaziabad) and is open across India."]],
+    faq: [["Is Paire available across Delhi NCR?", "Yes. Paire is open across Delhi NCR (Delhi, Noida, Gurugram, Faridabad and Ghaziabad) and the rest of India."]],
     related: ["dating/gurugram/", "dating/noida/"]
   }),
   city({

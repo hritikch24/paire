@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | `a14a25c` | All-India positioning: no more "Delhi NCR first" in the app (side panel, Discover header), homepage hero/FAQ/footer, Garba page, content pages and llms.txt. Web only. | pushed |
 | 2026-10-17 | `8582c84` | End of Discover: a simple Paire Plus offer from ₹20 a day for free members; the offer and the Plus screen no longer mention passed profiles coming back (the feature still works for Plus). Web only. | pushed |
 | 2026-10-17 | — | Owner deployed functions and Firestore (CCAvenue functions, `getDiscoverFeed`/`swipe` with Plus second looks) and turned on `runtime/trust.ccavenueSales`. `www.paire.in/pay/ccavenue/` returns 303 to `/app/`. Direct UPI stays switched on but isn't offered for new orders while CCAvenue sells. | Firebase live |
 | 2026-10-17 | `619f398` | Site review fixes (Plus "10× the likes", header, README), Hold to Super Like and Lucky spin on web Discover, and the shareable dating vibe quiz at `/vibe-quiz/`. Web only; no backend change. See `docs/qa-2026-10-17.md`. | pushed |

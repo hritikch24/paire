@@ -468,7 +468,7 @@ function DiscoveryExperience() {
           <XStack alignItems="center" gap={4}>
             <Icon name="location-outline" size={12} color="primary" />
             <Text testID="discover-city" fontSize="$1" color="$textMuted" numberOfLines={Platform.OS === "web" ? 1 : undefined}>
-              {me?.city || "Delhi NCR · open to all"}
+              {me?.city || "Across India"}
             </Text>
           </XStack>
         </YStack>
