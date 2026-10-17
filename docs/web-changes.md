@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | — | Owner deployed functions and Firestore (CCAvenue functions, `getDiscoverFeed`/`swipe` with Plus second looks) and turned on `runtime/trust.ccavenueSales`. `www.paire.in/pay/ccavenue/` returns 303 to `/app/`. Direct UPI stays switched on but isn't offered for new orders while CCAvenue sells. | Firebase live |
 | 2026-10-17 | `619f398` | Site review fixes (Plus "10× the likes", header, README), Hold to Super Like and Lucky spin on web Discover, and the shareable dating vibe quiz at `/vibe-quiz/`. Web only; no backend change. See `docs/qa-2026-10-17.md`. | pushed |
 | 2026-10-17 | `25f9031` | Discover: free members who have seen everyone get a Paire Plus offer; Plus members then see people they passed on again (never likes, matches or blocks) and can like them. Needs the functions deploy (`getDiscoverFeed`, `swipe`) and the web app. | pushed |
 | 2026-10-17 | `2f794d7` | CCAvenue replaces direct UPI (paire.in@ybl) for new orders while CCAvenue sells; submitted UPI orders still confirmable. Pricing, llms.txt, Terms, Refunds and Privacy copy name CCAvenue (Infibeam Avenues). | pushed |
