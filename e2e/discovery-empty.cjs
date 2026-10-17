@@ -31,8 +31,10 @@ const db = backendRequire('firebase-admin/firestore').getFirestore();
     await page.getByTestId('discover-expand').waitFor();
     for(const [width,height] of [[320,568],[360,660],[390,700],[430,932],[1440,900]]) {
       await page.setViewportSize({width,height});
-      const empty = page.getByTestId('discover-empty');
-      assert.equal(await empty.getByRole('button').count(),1);
+      // Free members see the Paire Plus offer, with Expand search as the second action.
+      const empty = page.getByTestId('discover-empty-plus');
+      assert.equal(await empty.getByRole('button').count(),2);
+      await page.getByTestId('discover-get-plus').waitFor();
       const box = await page.getByTestId('discover-expand').boundingBox();
       const filters = await page.getByTestId('discover-filters').boundingBox();
       const tabs = await page.getByTestId('tab-discover').boundingBox();
@@ -41,7 +43,7 @@ const db = backendRequire('firebase-admin/firestore').getFirestore();
       assert.equal(await page.locator('[data-testid^="nudge-"]').count(),0);
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
       await page.screenshot({path:`/tmp/muse-empty-${width}x${height}.png`});
-      console.log(`PASS compact empty state ${width}×${height}, one reachable action, no footer/nudge or overflow`);
+      console.log(`PASS compact empty state ${width}×${height}, Plus offer and Expand search reachable, no footer/nudge or overflow`);
     }
     await page.setViewportSize({width:360,height:660});
     await page.getByTestId('discover-mode-vibe').click();
@@ -64,7 +66,7 @@ const db = backendRequire('firebase-admin/firestore').getFirestore();
     assert.equal(await page.getByTestId('discover-expand').innerText(),'Check again');
     const beforeRefresh=(await settingsRef.get()).data();
     await page.getByTestId('discover-expand').click();
-    await page.getByTestId('discover-empty').waitFor();
+    await page.getByTestId('discover-empty-plus').waitFor();
     assert.deepEqual((await settingsRef.get()).data(),beforeRefresh);
     console.log('PASS fully expanded search refreshes without rewriting preferences or recycling passed profiles');
   } finally { await browser.close(); }

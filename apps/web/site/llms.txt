@@ -28,6 +28,7 @@ Paire launched in 2026, starting in Delhi NCR (Delhi, Noida, Gurugram, Faridabad
 
 - [Home](https://www.paire.in/): what Paire is, features and pricing
 - [Garba Nights](https://www.paire.in/garba-nights/): find a Garba or Dandiya partner this Navratri
+- [Dating vibe quiz](https://www.paire.in/vibe-quiz/): a free 1-minute quiz (Cozy Romantic, Midnight Philosopher, Adventure Spark or Movie Dreamer) with no sign-up
 - [Open the app](https://www.paire.in/app/)
 - [Dating safety guide](https://www.paire.in/safety/)
 - [Community guidelines](https://www.paire.in/community-guidelines/)

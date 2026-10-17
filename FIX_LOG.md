@@ -346,3 +346,10 @@ Final regression: 251 automated tests, all six Android UI flows and the combined
 - Server: `parseFeedInput` takes `revisit`; `getDiscoverFeed` allows it only with Plus and `loadExclusions(..., includePassed)` keeps passes (likes, Super Likes and blocks still excluded). `swipe` lets a Plus member turn an earlier pass into a like or Super Like; repeats stay idempotent and free members can't change a pass.
 - Paire Plus screen lists "See everyone again" (web).
 - Tests: `integration/revisitFeed.integration.test.ts` (free refused, passes return for Plus, likes never return, second-look like matches, blocks excluded); feed-input unit tests updated. The one end-to-end test that fails on `main` too leaves `requireVerification` on, which can make a later UPI test fail when run in the same emulator session.
+
+## 2026-10-17: Site review, Hold to Super Like, Lucky spin, vibe quiz
+- Review on local emulators with fictional accounts (`docs/qa-2026-10-17.md`). Fixes: Plus screen multiplier computed from the limits (was "4×", really 10×); README free likes 25 → 10; Discover header fallback shortened so it isn't cut off; `DiscoverEmpty.web.tsx` Plus offer keeps the "Expand search"/"Check again" action and description, and `e2e/discovery-empty.cjs` now expects the offer.
+- `DiscoveryActions.web.tsx`: press and hold Like (700 ms) fills a ring and sends a Super Like; a tap is still a like, keyboard unchanged, reduced motion respected.
+- `LuckySpin.web.tsx` (stub `LuckySpin.tsx` for native): "🎲 Lucky spin" in the Discover footer spins through loaded cards and moves the pick to the top. Names and ages only; nothing is sent.
+- `apps/web/site/vibe-quiz/`: static quiz page (four plain-English result types, WhatsApp/share/copy, `?r=` result links), registered in the build (footer, visit beacon, sitemap), homepage menu and `llms.txt`.
+- Checks: app lint, typecheck, 106 unit tests; browser checks on emulators for both new features (a tap recorded a like, a hold recorded a Super Like, the spin's pick was the next card), the quiz at 375 and 1280 px, and `e2e/discovery-layout.cjs` / `e2e/discovery-empty.cjs` (all sizes pass).

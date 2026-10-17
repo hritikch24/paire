@@ -1,6 +1,7 @@
 import { DiscoverEmpty } from "../components/DiscoverEmpty";
 import { DiscoverWebStyles } from "../components/DiscoverWebStyles";
 import { DiscoveryActions } from "../components/DiscoveryActions";
+import { LuckySpin } from "../components/LuckySpin";
 import { VerificationGate } from "../components/VerificationGate";
 import { fetchPremiumStatus } from "../services/billingService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -467,7 +468,7 @@ function DiscoveryExperience() {
           <XStack alignItems="center" gap={4}>
             <Icon name="location-outline" size={12} color="primary" />
             <Text testID="discover-city" fontSize="$1" color="$textMuted" numberOfLines={Platform.OS === "web" ? 1 : undefined}>
-              {me?.city || "Starting in Delhi NCR · open to all"}
+              {me?.city || "Delhi NCR · open to all"}
             </Text>
           </XStack>
         </YStack>
@@ -688,8 +689,9 @@ function DiscoveryExperience() {
       {mode !== "duo" && (Platform.OS !== "web" || top) ? (
         <XStack testID="discover-footer" paddingHorizontal="$4" paddingBottom="$2" gap="$3" alignItems="center" justifyContent="space-between">
           <Pressable accessibilityRole="button" accessibilityLabel="How vibe matching works" onPress={() => navigation.navigate("VibeGuide")} style={{ minHeight: 44, justifyContent: "center", flex: 1 }}>
-            <XStack gap={5} alignItems="center"><Icon name="sparkles-outline" size={14} color="primary" /><Text color="$textMuted" fontSize="$1">Behind the vibe</Text></XStack>
+            <XStack gap={5} alignItems="center"><Icon name="sparkles-outline" size={14} color="primary" /><Text color="$textMuted" fontSize="$1" numberOfLines={1}>Behind the vibe</Text></XStack>
           </Pressable>
+          {mode === "solo" ? <LuckySpin profiles={deck} onPick={(chosen) => setDeck((current) => [chosen, ...current.filter((profile) => profile.uid !== chosen.uid)])} /> : null}
           <Pressable testID="discover-premium" accessibilityRole="button" accessibilityLabel="View daily limits and premium plans" onPress={() => navigation.navigate("Premium")} style={{ minHeight: 44, justifyContent: "center" }}>
             <Text color="$primary" fontSize="$1" fontWeight="700">{allowance.data && !allowance.isError ? `${allowance.data.remaining.likes} likes left today` : "Free daily likes · Plus from ₹20"}</Text>
           </Pressable>

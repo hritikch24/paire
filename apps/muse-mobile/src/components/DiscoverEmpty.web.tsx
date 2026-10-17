@@ -51,7 +51,12 @@ export function DiscoverEmpty({ onReload, plus, revisited, onGetPlus }: Props) {
     }
   };
 
+  const hint = wider
+    ? `Try ages ${ageMin}–${ageMax}${settings.locationEnabled && maxDistanceKm !== null ? ` within ${maxDistanceKm} km` : settings.locationEnabled ? " at any distance" : ""}.`
+    : "New people will appear here when they join.";
+
   if (!plus && !isSupportView) {
+    // Free members: Paire Plus brings back everyone they passed on; widening the search stays one tap away.
     return (
       <YStack testID="discover-empty-plus" flex={1} alignItems="center" justifyContent="center" paddingVertical="$5" paddingHorizontal="$3" gap="$3">
         <Text fontSize="$5" fontWeight="700" textAlign="center">You've seen everyone for now</Text>
@@ -60,8 +65,9 @@ export function DiscoverEmpty({ onReload, plus, revisited, onGetPlus }: Props) {
         </Text>
         <YStack width="100%" maxWidth={280} gap="$2">
           <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>Get Paire Plus</PrimaryButton>
+          <Text testID="discover-expand-description" fontSize="$1" color="$textMuted" textAlign="center">{wider ? `Or widen your search. ${hint}` : hint}</Text>
           <SecondaryButton testID="discover-expand" loading={busy} disabled={!uid} onPress={() => void expand()}>
-            {wider ? `Expand search to ages ${ageMin}–${ageMax}` : "Check for new people"}
+            {wider ? "Expand search" : "Check again"}
           </SecondaryButton>
         </YStack>
       </YStack>
@@ -77,7 +83,7 @@ export function DiscoverEmpty({ onReload, plus, revisited, onGetPlus }: Props) {
         </Text>
       ) : null}
       <Text testID="discover-expand-description" fontSize="$2" color="$textMuted" textAlign="center" maxWidth={280}>
-        {wider ? `Try ages ${ageMin}–${ageMax}${settings.locationEnabled && maxDistanceKm !== null ? ` within ${maxDistanceKm} km` : settings.locationEnabled ? " at any distance" : ""}.` : "New people will appear here when they join."}
+        {hint}
       </Text>
       <YStack width="100%" maxWidth={280}>
         <PrimaryButton testID="discover-expand" height={48} minHeight={48} loading={busy} disabled={!uid || isSupportView} onPress={() => void expand()}>
