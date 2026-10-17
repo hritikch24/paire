@@ -37,6 +37,9 @@ export function DiscoverWebStyles() {
       flex: 1 0 clamp(320px, calc(100dvh - 444px), 560px) !important;
       min-height: 320px !important; padding: 0 14px !important; margin: 0 0 2px !important;
     }
+    [data-testid="discover-card-area"]:has([data-testid^="discover-empty"]) {
+      flex: 1 0 220px !important; min-height: 220px !important; padding: 16px !important;
+    }
     [data-testid="discover-card-area"] > div { min-height: 0 !important; }
     [data-testid="discover-deck"] { min-height: 320px !important; }
     [data-testid="discover-card"] { box-shadow: 0 8px 28px #30101d14 !important; border-radius: 24px !important; }

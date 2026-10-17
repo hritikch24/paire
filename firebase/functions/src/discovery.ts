@@ -7,7 +7,7 @@ import { requireReadAuth, isSupportSession } from "./lib/auth";
 import { buildDiscoveryEntry, toDiscoverProfile, viewerTraits } from "./lib/discovery";
 import { isValidLatLng } from "./lib/geo";
 import { rankCandidate } from "./lib/insights";
-import { candidateLatLng, isMutualCandidate, normalizeShowMe } from "./lib/prefs";
+import { candidateLatLng, isMutualCandidate, normalizeAgeRange, normalizeShowMe } from "./lib/prefs";
 import { parseFeedInput } from "./lib/validate";
 import { matchesAgeGapFilter } from "./lib/ageGap";
 import { activeGarbaSeason, GARBA_RADIUS_KM, sharedGarbaNights, upcomingGarbaNights } from "./lib/garba";
@@ -150,18 +150,25 @@ export const getDiscoverFeed = onCall(
     // Age-gap filtering, and seeing who holds which side, are Paire Plus features.
     const plus = limitsFor(billingSnap.data()).priority;
     if (ageGap && !plus) throw new HttpsError("permission-denied", "The age-gap filter comes with Paire Plus.");
-    const viewer = indexSnap.exists
+    const indexedViewer = indexSnap.exists
       ? (indexSnap.data() as DiscoveryEntry)
       : isSupportSession(request) ? null : await syncDiscoveryIndex(uid);
-    if (!viewer || !viewer.gender || viewer.age === null) {
+    if (!indexedViewer || !indexedViewer.gender || indexedViewer.age === null) {
       throw new HttpsError("failed-precondition", "Finish your profile to start discovering people.");
     }
+    const settings = settingsSnap.data() as UserSettings | undefined;
+    // Use the caller's current limits immediately, even while the settings trigger
+    // is still rebuilding their index after an Expand search or Settings save.
+    const viewer: DiscoveryEntry = {
+      ...indexedViewer,
+      ...normalizeAgeRange(settings?.ageMin, settings?.ageMax),
+      maxDistanceKm: typeof settings?.maxDistanceKm === "number" && settings.maxDistanceKm > 0 ? settings.maxDistanceKm : null
+    };
     // "Into someone older" is for Silver Foxes and Cougars, not for anyone browsing younger members.
     if (ageGap === "intoOlder" && viewer.ageGap !== "older") {
       throw new HttpsError("failed-precondition", "Choose “I'm a Silver Fox” or “I'm a Cougar” in Settings to see people into someone older.");
     }
 
-    const settings = settingsSnap.data() as UserSettings | undefined;
     // Garba Nights: free for everyone while the season is open. Read from settings, not the
     // index, so nights picked a moment ago already count.
     const now = Date.now();

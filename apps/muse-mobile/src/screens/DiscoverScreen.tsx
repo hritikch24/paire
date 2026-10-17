@@ -1,3 +1,4 @@
+import { DiscoverEmpty } from "../components/DiscoverEmpty";
 import { DiscoverWebStyles } from "../components/DiscoverWebStyles";
 import { DiscoveryActions } from "../components/DiscoveryActions";
 import { VerificationGate } from "../components/VerificationGate";
@@ -553,6 +554,8 @@ function DiscoveryExperience() {
             >
               <SecondaryButton onPress={() => setFilter(null)}>Show everyone</SecondaryButton>
             </EmptyState>
+          ) : !top && Platform.OS === "web" ? (
+            <DiscoverEmpty onReload={() => load(true)} />
           ) : !top ? (
             <EmptyState
               testID="discover-empty"
@@ -580,7 +583,7 @@ function DiscoveryExperience() {
         </YStack>
       ) : null}
 
-      {mode === "vibe" && (top || lastPass) ? (
+      {mode === "vibe" && (top || (Platform.OS !== "web" && lastPass)) ? (
         <XStack alignItems="center" gap="$2" paddingHorizontal="$4" paddingTop="$2" paddingBottom="$2">
           <IconButton testID="discover-undo" icon="arrow-undo" accessibilityLabel="Undo last pass" size={46} disabled={!lastPass} onPress={() => void handleUndo()} />
           <YStack flex={1}><SecondaryButton testID="discover-nope" disabled={!top} onPress={() => top && handleSwipe(top, "nope")}>Pass</SecondaryButton></YStack>
@@ -659,7 +662,7 @@ function DiscoveryExperience() {
         </XStack>
       ) : null}
 
-      {mode !== "duo" ? (
+      {mode !== "duo" && (Platform.OS !== "web" || top) ? (
         <XStack testID="discover-footer" paddingHorizontal="$4" paddingBottom="$2" gap="$3" alignItems="center" justifyContent="space-between">
           <Pressable accessibilityRole="button" accessibilityLabel="How vibe matching works" onPress={() => navigation.navigate("VibeGuide")} style={{ minHeight: 44, justifyContent: "center", flex: 1 }}>
             <XStack gap={5} alignItems="center"><Icon name="sparkles-outline" size={14} color="primary" /><Text color="$textMuted" fontSize="$1">Behind the vibe</Text></XStack>
@@ -670,7 +673,7 @@ function DiscoveryExperience() {
         </XStack>
       ) : null}
 
-      {Platform.OS === "web" && mode !== "duo" ? <SetupNudge /> : null}
+      {Platform.OS === "web" && mode !== "duo" && top ? <SetupNudge /> : null}
 
       <GarbaSheet
         visible={garbaSheet && garbaOpen}
