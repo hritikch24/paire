@@ -6,6 +6,8 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | — | Switched ₹49 Unlimited Chat from Razorpay to **UPI into paire.in@ybl** (`upiSales` on, Razorpay `unlockSales` off); moderator claim given to er.hritik.24@gmail.com and hritikchaudhary016@gmail.com so they can approve payments (Settings → UPI payments to confirm). Paire Plus still sells through Razorpay. | live |
+| 2026-10-17 | `8859d77` | Pay Unlimited Chat by UPI: a unique amount (₹49.01–₹49.99), QR and UPI link per order; the buyer enters the 12-digit UTR; a moderator approves it against the bank statement before chat unlocks. Terms, Refunds, Privacy and the pricing page updated. | pushed, Vercel, Firebase |
 | 2026-10-17 | — | **Switched on in production** (`scripts/set-runtime-flags.mjs`, owner's request): presence (2-min idle), the paid-sending gate from 2026-10-17 01:29 IST with no grace period, and live ₹49 Unlimited Chat sales (`MUSE_CHAT_UNLOCK_ENABLED`/`MUSE_CHAT_UNLOCK_LIVE` in functions `.env`). No Plus holders needed backfilling. | live |
 | 2026-10-17 | `380f867` | Unlimited Chat price ₹49 (4,900 paise), in the app, server, site and legal copy. | pushed, Vercel, Firebase |
 | 2026-10-17 | `29c453d` | Activity-based presence ("Online" / "Active 2 h ago" for matches, with a "Show when I'm active" setting) and paid sending: your own Paire Plus or a ₹50 one-time Unlimited Chat unlock to send messages; reading and safety stay free. Razorpay unlock with server verification, webhooks, refunds and chargebacks. Site, pricing, FAQ and legal copy updated. See `docs/presence-and-paid-chat.md`. | pushed, Vercel, Firebase |

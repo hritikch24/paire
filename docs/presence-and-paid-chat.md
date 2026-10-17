@@ -5,7 +5,7 @@ Two features, each behind its own switch, both **off** until you turn them on:
 1. **Activity-based presence**: "Online" and an approximate "Active 3 h ago" for your matches.
 2. **Paid sending**: sending messages needs your own **Paire Plus** pass or **Unlimited Chat** (₹49 once, account-wide, no expiry).
 
-**Status (2026-10-17): live in production.** At the owner's request, presence, the sending gate (from 01:29 IST, no grace period) and live ₹49 Unlimited Chat sales are all on. The code ships with every switch off; each was set on purpose with `scripts/set-runtime-flags.mjs` and the functions `.env`. Roll back with `--paid-chat off`, `--unlock-sales off` or `--presence off`.
+**Status (2026-10-17): live in production.** ₹49 Unlimited Chat is now paid **by UPI into paire.in@ybl** (Razorpay sales for it are off; see "Unlimited Chat by UPI" below). At the owner's request, presence, the sending gate (from 01:29 IST, no grace period) and live ₹49 Unlimited Chat sales are all on. The code ships with every switch off; each was set on purpose with `scripts/set-runtime-flags.mjs` and the functions `.env`. Roll back with `--paid-chat off`, `--unlock-sales off` or `--presence off`.
 
 ## Switches and configuration
 
@@ -150,3 +150,13 @@ Decide this before switching the gate on. The recommended policy, which the swit
 - `apps/muse-mobile/__tests__/presence.test.ts`, `__tests__/chatAccess.test.ts`: the client session engine (no beats while idle or hidden, no write per interaction) and the send gate and drafts.
 
 **Not yet verified:** a real Razorpay sandbox run (needs test keys), live Razorpay webhooks and disputes, native background behaviour on real Android and iOS devices, and any production behaviour.
+
+## Unlimited Chat by UPI (live)
+
+Paid straight into Paire's own UPI ID (`MUSE_UPI_VPA`, `MUSE_UPI_PAYEE_NAME` in the functions `.env`; switch: `runtime/trust.upiSales`, `--upi-sales on|off`). There's no gateway, so payments are confirmed by a person until the bank's merchant API is connected:
+
+1. `createUpiUnlockOrder` gives the buyer one open order with a **unique amount** (₹49.01–₹49.99, held 48 h in `upiSlots`), a reference like `K7P2M9QX`, a QR code and a `upi://pay` link. Reopening shows the same order, never a second one.
+2. After paying, the buyer enters the 12-digit **UTR** (`submitUpiPayment`). Each UTR can be used once across all accounts (`upiUtrs`). The order becomes `submitted`, and the app shows "confirming your payment".
+3. A moderator opens **Settings → UPI payments to confirm** (accounts with the `moderator` claim) and approves only if the amount, paise included, and the UTR appear in the bank statement. Approval writes `chatUnlocks/{uid}` (`source: "upi"`), and chat unlocks. **Reject** frees the UTR. **Revoke** ends an approved unlock after a manual refund.
+
+Records: `upiUnlockOrders/{orderId}` (uid, amount, UTR, status, reviewer, timestamps), kept like other payment records. Refunds are made by hand from the bank or UPI app, then revoked in the app. Limits: India only (UPI); confirmation waits for a person; Google Pay can refuse `upi://` links to personal IDs, but scanning the QR still works.

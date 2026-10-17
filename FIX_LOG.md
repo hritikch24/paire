@@ -326,3 +326,6 @@ Final regression: 251 automated tests, all six Android UI flows and the combined
 ## 2026-10-17: Paid chat live at ₹49
 - Price changed to ₹49 (4,900 paise) across the server, app, site and legal copy (`380f867`).
 - Deployed Firebase (functions incl. 5 new, rules, indexes) and Vercel (www.paire.in), then switched on presence, the paid-sending gate (from 01:29 IST, no grace) and live Unlimited Chat sales, at the owner's request. No Plus holders needed backfilling. Smoke checks: live pages show ₹49; the new callables refuse unauthenticated calls; the webhook rejects unsigned requests (401). No real payment has been made yet.
+
+## 2026-10-17: Unlimited Chat paid by UPI (paire.in@ybl)
+- Razorpay rejected Paire, so ₹49 Unlimited Chat moved to UPI straight into Paire's own UPI ID (`upiPayments.ts`, `UpiPayPanel`, `UpiReviewScreen`): a unique amount and QR per order, the buyer submits the UTR, and a moderator approves it before chat unlocks. UTRs are single-use; reject and revoke are supported. Deployed (`8859d77`); `upiSales` on, Razorpay `unlockSales` off, moderator claim set on the owner's two accounts. Paire Plus still uses the shared Razorpay account.
