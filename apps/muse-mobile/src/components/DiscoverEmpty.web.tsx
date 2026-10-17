@@ -7,6 +7,7 @@ import { updateSettings } from "../services/profileService";
 import { isSupportView } from "../services/supportMode";
 import { useAuthStore } from "../store/authStore";
 import { MIN_AGE, MAX_AGE } from "../utils/age";
+import { PREMIUM_PLANS } from "../config/premium";
 import { withSettingsDefaults } from "../utils/profile";
 
 type Props = {
@@ -19,10 +20,10 @@ type Props = {
 };
 
 /**
- * Everyone who fits has been seen. Without Plus: offer Plus, which brings back
- * everyone passed on before (to like this time). With Plus: they've seen those too.
+ * Everyone who fits has been seen. Without Plus: a simple Paire Plus offer
+ * (from ₹20 a day), with Expand search as the second choice. With Plus: all caught up.
  */
-export function DiscoverEmpty({ onReload, plus, revisited, onGetPlus }: Props) {
+export function DiscoverEmpty({ onReload, plus, onGetPlus }: Props) {
   const uid = useAuthStore((state) => state.user?.uid);
   const settings = withSettingsDefaults(useAuthStore((state) => state.settings));
   const [busy, setBusy] = useState(false);
@@ -51,15 +52,17 @@ export function DiscoverEmpty({ onReload, plus, revisited, onGetPlus }: Props) {
     }
   };
 
+  const dayPrice = PREMIUM_PLANS.find((plan) => plan.id === "day")?.priceInr ?? 20;
+
   if (!plus && !isSupportView) {
     return (
       <YStack testID="discover-empty-plus" flex={1} alignItems="center" justifyContent="center" paddingVertical="$5" paddingHorizontal="$3" gap="$3">
-        <Text fontSize="$5" fontWeight="700" textAlign="center">You've seen everyone for now</Text>
+        <Text fontSize="$5" fontWeight="700" textAlign="center">Want to meet more people?</Text>
         <Text fontSize="$2" color="$textMuted" textAlign="center" maxWidth={300} lineHeight={20}>
-          Get Paire Plus to see everyone in your range again, including people you passed on, and like them this time. Plus also gives you 100 likes and 5 Super Likes a day.
+          {`Get Paire Plus for just ₹${dayPrice} a day: 100 likes and 5 Super Likes a day, and your likes are shown first. No auto-renewal.`}
         </Text>
         <YStack width="100%" maxWidth={280} gap="$2">
-          <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>Get Paire Plus</PrimaryButton>
+          <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>{`Get Paire Plus · ₹${dayPrice}/day`}</PrimaryButton>
           <SecondaryButton testID="discover-expand" loading={busy} disabled={!uid} onPress={() => void expand()}>
             {wider ? `Expand search to ages ${ageMin}–${ageMax}` : "Check for new people"}
           </SecondaryButton>
@@ -71,11 +74,6 @@ export function DiscoverEmpty({ onReload, plus, revisited, onGetPlus }: Props) {
   return (
     <YStack testID="discover-empty" flex={1} alignItems="center" justifyContent="center" paddingVertical="$5" paddingHorizontal="$3" gap="$3">
       <Text fontSize="$5" fontWeight="700" textAlign="center">You're all caught up</Text>
-      {plus && revisited ? (
-        <Text testID="discover-revisited" fontSize="$2" color="$textMuted" textAlign="center" maxWidth={280}>
-          You've also seen everyone you passed on before.
-        </Text>
-      ) : null}
       <Text testID="discover-expand-description" fontSize="$2" color="$textMuted" textAlign="center" maxWidth={280}>
         {wider ? `Try ages ${ageMin}–${ageMax}${settings.locationEnabled && maxDistanceKm !== null ? ` within ${maxDistanceKm} km` : settings.locationEnabled ? " at any distance" : ""}.` : "New people will appear here when they join."}
       </Text>
