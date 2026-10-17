@@ -39,3 +39,14 @@ MUSE_WEB_QA=demo-muse NODE_PATH=/opt/homebrew/lib/node_modules node e2e/support-
 ```
 
 It seeds fictional users, grants only the fictional Dev account support access, and checks email lookup, separate gender lists, chat inspection without read receipts, the original admin login after refresh, server revocation, memory-only support refresh, unfinished onboarding and Exit. It never uses production accounts or payments. The production service account's token-signing IAM and live index readiness remain deployment checks.
+
+
+## Production deployment (2026-10-17)
+
+Admin backend commit `5bb698e` and mobile browser layout commit `8958b5c` are deployed. Firebase Functions, Firestore rules/indexes and Storage rules deployed successfully; the three new indexes are READY. The runtime service account has token-signing access to itself. The owner selected `hritikchaudhary016@gmail.com`; only that account received the separate support permission and enabled operator record. Sign out and back in before opening Settings → Member admin → a member → View as member.
+
+Vercel production deployment: https://paire-duvt2hpfe-team-rockstar.vercel.app, aliased to https://www.paire.in. The live app bundle includes the new layout and support controls; the public Terms and Privacy pages include support-access disclosures. Anonymous support-session requests return HTTP 401. IndexNow accepted all 39 URLs (HTTP 200). No production member sessions were opened and no real payment was tested. Existing payment configuration was preserved.
+
+The latest full verification passed 452 tests. `e2e/discovery-layout.cjs` passed at 320×568, 360×660, 390×844, 430×932, 740×360 and 1440×900, checking a viewer with no photos, card height, reachable controls, touch scrolling without accidental swipes, Pass/Undo, notes, Vibe first, Duos and profile navigation. The admin browser regression and Garba night selection/editing also passed against isolated emulators. Screenshots are generated under `/tmp/muse-discovery-qa` by the layout test. Physical Safari/keyboard/browser-toolbar behavior was not tested.
+
+The public legal templates still have an existing postal-address placeholder; no address was invented. Deployment publishes the disclosures but does not send members an email or a separate policy notice automatically.
