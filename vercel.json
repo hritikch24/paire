@@ -16,6 +16,10 @@
       "destination": "https://us-central1-muse-352ba.cloudfunctions.net/trackVisit"
     },
     {
+      "source": "/pay/ccavenue/",
+      "destination": "https://us-central1-muse-352ba.cloudfunctions.net/ccavenueResponse"
+    },
+    {
       "source": "/metrics",
       "has": [
         {

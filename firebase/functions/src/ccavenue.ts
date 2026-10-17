@@ -81,11 +81,15 @@ const configuredMode = () => ccavenueMode(process.env.CCAVENUE_ENV);
 
 const appUrl = () => process.env.MUSE_APP_URL?.trim() || "https://www.paire.in/app/";
 
-/** Where CCAvenue sends the browser back to: this project's ccavenueResponse function. */
+/**
+ * Where CCAvenue sends the browser back to. CCAvenue only accepts the website its keys are
+ * registered for (www.paire.in), so by default it's /pay/ccavenue/ on the app's own site,
+ * which vercel.json forwards to this project's ccavenueResponse function.
+ */
 function responseUrl(): string {
   if (process.env.CCAVENUE_RESPONSE_URL?.trim()) return process.env.CCAVENUE_RESPONSE_URL.trim();
-  const project = process.env.GCLOUD_PROJECT;
-  return emulator() ? `http://127.0.0.1:5001/${project}/${REGION}/ccavenueResponse` : `https://${REGION}-${project}.cloudfunctions.net/ccavenueResponse`;
+  if (emulator()) return `http://127.0.0.1:5001/${process.env.GCLOUD_PROJECT}/${REGION}/ccavenueResponse`;
+  return new URL("/pay/ccavenue/", appUrl()).toString();
 }
 
 /** Test-mode money isn't real: outside the emulator it can only buy for shared test-cohort accounts. */

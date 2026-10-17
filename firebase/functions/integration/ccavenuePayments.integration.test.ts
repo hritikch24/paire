@@ -125,7 +125,7 @@ describe("CCAvenue orders", () => {
       order_id: orderId,
       amount: "49.00",
       currency: "INR",
-      redirect_url: "https://us-central1-demo-muse.cloudfunctions.net/ccavenueResponse",
+      redirect_url: "https://www.paire.in/pay/ccavenue/",
       billing_email: `${uid}@example.com`
     });
     expect(plain.get("merchant_param1")).not.toContain(uid);

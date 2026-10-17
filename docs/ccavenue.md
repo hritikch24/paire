@@ -7,7 +7,7 @@ Web only. The Android/iOS apps are unchanged.
 ## How a payment works
 
 1. **`createCcavenueOrder`** (callable). The server picks the product and price, binds the order to the caller and records `ccavenueOrders/{orderId}` (`PA` + 14 characters, `mode` test/live, `status: created`). It encrypts the request with the working key and returns it. The browser then form-POSTs it to CCAvenue's payment page. This is a full-page redirect, so the member leaves the app for a moment.
-2. **CCAvenue → `ccavenueResponse`** (HTTPS function). After paying or cancelling, CCAvenue form-POSTs `encResp` here. The function reads only the order id, settles the order (step 4) and returns the browser to `MUSE_APP_URL?ccavenue=<orderId>` with a 303 redirect. The URL carries no result.
+2. **CCAvenue → `https://www.paire.in/pay/ccavenue/` → `ccavenueResponse`** (HTTPS function). After paying or cancelling, CCAvenue form-POSTs `encResp` to that address on paire.in (CCAvenue only accepts the website its keys are registered for), and `vercel.json` forwards it to the function. The function reads only the order id, settles the order (step 4) and returns the browser to `MUSE_APP_URL?ccavenue=<orderId>` with a 303 redirect. The URL carries no result.
 3. **Back in the app** (`hooks/useCcavenueReturn.ts`). The app calls `confirmCcavenueOrder`, shows one message (paid / still confirming / not charged / contact support), reopens the chat the payment started from, and brings back the composed message, which is kept in `sessionStorage` for that tab only. Sending still takes a tap on Send.
 4. **Settling** (`settleCcavenueOrder`). Only CCAvenue's **order status API** counts. The call is server to server and authenticated with the access code and working key. The order is granted only when the API reports it `Successful`/`Shipped` for this exact order id, amount and INR. The redirect response, the browser and the client are never trusted, so a forged or replayed "Success" unlocks nothing.
 
@@ -30,7 +30,7 @@ Records: `ccavenueOrders/{orderId}` is server-only (`firestore.rules`) and kept 
 
 Everything below needs you. Nothing deploys or switches on by itself.
 
-1. **Merchant account.** CCAvenue must approve a merchant account **for Paire** (paire.in, dating). In the dashboard, whitelist the redirect URL `https://us-central1-muse-352ba.cloudfunctions.net/ccavenueResponse`, and enable the order status and refund APIs for the access code.
+1. **Merchant account.** CCAvenue must approve a merchant account **for Paire** (paire.in, dating). The keys must be registered for `https://www.paire.in` (the return address is `https://www.paire.in/pay/ccavenue/`). Enable the order status and refund APIs for the access code.
 2. **Secret** (once, before the next functions deploy):
    ```
    firebase functions:secrets:set CCAVENUE_WORKING_KEY --project muse-352ba
@@ -45,7 +45,7 @@ Everything below needs you. Nothing deploys or switches on by itself.
    | `CCAVENUE_MERCHANT_ID`, `CCAVENUE_ACCESS_CODE` | From the CCAvenue dashboard (API keys page). |
    | `MUSE_CCAVENUE_LIVE=true` | **Explicit approval to take live money.** Without it, `CCAVENUE_ENV=live` can't open a single checkout. |
    | `MUSE_BILLING_SANDBOX=true` | Needed to sell in `test`. Outside the emulator, test payments only unlock `moderation/{uid}.cohort = "test"` accounts. |
-   | `CCAVENUE_RESPONSE_URL` | Optional. Overrides the redirect URL (default: this project's `ccavenueResponse`). |
+   | `CCAVENUE_RESPONSE_URL` | Optional. Overrides the return address (default: `/pay/ccavenue/` on `MUSE_APP_URL`'s site). |
    | `MUSE_APP_URL` | Optional. Where members land afterwards (default `https://www.paire.in/app/`). |
    | `MUSE_BILLING_ENABLED` | Existing. Plus is only sold while this is on. |
 
