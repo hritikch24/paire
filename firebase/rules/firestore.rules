@@ -451,6 +451,16 @@ service cloud.firestore {
     match /chatUnlockCheckout/{uid} {
       allow read, write: if false;
     }
+    // UPI payments into Paire's own account: orders, used UTRs and reserved amounts.
+    match /upiUnlockOrders/{orderId} {
+      allow read, write: if false;
+    }
+    match /upiUtrs/{utr} {
+      allow read, write: if false;
+    }
+    match /upiSlots/{amount} {
+      allow read, write: if false;
+    }
     match /runtime/{docId} {
       allow read, write: if false;
     }

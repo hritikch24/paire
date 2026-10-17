@@ -12,6 +12,7 @@ import { isRazorpayId, validCheckoutSignature } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
 import { razorpay } from "./razorpayClient";
 import { verifiedUsers } from "./trust";
+import { openUpiOrder, upiSalesOpen } from "./upiPayments";
 
 /**
  * Unlimited Chat: ₹49 once, for the buyer's account only, unlocks sending in
@@ -72,18 +73,25 @@ export type UnlockOffer = {
   status: "owned" | "available" | "pending" | "unavailable";
   priceInr: number;
   reason?: "sales-off" | "no-match" | "verification-required" | "account";
+  /** How it can be paid right now: Razorpay Checkout, and/or UPI into Paire's own account. */
+  methods: Array<"razorpay" | "upi">;
+  /** A UPI payment waiting for confirmation (the member has entered its UTR). */
+  upiPending?: boolean;
 };
 
 async function unlockOffer(uid: string, access: ChatAccessMirror | null): Promise<UnlockOffer> {
   const priceInr = CHAT_UNLOCK.amountPaise / 100;
-  if (access?.unlimited) return { status: "owned", priceInr };
+  const methods: UnlockOffer["methods"] = [...((await salesOpen()) ? ["razorpay" as const] : []), ...((await upiSalesOpen()) ? ["upi" as const] : [])];
+  if (access?.unlimited) return { status: "owned", priceInr, methods };
   const checkout = await db.doc(`chatUnlockCheckout/${uid}`).get();
-  if (checkout.get("state") === "pending" && Date.now() - (Number(checkout.get("updatedAt")) || 0) < CHAT_UNLOCK.checkoutReuseMs) return { status: "pending", priceInr };
-  if (!access) return { status: "unavailable", priceInr, reason: "account" };
-  if (!(await salesOpen())) return { status: "unavailable", priceInr, reason: "sales-off" };
-  if (!(await hasHadMatch(uid))) return { status: "unavailable", priceInr, reason: "no-match" };
-  if (!(await verifiedUsers([uid])).has(uid)) return { status: "unavailable", priceInr, reason: "verification-required" };
-  return { status: "available", priceInr };
+  if (checkout.get("state") === "pending" && Date.now() - (Number(checkout.get("updatedAt")) || 0) < CHAT_UNLOCK.checkoutReuseMs) return { status: "pending", priceInr, methods };
+  const upiOrder = methods.includes("upi") ? await openUpiOrder(uid) : null;
+  if (upiOrder?.get("status") === "submitted") return { status: "pending", priceInr, methods, upiPending: true };
+  if (!access) return { status: "unavailable", priceInr, methods, reason: "account" };
+  if (!methods.length) return { status: "unavailable", priceInr, methods, reason: "sales-off" };
+  if (!(await hasHadMatch(uid))) return { status: "unavailable", priceInr, methods, reason: "no-match" };
+  if (!(await verifiedUsers([uid])).has(uid)) return { status: "unavailable", priceInr, methods, reason: "verification-required" };
+  return { status: "available", priceInr, methods };
 }
 
 export type ChatAccessStatus = {

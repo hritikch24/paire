@@ -17,6 +17,7 @@ process.env.MUSE_CHAT_UNLOCK_ENABLED = "true";
 process.env.MUSE_BILLING_SANDBOX = "true";
 process.env.MUSE_BILLING_ENABLED = "true";
 process.env.MUSE_UNCACHED_RUNTIME = "true";
+process.env.MUSE_UPI_VPA = "paire.in@ybl";
 delete process.env.FUNCTIONS_EMULATOR;
 
 if (!getApps().length) initializeApp({ projectId: "demo-muse" });
@@ -28,6 +29,8 @@ const chat = require("../src/chatAccess") as typeof import("../src/chatAccess");
 const { razorpayWebhook } = require("../src/razorpay") as typeof import("../src/razorpay");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { syncChatAccess } = require("../src/chatEntitlement") as typeof import("../src/chatEntitlement");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const upi = require("../src/upiPayments") as typeof import("../src/upiPayments");
 
 type FakePayment = { id: string; order_id: string; status: string; amount: number; currency: string; amount_refunded: number; refund_status: string | null };
 const fake = {
@@ -365,5 +368,74 @@ describe("webhooks", () => {
     await admin.doc(`moderation/${banned}`).update({ status: "banned" });
     await webhook("payment.captured", paymentEvent(paid));
     expect((await admin.doc(`moderation/${banned}`).get()).get("status")).toBe("banned");
+  });
+});
+
+describe("Unlimited Chat by UPI (into Paire's own account)", () => {
+  const moderatorCall = <T,>(fn: { run: (request: any) => T }, uid: string, data: unknown) => // eslint-disable-line @typescript-eslint/no-explicit-any
+    fn.run({ data, auth: { uid, token: { moderator: true } }, rawRequest: {}, acceptsStreaming: false });
+  const utr = () => String(100000000000 + Math.floor(Math.random() * 899999999999)).slice(0, 12);
+  beforeEach(async () => {
+    await admin.doc("runtime/trust").set({ requireVerification: false, upiSales: true });
+  });
+
+  test("is off unless switched on", async () => {
+    await admin.doc("runtime/trust").set({ requireVerification: false });
+    await expect(call(upi.createUpiUnlockOrder, await buyer())).rejects.toThrow(/UPI payments aren't available/);
+  });
+
+  test("each order gets its own amount (₹49.01–₹49.99), QR and UPI link to Paire's ID, reused until closed", async () => {
+    const uid = await buyer();
+    const first = await call(upi.createUpiUnlockOrder, uid);
+    if (first.status !== "order") throw new Error("expected an order");
+    expect(first.order.amountPaise).toBeGreaterThan(4900);
+    expect(first.order.amountPaise).toBeLessThan(5000);
+    expect(first.order.upiLink).toContain("pa=paire.in%40ybl");
+    expect(first.order.upiLink).toContain(`am=${(first.order.amountPaise / 100).toFixed(2)}`);
+    expect(first.order.qrDataUrl).toMatch(/^data:image\/png;base64,/);
+    const again = await call(upi.createUpiUnlockOrder, uid);
+    expect(again.status === "order" && again.order.orderId).toBe(first.order.orderId);
+    await expect(call(upi.createUpiUnlockOrder, await buyer({ matched: false }))).rejects.toThrow(/mutual match/);
+  });
+
+  test("a UTR only marks the payment for review: nothing unlocks until a moderator approves", async () => {
+    const uid = await buyer();
+    const created = await call(upi.createUpiUnlockOrder, uid);
+    if (created.status !== "order") throw new Error("expected an order");
+    const { orderId } = created.order;
+    await expect(call(upi.submitUpiPayment, uid, { orderId, utr: "12345" })).rejects.toThrow(/12-digit/);
+    const reference = utr();
+    expect((await call(upi.submitUpiPayment, uid, { orderId, utr: reference })).order.status).toBe("submitted");
+    expect(await unlockOf(uid)).toBeUndefined();
+    expect((await call(chat.getChatAccess, uid)).unlock).toMatchObject({ status: "pending", upiPending: true });
+    // The same UTR can't be reused by anyone else.
+    const other = await buyer();
+    const theirs = await call(upi.createUpiUnlockOrder, other);
+    if (theirs.status !== "order") throw new Error("expected an order");
+    await expect(call(upi.submitUpiPayment, other, { orderId: theirs.order.orderId, utr: reference })).rejects.toThrow(/already been used/);
+    await expect(call(upi.submitUpiPayment, other, { orderId, utr: utr() })).rejects.toThrow(/couldn't find/);
+    // Only moderators review.
+    await expect(call(upi.reviewUpiPayment, uid, { orderId, decision: "approve" })).rejects.toThrow(/Moderator access/);
+    expect((await moderatorCall(upi.getUpiReviewQueue, "mod1", {})).items.map((item) => item.orderId)).toContain(orderId);
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId, decision: "approve" });
+    expect(await unlockOf(uid)).toMatchObject({ status: "active", source: "upi", orderId, paymentId: `upi:${reference}` });
+    expect(await mirrorOf(uid)).toMatchObject({ unlimited: true });
+    expect(await call(upi.createUpiUnlockOrder, uid)).toEqual({ status: "owned" });
+    // A refund given by hand: revoke ends it.
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId, decision: "revoke" });
+    expect(await unlockOf(uid)).toMatchObject({ status: "revoked" });
+    expect(await mirrorOf(uid)).toMatchObject({ unlimited: false });
+  });
+
+  test("a rejected payment unlocks nothing and frees its UTR", async () => {
+    const uid = await buyer();
+    const created = await call(upi.createUpiUnlockOrder, uid);
+    if (created.status !== "order") throw new Error("expected an order");
+    const reference = utr();
+    await call(upi.submitUpiPayment, uid, { orderId: created.order.orderId, utr: reference });
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "reject" });
+    expect(await unlockOf(uid)).toBeUndefined();
+    expect((await admin.doc(`upiUtrs/${reference}`).get()).exists).toBe(false);
+    await expect(moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "approve" })).rejects.toThrow(/submitted/);
   });
 });

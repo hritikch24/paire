@@ -14,7 +14,8 @@
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --backfill-chat-access --confirm
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --paid-chat on --enforce-from 2026-11-15T00:00:00+05:30 \
  *     [--legacy-grace-days 7] --confirm
- *   node scripts/set-runtime-flags.mjs --project muse-352ba --unlock-sales on --confirm
+ *   node scripts/set-runtime-flags.mjs --project muse-352ba --unlock-sales on --confirm   # Razorpay
+ *   node scripts/set-runtime-flags.mjs --project muse-352ba --upi-sales on --confirm      # UPI to MUSE_UPI_VPA
  *
  *   # Roll back instantly (messages are never lost; sending is simply free again):
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --paid-chat off --confirm
@@ -42,7 +43,7 @@ const onOff = (flag) => {
 };
 function fail(message) {
   console.error(message);
-  console.error("Usage: node scripts/set-runtime-flags.mjs --project <id> [--status] [--presence on|off] [--idle-minutes N] [--paid-chat on|off] [--enforce-from ISO] [--legacy-grace-days N] [--unlock-sales on|off] [--backfill-chat-access] [--confirm]");
+  console.error("Usage: node scripts/set-runtime-flags.mjs --project <id> [--status] [--presence on|off] [--idle-minutes N] [--paid-chat on|off] [--enforce-from ISO] [--legacy-grace-days N] [--unlock-sales on|off] [--upi-sales on|off] [--backfill-chat-access] [--confirm]");
   process.exit(1);
 }
 
@@ -81,13 +82,15 @@ if (value("--legacy-grace-days") !== undefined) {
 }
 const sales = onOff("--unlock-sales");
 if (sales !== undefined) chat.unlockSales = sales;
+const upiSales = onOff("--upi-sales");
+if (upiSales !== undefined) chat.upiSales = upiSales;
 
 async function show() {
   const [presenceDoc, chatDoc] = await db.getAll(db.doc("runtime/presence"), db.doc("runtime/trust"));
   const iso = (ms) => (typeof ms === "number" && ms > 0 ? new Date(ms).toISOString() : "—");
   console.log(`runtime/presence on ${project}:`, presenceDoc.exists ? { ...presenceDoc.data(), updatedAt: undefined } : "(missing: presence is off)");
   const c = chatDoc.data() ?? {};
-  console.log(`paid chat (runtime/trust) on ${project}:`, chatDoc.exists ? { requireVerification: c.requireVerification, enforcePaidChat: c.enforcePaidChat === true, enforceFrom: iso(c.enforceFrom), legacyGraceUntil: iso(c.legacyGraceUntil), unlockSales: c.unlockSales === true } : "(missing: sending is free)");
+  console.log(`paid chat (runtime/trust) on ${project}:`, chatDoc.exists ? { requireVerification: c.requireVerification, enforcePaidChat: c.enforcePaidChat === true, enforceFrom: iso(c.enforceFrom), legacyGraceUntil: iso(c.legacyGraceUntil), unlockSales: c.unlockSales === true, upiSales: c.upiSales === true } : "(missing: sending is free)");
 }
 
 /** Mirrors every member's current Plus and Unlimited Chat onto moderation/{uid}.chatAccess (what the rules read). */

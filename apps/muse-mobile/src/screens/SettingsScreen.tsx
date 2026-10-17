@@ -2,7 +2,7 @@ import { Alert } from "../services/dialog";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Application from "expo-application";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Linking } from "react-native";
 import { Text, YStack } from "tamagui";
 import { ChipGroup } from "../components/Chip";
@@ -18,6 +18,7 @@ import { legal } from "../config/legal";
 import { testServerPasswordHelp } from "../config/testServer";
 import { sendPasswordReset, signOut } from "../services/accountService";
 import { friendlyError } from "../services/errors";
+import { auth } from "../services/firebase";
 import { usePresenceEnabled } from "../hooks/usePresence";
 import { hasPasswordLogin } from "../services/googleAuth";
 import { requestApproximateLocation } from "../services/locationService";
@@ -62,6 +63,11 @@ export function SettingsScreen() {
   const testServerOrigin = useTestServerStore((state) => state.origin);
   const themeName = useAppearanceStore((state) => PALETTES[state.palette].name);
   const presenceEnabled = usePresenceEnabled();
+  // Moderator tools appear only for accounts with the moderator claim (the server checks it too).
+  const [moderator, setModerator] = useState(false);
+  useEffect(() => {
+    void auth.currentUser?.getIdTokenResult().then((token) => setModerator(token.claims.moderator === true)).catch(() => undefined);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -381,6 +387,7 @@ export function SettingsScreen() {
           <SettingsRow icon="shield-checkmark-outline" label="Safety center" showDivider={false} onPress={() => navigation.navigate("SafetyCenter")} />
           <SettingsRow testID="settings-my-reports" icon="flag-outline" label="My reports" onPress={() => navigation.navigate("MyReports")} />
           <SettingsRow icon="people-outline" label="Community guidelines" onPress={() => void Linking.openURL(legal.guidelinesUrl)} />
+          {moderator ? <SettingsRow testID="settings-upi-review" icon="cash-outline" label="UPI payments to confirm" onPress={() => navigation.navigate("UpiReview")} /> : null}
         </SettingsSection>
 
         <SettingsSection title="Account">

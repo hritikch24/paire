@@ -40,6 +40,7 @@ export type AppStackParamList = {
   MyReports: { blocked?: boolean } | undefined;
   Verification: undefined;
   Premium: undefined;
+  UpiReview: undefined;
   VibeGuide: undefined;
   Appearance: undefined;
   /** Everyone in a Duo chat: view, report or block. */

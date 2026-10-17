@@ -30,6 +30,7 @@ export {
 export { getPremiumStatus, revenueCatWebhook } from "./billing";
 export { confirmPlusPayment, createPlusOrder, razorpayWebhook } from "./razorpay";
 export { createChatUnlockOrder, confirmChatUnlock, getChatAccess } from "./chatAccess";
+export { createUpiUnlockOrder, getUpiReviewQueue, getUpiUnlockOrder, reviewUpiPayment, submitUpiPayment } from "./upiPayments";
 export { getPresence, presenceBeat, touchActivity } from "./presence";
 export { createCallSession } from "./calls";
 export { cleanupPhotoChecks } from "./verificationCleanup";

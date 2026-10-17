@@ -2,13 +2,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { webCheckout } from "../services/billingService";
-import { ChatAccess, fetchChatAccess, purchaseChatUnlock } from "../services/chatAccessService";
+import { ChatAccess, fetchChatAccess, purchaseChatUnlock, startUpiUnlock, UpiOrder } from "../services/chatAccessService";
 import { errorCode, friendlyError } from "../services/errors";
 import { useAuthStore } from "../store/authStore";
 import { useThemeColors } from "../theme/useThemeColors";
 import { Icon } from "./Icon";
 import { PrimaryButton, SecondaryButton } from "./MuseButton";
 import { showToast } from "./Toast";
+import { UpiPayPanel } from "./UpiPayPanel";
 
 type Phase = "idle" | "loading" | "pending" | "failed" | "cancelled";
 
@@ -39,9 +40,30 @@ export function ChatAccessCard({ access, onGetPlus, onVerify }: Props) {
   const [error, setError] = useState<string | null>(null);
   const unlock = access?.unlock;
   const price = `₹${unlock?.priceInr ?? 49}`;
+  const [upiOrder, setUpiOrder] = useState<UpiOrder | null>(null);
   const pending = phase === "pending" || unlock?.status === "pending";
-  // The ₹49 unlock is sold on the web; an unlock bought there works in the app too.
-  const canBuy = webCheckout && unlock?.status === "available";
+  const upiPending = (unlock?.upiPending === true || upiOrder?.status === "submitted") && !access?.unlimited;
+  // UPI to Paire's own account when it's on; otherwise Razorpay Checkout on the web.
+  const byUpi = unlock?.methods?.includes("upi") === true;
+  const canBuy = unlock?.status === "available" && (byUpi || (webCheckout && unlock?.methods?.includes("razorpay") !== false));
+
+  const payByUpi = async () => {
+    setPhase("loading");
+    setError(null);
+    try {
+      const result = await startUpiUnlock();
+      if (result.status === "owned") {
+        await settle(false).catch(() => null);
+        showToast("Unlimited chat is already unlocked on your account. Tap send when you're ready.", "success");
+      } else {
+        setUpiOrder(result.order);
+      }
+      setPhase("idle");
+    } catch (failure) {
+      setError(checkoutError(failure, "We couldn't start the UPI payment. Please try again."));
+      setPhase("failed");
+    }
+  };
 
   const settle = async (reconcile: boolean) => {
     const next = await fetchChatAccess(reconcile);
@@ -97,7 +119,16 @@ export function ChatAccessCard({ access, onGetPlus, onVerify }: Props) {
         Reading and receiving messages is always free. To send, choose one. Your message stays here either way.
       </Text>
 
-      {pending ? (
+      {upiPending ? (
+        <YStack gap="$2" testID="chat-access-upi-pending">
+          <Text fontSize="$2" lineHeight={20}>
+            Thanks! We've got your UPI reference and are confirming the payment reached Paire, usually within a few hours. You won't be charged again, and chat unlocks as soon as it's confirmed.
+          </Text>
+          <SecondaryButton testID="chat-access-check" loading={phase === "loading"} onPress={() => void checkStatus()}>Check payment status</SecondaryButton>
+        </YStack>
+      ) : upiOrder ? (
+        <UpiPayPanel order={upiOrder} onSubmitted={(next) => { setUpiOrder(next); void settle(false).catch(() => null); }} />
+      ) : pending ? (
         <YStack gap="$2" testID="chat-access-pending">
           <Text fontSize="$2" lineHeight={20}>
             Payment received. Your bank is still confirming it, which usually takes a few minutes. You won't be charged again, and chat unlocks as soon as it's confirmed.
@@ -110,11 +141,11 @@ export function ChatAccessCard({ access, onGetPlus, onVerify }: Props) {
           <Text fontSize="$1" color="$textMuted" lineHeight={18}>Passes from ₹20 that never auto-renew. Messaging is included while your pass runs, plus more likes and Super Likes.</Text>
           {canBuy ? (
             <>
-              <SecondaryButton testID="chat-access-unlock" loading={phase === "loading"} onPress={() => void unlockChat()}>
+              <SecondaryButton testID="chat-access-unlock" loading={phase === "loading"} onPress={() => void (byUpi ? payByUpi() : unlockChat())}>
                 {`Unlock unlimited chats — ${price} once`}
               </SecondaryButton>
               <Text fontSize="$1" color="$textMuted" lineHeight={18}>
-                {`One payment of ${price} covers all your current and future mutual matches. No expiry, no renewal, no per-match charge. Messaging only: it doesn't include Plus's likes or filters.`}
+                {`One payment of ${price} covers all your current and future mutual matches. No expiry, no renewal, no per-match charge. Messaging only: it doesn't include Plus's likes or filters.${byUpi ? " Pay by UPI." : ""}`}
               </Text>
             </>
           ) : unlock?.reason === "verification-required" ? (

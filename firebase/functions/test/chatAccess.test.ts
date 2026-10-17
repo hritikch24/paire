@@ -21,8 +21,8 @@ describe("Unlimited Chat product", () => {
 
 describe("chat policy", () => {
   it("is off unless explicitly enforced; malformed values are ignored", () => {
-    expect(parseChatPolicy(undefined)).toEqual({ enforcePaidChat: false, enforceFrom: 0, legacyGraceUntil: 0, unlockSales: false });
-    expect(parseChatPolicy({ enforcePaidChat: "true", unlockSales: 1, enforceFrom: "soon" })).toEqual({ enforcePaidChat: false, enforceFrom: 0, legacyGraceUntil: 0, unlockSales: false });
+    expect(parseChatPolicy(undefined)).toEqual({ enforcePaidChat: false, enforceFrom: 0, legacyGraceUntil: 0, unlockSales: false, upiSales: false });
+    expect(parseChatPolicy({ enforcePaidChat: "true", unlockSales: 1, upiSales: "yes", enforceFrom: "soon" })).toEqual({ enforcePaidChat: false, enforceFrom: 0, legacyGraceUntil: 0, unlockSales: false, upiSales: false });
   });
 
   it("starts the gate on its announced date", () => {

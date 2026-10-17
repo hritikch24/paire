@@ -18,6 +18,7 @@ import { AppearanceScreen } from "../screens/AppearanceScreen";
 import { SafetyCenterScreen } from "../screens/SafetyCenterScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { PremiumScreen } from "../screens/PremiumScreen";
+import { UpiReviewScreen } from "../screens/UpiReviewScreen";
 import { VerificationScreen } from "../screens/VerificationScreen";
 import { VibeGuideScreen } from "../screens/VibeGuideScreen";
 import { MainTabs } from "./MainTabs";
@@ -50,6 +51,7 @@ export function AppStack() {
       <Stack.Screen name="MyReports" component={MyReportsScreen} />
       <Stack.Screen name="Verification" component={VerificationScreen} />
       <Stack.Screen name="Premium" component={PremiumScreen} />
+      <Stack.Screen name="UpiReview" component={UpiReviewScreen} />
       <Stack.Screen name="VibeGuide" component={VibeGuideScreen} />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />
       <Stack.Screen name="ChatMembers" component={ChatMembersScreen} />

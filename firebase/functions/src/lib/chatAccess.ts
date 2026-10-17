@@ -28,8 +28,10 @@ export type ChatPolicy = {
   enforceFrom: number;
   /** Chats created before enforceFrom may keep sending free until this server ms; 0 = no grace. */
   legacyGraceUntil: number;
-  /** Unlimited Chat can be bought (also needs MUSE_CHAT_UNLOCK_ENABLED and Razorpay keys). */
+  /** Unlimited Chat can be bought through Razorpay (also needs MUSE_CHAT_UNLOCK_ENABLED and Razorpay keys). */
   unlockSales: boolean;
+  /** Unlimited Chat can be paid by UPI into Paire's own account (also needs MUSE_UPI_VPA). */
+  upiSales: boolean;
 };
 
 export type ChatAccessMirror = { unlimited: boolean; premiumUntil: number };
@@ -42,7 +44,8 @@ export function parseChatPolicy(data: unknown): ChatPolicy {
     enforcePaidChat: raw.enforcePaidChat === true,
     enforceFrom: ms(raw.enforceFrom),
     legacyGraceUntil: ms(raw.legacyGraceUntil),
-    unlockSales: raw.unlockSales === true
+    unlockSales: raw.unlockSales === true,
+    upiSales: raw.upiSales === true
   };
 }
 

@@ -22,6 +22,10 @@ export type ChatAccess = {
     status: "owned" | "available" | "pending" | "unavailable";
     priceInr: number;
     reason?: "sales-off" | "no-match" | "verification-required" | "account";
+    /** How it can be paid right now. */
+    methods?: Array<"razorpay" | "upi">;
+    /** A UPI payment is waiting for Paire to confirm it. */
+    upiPending?: boolean;
   };
   serverNow: number;
 };
@@ -57,3 +61,32 @@ export async function purchaseChatUnlock(theme: string): Promise<"owned" | "pend
     return access?.unlimited ? "owned" : "pending";
   }
 }
+
+/** A UPI order for Unlimited Chat: pay this exact amount to Paire's UPI ID, then submit the UTR. */
+export type UpiOrder = {
+  orderId: string;
+  status: "awaiting_payment" | "submitted" | "approved" | "rejected" | "expired" | "revoked";
+  amountPaise: number;
+  amountLabel: string;
+  vpa: string;
+  payeeName: string;
+  upiLink: string;
+  qrDataUrl: string;
+  expiresAt: number;
+  utr: string | null;
+};
+
+/** Your open UPI order (the same one each time, so you're never asked to pay twice). */
+export async function startUpiUnlock(): Promise<{ status: "owned" } | { status: "order"; order: UpiOrder }> {
+  return callFunction("createUpiUnlockOrder");
+}
+
+/** Chat unlocks only after Paire confirms the payment arrived with this reference. */
+export async function submitUpiReference(orderId: string, utr: string): Promise<UpiOrder> {
+  return (await callFunction<{ order: UpiOrder }>("submitUpiPayment", { orderId, utr })).order;
+}
+
+export type UpiReviewItem = { orderId: string; status: string; amountLabel: string; utr: string | null; memberName: string; submittedAt: number | null; createdAt: number };
+export const fetchUpiReviewQueue = async () => (await callFunction<{ items: UpiReviewItem[] }>("getUpiReviewQueue")).items;
+export const reviewUpiPayment = (orderId: string, decision: "approve" | "reject" | "revoke", note?: string) =>
+  callFunction<{ status: string }>("reviewUpiPayment", { orderId, decision, note });
