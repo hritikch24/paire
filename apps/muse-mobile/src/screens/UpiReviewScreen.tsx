@@ -35,7 +35,7 @@ export function UpiReviewScreen() {
     <Screen scroll header={<ScreenHeader title="UPI payments to confirm" />}>
       <YStack gap="$3" paddingTop="$3">
         <Text color="$textMuted" lineHeight={22}>
-          Find each payment in the bank statement or UPI app for Paire's account. Approve only if the amount (with paise) and the UTR both match. Reject if you can't find it; the member can try again. Payments for someone who already has Unlimited Chat need a manual refund.
+          Find each payment in the bank statement or UPI app for Paire's account. Approve only if the exact amount (with paise) arrived around that time, and the UTR matches when one is given. Reject if you can't find it; the member can try again. Payments for someone who already has Unlimited Chat need a manual refund.
         </Text>
         {queue.isLoading ? <LoadingView /> : null}
         {queue.isError ? <Text color="$error">{friendlyError(queue.error, "Couldn't load the queue.")}</Text> : null}
@@ -47,7 +47,7 @@ export function UpiReviewScreen() {
               <Text color="$textMuted" fontSize="$2">{item.orderId}</Text>
             </XStack>
             <Text fontWeight="600">{item.product}</Text>
-            <Text selectable>UTR: <Text fontWeight="700" selectable>{item.utr ?? "—"}</Text></Text>
+            <Text selectable>UTR: <Text fontWeight="700" selectable>{item.utr ?? "not given: match by the exact amount and time"}</Text></Text>
             <Text color="$textMuted" fontSize="$2">
               {item.memberName} · submitted {item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-IN") : "—"}
             </Text>

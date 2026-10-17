@@ -19,9 +19,10 @@ import { verifiedUsers } from "./trust";
  *
  * 1. createUpiUnlockOrder gives the member a unique amount (₹49.01–₹49.99) and a
  *    reference, as a UPI link and QR code for their own order.
- * 2. After paying, the member submits the 12-digit UPI reference (UTR).
- * 3. A moderator checks the payment arrived in the bank statement (amount,
- *    UTR, time) and approves it; only then is chat unlocked.
+ * 2. After paying, the member taps "I've paid" (the 12-digit UPI reference,
+ *    UTR, is optional: the unique amount already identifies the payment).
+ * 3. A moderator checks the payment arrived in the bank statement (the exact
+ *    amount, and the UTR if given) and approves it; only then is it unlocked.
  *
  * Records (server-only): upiUnlockOrders/{orderId}, upiUtrs/{utr} (one use per
  * UTR across all accounts), upiSlots/{amountPaise} (keeps open amounts unique).
@@ -163,19 +164,20 @@ export const submitUpiPayment = onCall({ region: REGION }, async (request): Prom
   const { orderId, utr } = (request.data ?? {}) as { orderId?: unknown; utr?: unknown };
   const cleanUtr = typeof utr === "string" ? utr.replace(/\s+/g, "") : "";
   if (typeof orderId !== "string" || !ORDER_ID.test(orderId)) throw new HttpsError("invalid-argument", "That order isn't valid.");
-  if (!UTR.test(cleanUtr)) throw new HttpsError("invalid-argument", "Enter the 12-digit UPI reference number (UTR) from your UPI app.");
+  // The UTR is optional: the unique amount (paise included) already identifies the payment.
+  if (cleanUtr && !UTR.test(cleanUtr)) throw new HttpsError("invalid-argument", "A UPI reference (UTR) has 12 digits. Leave it empty if you don't have it.");
   await consumeDailyQuota(uid, "upiSubmissions", 20);
   const ref = db.doc(`upiUnlockOrders/${orderId}`);
   await db.runTransaction(async (tx) => {
-    const [order, used] = await tx.getAll(ref, db.doc(`upiUtrs/${cleanUtr}`));
+    const [order, used] = cleanUtr ? await tx.getAll(ref, db.doc(`upiUtrs/${cleanUtr}`)) : [await tx.get(ref), null];
     if (!order.exists || order.get("uid") !== uid) throw new HttpsError("not-found", "We couldn't find that order.");
-    if (order.get("status") === "submitted" && order.get("utr") === cleanUtr) return;
+    if (order.get("status") === "submitted" && (order.get("utr") ?? "") === cleanUtr) return;
     if (order.get("status") !== "awaiting_payment" && order.get("status") !== "submitted") throw new HttpsError("failed-precondition", "This order is closed. Contact support if you paid.");
-    if (used.exists && used.get("orderId") !== orderId) throw new HttpsError("already-exists", "That UPI reference has already been used. Check the number, or contact support.");
+    if (used?.exists && used.get("orderId") !== orderId) throw new HttpsError("already-exists", "That UPI reference has already been used. Check the number, or contact support.");
     const previous = order.get("utr") as string | undefined;
     if (previous && previous !== cleanUtr) tx.delete(db.doc(`upiUtrs/${previous}`));
-    tx.set(db.doc(`upiUtrs/${cleanUtr}`), { orderId, uid, at: Date.now() });
-    tx.update(ref, { status: "submitted", utr: cleanUtr, submittedAt: Date.now(), updatedAt: FieldValue.serverTimestamp() });
+    if (cleanUtr) tx.set(db.doc(`upiUtrs/${cleanUtr}`), { orderId, uid, at: Date.now() });
+    tx.update(ref, { status: "submitted", utr: cleanUtr || null, submittedAt: Date.now(), updatedAt: FieldValue.serverTimestamp() });
   });
   return { status: "submitted", order: await viewOf(await ref.get()) };
 });
@@ -256,7 +258,7 @@ export const reviewUpiPayment = onCall({ region: REGION, secrets: ["REVENUECAT_S
           status: "active",
           product: CHAT_UNLOCK.product,
           orderId,
-          paymentId: `upi:${order.get("utr")}`,
+          paymentId: order.get("utr") ? `upi:${order.get("utr")}` : `upi-order:${orderId}`,
           amountPaise: order.get("amountPaise"),
           currency: "INR",
           mode: "live",

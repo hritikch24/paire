@@ -21,6 +21,7 @@ export function UpiPayPanel({ order, onSubmitted }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showUtr, setShowUtr] = useState(Boolean(order.utr));
   const phoneWeb = Platform.OS === "web" && typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
   const canOpenApp = Platform.OS !== "web" || phoneWeb;
   const what = order.kind === "plus" ? "starts your pass" : "unlocks chat";
@@ -83,17 +84,21 @@ export function UpiPayPanel({ order, onSubmitted }: Props) {
         <SecondaryButton onPress={() => void copyId()}>{copied ? "UPI ID copied" : `Copy UPI ID (${order.vpa})`}</SecondaryButton>
       ) : null}
 
-      <Text fontWeight="700" marginTop="$2">2. Enter the UPI reference number</Text>
+      <Text fontWeight="700" marginTop="$2">2. Tell us you've paid</Text>
       <Text fontSize="$2" color="$textMuted" lineHeight={20}>
-        {`After paying, your UPI app shows a 12-digit UPI reference (UTR) or transaction ID. Paire checks it against the payment and then ${what}, usually within a few hours.`}
+        {`Paire finds your payment by its exact amount (${order.amountLabel}) and then ${what}, usually within a few hours.`}
       </Text>
-      <MuseInput testID="upi-utr" inputMode="numeric" maxLength={14} placeholder="12-digit UTR, e.g. 412345678901" value={utr} onChangeText={(value) => setUtr(value.replace(/[^0-9 ]/g, ""))} />
-      <PrimaryButton testID="upi-submit" loading={busy} disabled={utr.replace(/\s/g, "").length !== 12} onPress={() => void submit()}>
-        I've paid: confirm my payment
+      <PrimaryButton testID="upi-submit" loading={busy} disabled={utr.replace(/\s/g, "").length > 0 && utr.replace(/\s/g, "").length !== 12} onPress={() => void submit()}>
+        I've paid
       </PrimaryButton>
+      {showUtr ? (
+        <MuseInput testID="upi-utr" inputMode="numeric" maxLength={14} placeholder="12-digit UPI reference (optional)" value={utr} onChangeText={(value) => setUtr(value.replace(/[^0-9 ]/g, ""))} />
+      ) : (
+        <Text fontSize="$1" color="$primary" accessibilityRole="button" onPress={() => setShowUtr(true)}>Have the 12-digit UPI reference (UTR)? Add it to speed things up (optional)</Text>
+      )}
       {error ? <Text fontSize="$2" color="$error">{error}</Text> : null}
       <Text fontSize="$1" color="$textMuted" lineHeight={18}>
-        Pay only once. If something goes wrong, keep the UPI reference and contact Paire support; a payment that can't be matched is refunded.
+        Pay only once, and only the exact amount. If something goes wrong, contact Paire support with a screenshot of the payment; a payment that can't be matched is refunded.
       </Text>
     </YStack>
   );

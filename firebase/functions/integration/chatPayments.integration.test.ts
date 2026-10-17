@@ -403,7 +403,7 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     const created = await call(upi.createUpiUnlockOrder, uid);
     if (created.status !== "order") throw new Error("expected an order");
     const { orderId } = created.order;
-    await expect(call(upi.submitUpiPayment, uid, { orderId, utr: "12345" })).rejects.toThrow(/12-digit/);
+    await expect(call(upi.submitUpiPayment, uid, { orderId, utr: "12345" })).rejects.toThrow(/12 digits/);
     const reference = utr();
     expect((await call(upi.submitUpiPayment, uid, { orderId, utr: reference })).order.status).toBe("submitted");
     expect(await unlockOf(uid)).toBeUndefined();
@@ -452,6 +452,16 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
   test("new Razorpay Plus sales can be switched off", async () => {
     await admin.doc("runtime/trust").set({ requireVerification: false, upiSales: true, razorpayPlusSales: false });
     await expect(call(createPlusOrder, await buyer(), { plan: "week" })).rejects.toThrow(/Card payments aren't available/);
+  });
+
+  test("\"I've paid\" works without a UTR; the moderator matches the exact amount", async () => {
+    const uid = await buyer();
+    const created = await call(upi.createUpiUnlockOrder, uid);
+    if (created.status !== "order") throw new Error("expected an order");
+    expect((await call(upi.submitUpiPayment, uid, { orderId: created.order.orderId })).order).toMatchObject({ status: "submitted", utr: null });
+    expect(await unlockOf(uid)).toBeUndefined();
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "approve" });
+    expect(await unlockOf(uid)).toMatchObject({ status: "active", paymentId: `upi-order:${created.order.orderId}` });
   });
 
   test("a rejected payment unlocks nothing and frees its UTR", async () => {

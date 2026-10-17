@@ -89,7 +89,7 @@ export async function fetchOpenUpiOrder(kind: "chat" | "plus"): Promise<UpiOrder
   return (await callFunction<{ order: UpiOrder | null }>("getUpiUnlockOrder", { kind })).order;
 }
 
-/** Chat unlocks only after Paire confirms the payment arrived with this reference. */
+/** "I've paid" (the UTR is optional). Nothing unlocks until Paire confirms the payment arrived. */
 export async function submitUpiReference(orderId: string, utr: string): Promise<UpiOrder> {
   return (await callFunction<{ order: UpiOrder }>("submitUpiPayment", { orderId, utr })).order;
 }

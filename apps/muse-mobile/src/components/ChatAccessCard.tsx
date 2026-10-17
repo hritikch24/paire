@@ -122,7 +122,7 @@ export function ChatAccessCard({ access, onGetPlus, onVerify }: Props) {
       {upiPending ? (
         <YStack gap="$2" testID="chat-access-upi-pending">
           <Text fontSize="$2" lineHeight={20}>
-            Thanks! We've got your UPI reference and are confirming the payment reached Paire, usually within a few hours. You won't be charged again, and chat unlocks as soon as it's confirmed.
+            Thanks! We're confirming your UPI payment reached Paire, usually within a few hours. You won't be charged again, and chat unlocks as soon as it's confirmed.
           </Text>
           <SecondaryButton testID="chat-access-check" loading={phase === "loading"} onPress={() => void checkStatus()}>Check payment status</SecondaryButton>
         </YStack>
