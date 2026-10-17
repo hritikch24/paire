@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | pending | Legal postal address masked behind a black bar with an accessible reveal control on Contact and Privacy; narrow-screen legal tables and links wrap. Address supplied through the production environment. | local |
 | 2026-10-17 | — | Configured runtime token signing and enabled owner support access only for hritikchaudhary016@gmail.com, selected by the owner. | Firebase live |
 | 2026-10-17 | `8958b5c` | Mobile browser Discover: compact header, large profile card, labelled actions, smaller setup prompt, readable tabs and vertical scrolling on short screens. | pushed, Vercel |
 | 2026-10-17 | `5bb698e` | Finish member admin, email/uid lookup, owner-only 15-minute read-only support views with separate identities, expiry/revocation, audit history, rules and Terms/Privacy disclosure. Includes the inherited member-admin/payment-notice/UPI-metrics work left by Claude. | pushed, Vercel, Firebase (functions, Firestore/indexes, Storage) |

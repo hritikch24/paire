@@ -37,6 +37,8 @@ Build: `node apps/web/scripts/build.mjs` writes `apps/web/dist`. `vercel.json` a
    gsutil cors set /tmp/cors.json gs://muse-352ba.firebasestorage.app
    ```
 
+The postal address stays in the deployment environment (`PAIRE_POSTAL_ADDRESS`), outside source control. Contact and Privacy show a collapsed black bar with a keyboard-accessible reveal control. This masks the address visually; visitors can reveal it, and the public HTML contains it.
+
 ## Every deploy
 
 The current `team-rockstar/paire` project is **not connected to Git** (verified 2026-10-17). Pushing to `main` does not deploy. Deploy manually from the repository root with `npx vercel deploy --prod --scope team-rockstar`, then `node apps/web/scripts/indexnow.mjs`. A build installs the browser dependencies and exports the app, which takes a few minutes. Git pushes would deploy automatically only after a Git connection is explicitly configured.

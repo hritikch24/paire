@@ -33,10 +33,20 @@ h2 { font-size: 1.25rem; margin-top: 32px; }
 h3 { font-size: 1.05rem; margin-top: 20px; }
 p, li { color: var(--ink); }
 .muted { color: var(--muted); }
-a { color: var(--accent); }
+a { color: var(--accent); overflow-wrap: anywhere; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin: 16px 0; }
 nav.links { display: grid; gap: 12px; margin-top: 24px; }
 nav.links a { display: block; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; text-decoration: none; color: var(--ink); font-weight: 600; }
 footer { margin-top: 48px; font-size: 0.9rem; color: var(--muted); }
 table { border-collapse: collapse; width: 100%; }
-td, th { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+td, th { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+
+/* Native disclosure keeps the postal address masked until the visitor opens it. */
+.legal-address { margin: 8px 0; }
+.legal-address summary { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-height: 44px; width: fit-content; padding: 6px 0; cursor: pointer; color: var(--accent); font-weight: 600; list-style: none; }
+.legal-address summary::-webkit-details-marker { display: none; }
+.legal-address summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.address-mask { display: inline-block; width: 88px; height: 14px; border-radius: 3px; background: var(--ink); }
+.address-hide, .legal-address[open] .address-show, .legal-address[open] .address-mask { display: none; }
+.legal-address[open] .address-hide { display: inline; }
+.address-value { padding: 8px 12px; border-left: 3px solid var(--border); overflow-wrap: anywhere; }
