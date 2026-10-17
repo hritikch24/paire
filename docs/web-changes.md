@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | `ecd152b` | UPI payments: buyers just tap "I've paid"; the UTR is optional. Moderators match the exact amount (unique paise) and time. | pushed, Vercel, Firebase |
 | 2026-10-17 | — | `razorpayPlusSales` off: **no Razorpay checkout anywhere** for new purchases. Earlier Razorpay payments still confirm and refund through the webhook. | live |
 | 2026-10-17 | `4e4f908` | Paire Plus paid by UPI to paire.in@ybl, like Unlimited Chat (moderator approves; approval starts the pass, revoke ends it). The pay panel has a QR plus PhonePe / Google Pay / Paytm / any-UPI-app buttons on phones. Site and legal copy no longer offer Razorpay. | pushed, Vercel, Firebase |
 | 2026-10-17 | — | Switched ₹49 Unlimited Chat from Razorpay to **UPI into paire.in@ybl** (`upiSales` on, Razorpay `unlockSales` off); moderator claim given to er.hritik.24@gmail.com and hritikchaudhary016@gmail.com so they can approve payments (Settings → UPI payments to confirm). Paire Plus still sells through Razorpay. | live |
