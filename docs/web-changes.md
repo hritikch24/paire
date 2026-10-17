@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | `619f398` | Site review fixes (Plus "10× the likes", header, README), Hold to Super Like and Lucky spin on web Discover, and the shareable dating vibe quiz at `/vibe-quiz/`. Web only; no backend change. See `docs/qa-2026-10-17.md`. | pushed |
 | 2026-10-17 | `25f9031` | Discover: free members who have seen everyone get a Paire Plus offer; Plus members then see people they passed on again (never likes, matches or blocks) and can like them. Needs the functions deploy (`getDiscoverFeed`, `swipe`) and the web app. | pushed |
 | 2026-10-17 | `2f794d7` | CCAvenue replaces direct UPI (paire.in@ybl) for new orders while CCAvenue sells; submitted UPI orders still confirmable. Pricing, llms.txt, Terms, Refunds and Privacy copy name CCAvenue (Infibeam Avenues). | pushed |
 | 2026-10-17 | `c47a2eb` | CCAvenue returns buyers through `www.paire.in/pay/ccavenue/` (Vercel rewrite to `ccavenueResponse`), the site its keys are registered for. | pushed |
