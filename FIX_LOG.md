@@ -329,3 +329,6 @@ Final regression: 251 automated tests, all six Android UI flows and the combined
 
 ## 2026-10-17: Unlimited Chat paid by UPI (paire.in@ybl)
 - Razorpay rejected Paire, so ₹49 Unlimited Chat moved to UPI straight into Paire's own UPI ID (`upiPayments.ts`, `UpiPayPanel`, `UpiReviewScreen`): a unique amount and QR per order, the buyer submits the UTR, and a moderator approves it before chat unlocks. UTRs are single-use; reject and revoke are supported. Deployed (`8859d77`); `upiSales` on, Razorpay `unlockSales` off, moderator claim set on the owner's two accounts. Paire Plus still uses the shared Razorpay account.
+
+## 2026-10-17: Paire Plus by UPI; Razorpay checkout off
+- Plus passes are now paid by UPI to paire.in@ybl with moderator approval (`4e4f908`). The pay panel offers a QR code and, on phones, PhonePe / Google Pay / Paytm / any-UPI-app buttons. New Razorpay Plus orders are switched off (`razorpayPlusSales`); the webhook still handles earlier Razorpay payments. Website, pricing and legal copy updated. Deployed (Firebase functions, Vercel).

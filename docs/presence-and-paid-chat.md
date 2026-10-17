@@ -151,7 +151,7 @@ Decide this before switching the gate on. The recommended policy, which the swit
 
 **Not yet verified:** a real Razorpay sandbox run (needs test keys), live Razorpay webhooks and disputes, native background behaviour on real Android and iOS devices, and any production behaviour.
 
-## Unlimited Chat by UPI (live)
+## Unlimited Chat and Paire Plus by UPI (live)
 
 Paid straight into Paire's own UPI ID (`MUSE_UPI_VPA`, `MUSE_UPI_PAYEE_NAME` in the functions `.env`; switch: `runtime/trust.upiSales`, `--upi-sales on|off`). There's no gateway, so payments are confirmed by a person until the bank's merchant API is connected:
 
@@ -160,3 +160,5 @@ Paid straight into Paire's own UPI ID (`MUSE_UPI_VPA`, `MUSE_UPI_PAYEE_NAME` in 
 3. A moderator opens **Settings → UPI payments to confirm** (accounts with the `moderator` claim) and approves only if the amount, paise included, and the UTR appear in the bank statement. Approval writes `chatUnlocks/{uid}` (`source: "upi"`), and chat unlocks. **Reject** frees the UTR. **Revoke** ends an approved unlock after a manual refund.
 
 Records: `upiUnlockOrders/{orderId}` (uid, amount, UTR, status, reviewer, timestamps), kept like other payment records. Refunds are made by hand from the bank or UPI app, then revoked in the app. Limits: India only (UPI); confirmation waits for a person; Google Pay can refuse `upi://` links to personal IDs, but scanning the QR still works.
+
+**Paire Plus by UPI (2026-10-17).** `createUpiUnlockOrder({ plan })` sells a Plus pass the same way: the plan's price plus unique paise, and moderator approval. Approval queues the pass after any running pass (`webPassLedger`), and `webPassExpiry` counts approved UPI Plus orders. Revoke recomputes the queue. New Razorpay Plus checkouts are off (`runtime/trust.razorpayPlusSales: false`, `--razorpay-plus off`); payments taken earlier still confirm and refund.

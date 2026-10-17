@@ -6,6 +6,8 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-17 | — | `razorpayPlusSales` off: **no Razorpay checkout anywhere** for new purchases. Earlier Razorpay payments still confirm and refund through the webhook. | live |
+| 2026-10-17 | `4e4f908` | Paire Plus paid by UPI to paire.in@ybl, like Unlimited Chat (moderator approves; approval starts the pass, revoke ends it). The pay panel has a QR plus PhonePe / Google Pay / Paytm / any-UPI-app buttons on phones. Site and legal copy no longer offer Razorpay. | pushed, Vercel, Firebase |
 | 2026-10-17 | — | Switched ₹49 Unlimited Chat from Razorpay to **UPI into paire.in@ybl** (`upiSales` on, Razorpay `unlockSales` off); moderator claim given to er.hritik.24@gmail.com and hritikchaudhary016@gmail.com so they can approve payments (Settings → UPI payments to confirm). Paire Plus still sells through Razorpay. | live |
 | 2026-10-17 | `8859d77` | Pay Unlimited Chat by UPI: a unique amount (₹49.01–₹49.99), QR and UPI link per order; the buyer enters the 12-digit UTR; a moderator approves it against the bank statement before chat unlocks. Terms, Refunds, Privacy and the pricing page updated. | pushed, Vercel, Firebase |
 | 2026-10-17 | — | **Switched on in production** (`scripts/set-runtime-flags.mjs`, owner's request): presence (2-min idle), the paid-sending gate from 2026-10-17 01:29 IST with no grace period, and live ₹49 Unlimited Chat sales (`MUSE_CHAT_UNLOCK_ENABLED`/`MUSE_CHAT_UNLOCK_LIVE` in functions `.env`). No Plus holders needed backfilling. | live |
