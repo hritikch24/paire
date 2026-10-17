@@ -710,7 +710,7 @@ describe("production trust boundaries", () => {
 
   it("never accepts a client-supplied premium entitlement or selfie approval", async () => {
     const member = await makeClient("paid-forgery");
-    expect(await member.call("getPremiumStatus", { active: true, expiresAt: Number.MAX_SAFE_INTEGER, plan: "month", uid: "other" })).toEqual({ active: false, expiresAt: null, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false });
+    expect(await member.call("getPremiumStatus", { active: true, expiresAt: Number.MAX_SAFE_INTEGER, plan: "month", uid: "other" })).toEqual({ active: false, expiresAt: null, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, ccavenuePurchaseAvailable: false });
     // Web checkout stays closed until Razorpay and billing are configured, and orders are server-only.
     await expect(member.call("createPlusOrder", { plan: "week" })).rejects.toThrow(/aren't available/);
     await expect(member.call("createPlusOrder", { plan: "forever" })).rejects.toThrow(/1-day, 7-day or 30-day/);
