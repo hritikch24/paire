@@ -25,6 +25,8 @@ Subscriptions live in server-only `webPushSubscriptions`, with validated browser
 - Bound to `swipe`, `onMessageCreated`, `acceptDuoInvite`, `answerDuoRequest`, `leaveDuo` and `duoSwipe`. Deploy these functions with the new subscription/config/profile functions, metrics, allowance and account-deletion updates before the website.
 - No extra Firebase rules grants: the subscription collection stays server-only. No billing, presence, paid chat or sales switches are changed.
 
+**Production release (2026-10-17):** commit `a35663c` is on `main`. Firebase Functions deployed successfully to `muse-352ba` (14 functions, including the VAPID secret bindings); the VAPID public key is configured and the private key remains in Secret Manager. The Vercel production build was promoted to `www.paire.in` after Firebase was ready. The live smoke check confirmed the profile sharing and notification bundles, 10-like pricing copy, service worker response and authenticated callable protection. Real browser push-provider delivery has not been exercised; see the validation note below.
+
 ### Validation
 
 `./scripts/verify.sh`: 460 tests passed (105 app, 224 Functions unit, 52 rules, 79 integration). Covers ten/eleven-like enforcement, current profile privacy, endpoint validation, subscription ownership, support restrictions, preview privacy and expired subscriptions.
