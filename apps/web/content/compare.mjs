@@ -33,7 +33,7 @@ export const compare = [
 <tr><td>Controls for women</td><td>${paireColumn.women}</td><td>Standard privacy settings for everyone</td></tr>
 <tr><td>Verification</td><td>${paireColumn.verify}</td><td>Optional photo verification badge</td></tr>
 <tr><td>Pricing</td><td>${paireColumn.price}</td><td>Free with ads/limits; subscriptions (Plus, Gold, Platinum) that renew until cancelled</td></tr>
-<tr><td>Size</td><td>New, starting in Delhi NCR</td><td>Very large, worldwide</td></tr>
+<tr><td>Size</td><td>New, growing across India</td><td>Very large, worldwide</td></tr>
 </tbody></table>
 <h2>When Tinder makes sense</h2>
 <p>If you want the biggest possible pool of people, or you travel a lot, Tinder's size is hard to beat. Plenty of people use it alongside other apps.</p>

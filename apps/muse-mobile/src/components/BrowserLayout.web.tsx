@@ -16,7 +16,7 @@ export function BrowserLayout({ children }: { children: ReactNode }) {
     `}</style>
     <aside className="muse-side" aria-label="About Paire">
       <a href="/" className="muse-word" aria-label="Paire home">paire<span style={{ color: "#B83A5E" }}>.</span></a>
-      <div><small>MEN &amp; WOMEN · 18+ · DELHI NCR FIRST</small><h1>Find<br/>your <span style={{ color: "#B83A5E" }}>Paire.</span></h1><p>Every like comes with a note.<br/>Women set the rules.<br/>Men get a real shot.</p><p>See who likes you, matching and every privacy control: free.</p></div>
+      <div><small>MEN &amp; WOMEN · 18+ · ALL OF INDIA</small><h1>Find<br/>your <span style={{ color: "#B83A5E" }}>Paire.</span></h1><p>Every like comes with a note.<br/>Women set the rules.<br/>Men get a real shot.</p><p>See who likes you, matching and every privacy control: free.</p></div>
       <div><a href="/safety/">Safety & community ↗</a><p>Beta · Made in India</p><small>Paire Plus passes from ₹20. No auto-renewal, ever.</small></div>
     </aside>
     <main className="muse-app-panel" aria-label="Paire dating app">{children}</main>

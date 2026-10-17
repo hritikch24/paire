@@ -5,11 +5,11 @@ export const core = [
   {
     path: "about/", crumb: "About Paire", published: D, updated: D, eyebrow: "ABOUT PAIRE",
     title: "About Paire — An Indian Dating App Where Women Set the Rules",
-    description: "Paire is an Indian dating app for men and women, built in Delhi NCR. Every like comes with a note, women set the rules, every member is email- and selfie-verified, and seeing who likes you is free.",
+    description: "Paire is an Indian dating app for men and women, built in India. Every like comes with a note, women set the rules, every member is email- and selfie-verified, and seeing who likes you is free.",
     h1: "About <em>Paire</em>",
     lede: "Paire is a dating app made in India for adult men and women: from a first coffee to a long-term partner. We built it because dating here deserved better than endless swiping, fake profiles and paywalls.",
     summary: [
-      "Built in Delhi NCR, open across India, 18+ only, for men and women.",
+      "Built in India, open across the country, 18+ only, for men and women.",
       "Every like can carry a note, so matches start with a real conversation.",
       "Women control who can reach them; seeing who likes you is free for everyone.",
       "Every member confirms a real email and passes a live selfie check before they can like or chat.",
@@ -27,7 +27,7 @@ export const core = [
 <li><strong>Respect.</strong> There is no caste field or filter, religion is never used to rank anyone, and paid arrangements are banned.</li>
 </ul>
 <h2>Who Paire is for</h2>
-<p>Paire is for adult men and women in India looking for anything from casual dating to marriage-minded relationships. You say what you are looking for, and you can choose to see only people who want the same thing. Paire started in Delhi NCR (Delhi, Noida, Gurugram, Faridabad and Ghaziabad) and is open across India.</p>
+<p>Paire is for adult men and women in India looking for anything from casual dating to marriage-minded relationships. You say what you are looking for, and you can choose to see only people who want the same thing. Paire is open to members in every city and town across India.</p>
 <h2>How Paire works</h2>
 <p>You sign up with Google or email, confirm your email, add a few photos and some interests, and pass a quick selfie check. Then you can browse people as photo cards, try <a href="/features/">Vibe First</a> to see interests before photos, team up with a best friend for a double date with <a href="/features/">Duos</a>, or join seasonal editions such as <a href="/garba-nights/">Garba Nights</a> during Navratri. Paire runs in any phone or laptop browser at <a href="/app/">paire.in/app</a>; an Android app is on the way.</p>
 <h2>Safety and privacy</h2>
@@ -35,7 +35,7 @@ export const core = [
 <h2>Contact</h2>
 <p>Questions, press or partnerships: see our <a href="/contact/">contact page</a>.</p>`,
     faq: [
-      ["Is Paire an Indian app?", "Yes. Paire is built in India, starting in Delhi NCR, and designed for how people date in India: notes with every like, women-first controls, no caste filters and prices in rupees."],
+      ["Is Paire an Indian app?", "Yes. Paire is built in India, open across the country, and designed for how people date in India: notes with every like, women-first controls, no caste filters and prices in rupees."],
       ["Is Paire free?", "Joining, 10 likes a day, matching, seeing who likes you, reading messages and every privacy and safety control are free. Sending messages needs Paire Plus (passes from ₹20 that never auto-renew) or a one-time ₹49 Unlimited Chat unlock."],
       ["Is Paire only for serious relationships?", "No. Paire covers everything from casual dating to marriage-minded relationships. You set your intention and can choose to see only people who want the same."]
     ],
@@ -182,7 +182,7 @@ export const core = [
     title: "Dating in Indian Cities: Date Ideas & Safe Places | Paire",
     description: "Dating in Delhi, Gurugram, Noida, Mumbai, Bengaluru, Pune, Hyderabad, Chennai, Kolkata, Ahmedabad and Jaipur: first-date ideas, safe public places and how to meet people on Paire.",
     h1: "Dating in <em>your city</em>",
-    lede: "First-date ideas, safe places to meet and local tips for India's biggest cities. Paire started in Delhi NCR and is open across India."
+    lede: "First-date ideas, safe places to meet and local tips for India's biggest cities. Paire is open across India."
   },
   {
     path: "compare/", crumb: "Paire vs other apps", type: "hub", eyebrow: "COMPARE",

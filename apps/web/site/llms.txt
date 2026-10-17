@@ -2,7 +2,7 @@
 
 > Paire (paire.in) is an Indian dating app for men and women (18+) where women set the rules. Every like can carry a short note, seeing who likes you is free, and there are no caste filters. It covers everything from casual dating to marriage-minded relationships. Tagline: "Find your Paire."
 
-Paire launched in 2026, starting in Delhi NCR (Delhi, Noida, Gurugram, Faridabad, Ghaziabad) and open across India. It runs in any phone or laptop browser at https://www.paire.in/app/ with Google or email sign-in; an Android app is coming.
+Paire launched in 2026, open to men and women across India. It runs in any phone or laptop browser at https://www.paire.in/app/ with Google or email sign-in; an Android app is coming.
 
 ## Key facts
 
