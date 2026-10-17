@@ -6,7 +6,8 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
-| 2026-10-17 | pending (uncommitted) | Mobile browser Discover: compact header, large profile card, labelled actions, smaller setup prompt, readable tabs and vertical scrolling on short screens. | local; not deployed |
+| 2026-10-17 | — | Configured the Firebase runtime service account to sign its own support tokens. No member or moderator support grants applied yet. | Firebase live |
+| 2026-10-17 | `8958b5c` | Mobile browser Discover: compact header, large profile card, labelled actions, smaller setup prompt, readable tabs and vertical scrolling on short screens. | pushed; Vercel pending |
 | 2026-10-17 | `5bb698e` | Finish member admin, email/uid lookup, owner-only 15-minute read-only support views with separate identities, expiry/revocation, audit history, rules and Terms/Privacy disclosure. Includes the inherited member-admin/payment-notice/UPI-metrics work left by Claude. | pushed, Firebase (functions, Firestore/indexes, Storage); Vercel pending |
 | 2026-10-17 | `ecd152b` | UPI payments: buyers just tap "I've paid"; the UTR is optional. Moderators match the exact amount (unique paise) and time. | pushed, Vercel, Firebase |
 | 2026-10-17 | — | `razorpayPlusSales` off: **no Razorpay checkout anywhere** for new purchases. Earlier Razorpay payments still confirm and refund through the webhook. | live |
