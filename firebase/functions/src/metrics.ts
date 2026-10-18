@@ -169,6 +169,17 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
     count(db.collectionGroup("messages")),
     count(db.collectionGroup("outgoing"))
   ]);
+  const [pushBrowsers, reminderDays] = await Promise.all([
+    count(db.collection("webPushSubscriptions")),
+    db.collection("notificationStats").where("__name__", ">=", days[23]).get()
+  ]);
+  const notifications = { browsers: pushBrowsers, attempts7d: 0, acceptedMembers7d: 0, acceptedPushes7d: 0, opens7d: 0 };
+  for (const doc of reminderDays.docs) {
+    notifications.attempts7d += Number(doc.get("attempts")) || 0;
+    notifications.acceptedMembers7d += Number(doc.get("acceptedMembers")) || 0;
+    notifications.acceptedPushes7d += Number(doc.get("acceptedPushes")) || 0;
+    notifications.opens7d += Number(doc.get("opens")) || 0;
+  }
 
   return {
     generatedAt: now,
@@ -180,6 +191,7 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
     },
     accounts,
     returning,
+    notifications,
     people: { newSignups: newPeople.map(describe), recentLogins: seenPeople.map(describe) },
     profiles: {
       total: profiles - testDocs.length,

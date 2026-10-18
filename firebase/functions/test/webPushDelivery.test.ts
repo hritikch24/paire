@@ -33,6 +33,13 @@ test("disabled preferences and emulators never send browser push", async () => {
   await sendWebPushToUser("member", message, settings);
   expect(webPush.sendNotification).not.toHaveBeenCalled();
 });
+test("reminder transport requires its own explicit opt-in and carries a safe discovery destination", async () => {
+  const reminder = { kind: "reminders" as const, title: "A little spark", body: "New people fit your preferences.", data: { type: "reminder", destination: "people", reminderId: "00000000-0000-0000-0000-000000000001" } };
+  expect(await sendWebPushToUser("member", reminder, settings)).toEqual({ accepted: 0, failed: 0 });
+  expect(webPush.sendNotification).not.toHaveBeenCalled();
+  expect(await sendWebPushToUser("member", reminder, { notifications: { ...settings.notifications, reminders: true } })).toEqual({ accepted: 1, failed: 0 });
+  expect(JSON.parse((webPush.sendNotification as jest.Mock).mock.calls[0][1])).toMatchObject({ title: reminder.title, destination: "people", reminderId: reminder.data.reminderId });
+});
 test("expired subscriptions are removed without deleting a newly rebound subscription", async () => {
   const remove = jest.fn();
   (db.runTransaction as jest.Mock).mockImplementation((fn) => fn({ get: async () => doc, delete: remove }));

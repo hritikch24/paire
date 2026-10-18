@@ -106,7 +106,8 @@ export function withSettingsDefaults(settings: Partial<UserSettings> | null | un
     notifications: {
       matches: settings?.notifications?.matches ?? true,
       messages: settings?.notifications?.messages ?? true,
-      previews: settings?.notifications?.previews === true
+      previews: settings?.notifications?.previews === true,
+      reminders: settings?.notifications?.reminders === true
     },
     requireNote: settings?.requireNote === true,
     firstMove: settings?.firstMove === true,

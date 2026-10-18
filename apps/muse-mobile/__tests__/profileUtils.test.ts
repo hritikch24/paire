@@ -67,7 +67,7 @@ describe("Show me preferences", () => {
     expect(settings.ageMin).toBe(21);
     expect(settings.ageMax).toBe(100);
     expect(settings.showMe).toEqual(["woman", "man"]);
-    expect(settings.notifications).toEqual({ matches: true, messages: true, previews: false });
+    expect(settings.notifications).toEqual({ matches: true, messages: true, previews: false, reminders: false });
     expect(withSettingsDefaults({ notifications: { matches: true, messages: true, previews: true } }).notifications.previews).toBe(true);
     expect(settings.openToCasual).toBe(false);
     expect(withSettingsDefaults({ openToCasual: true }).openToCasual).toBe(true);

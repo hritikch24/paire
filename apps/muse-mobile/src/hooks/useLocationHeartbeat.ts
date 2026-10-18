@@ -1,6 +1,6 @@
 import { isSupportView } from "../services/supportMode";
 import { useEffect, useRef } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { currentApproximateLocation } from "../services/locationService";
 import { updateSettings } from "../services/profileService";
 import { useAuthStore } from "../store/authStore";
@@ -25,9 +25,10 @@ export function useLocationHeartbeat() {
       if (now - lastRun.current < MIN_INTERVAL_MS) return;
       lastRun.current = now;
       const next = await currentApproximateLocation().catch(() => null);
-      if (!next) return;
+      if (!next || useAuthStore.getState().user?.uid !== uid || !useAuthStore.getState().settings?.locationEnabled) return;
       const previous = useAuthStore.getState().settings?.location;
-      if (previous && previous.lat === next.lat && previous.lng === next.lng) return;
+      if (previous && previous.lat === next.lat && previous.lng === next.lng &&
+        (Platform.OS !== "web" || (previous.updatedAt && now - previous.updatedAt < 24 * 60 * 60_000))) return;
       await updateSettings(uid, { location: next }).catch(() => undefined);
     };
 

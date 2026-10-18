@@ -72,7 +72,7 @@ export type UserSettings = {
   sharedVibesOnly: boolean;
   /** Open to a one-night stand. Private: only revealed to someone who also opted in. */
   openToCasual: boolean;
-  notifications: { matches: boolean; messages: boolean; previews?: boolean };
+  notifications: { matches: boolean; messages: boolean; previews?: boolean; reminders?: boolean };
   /** Privacy and control ("her rules"), free for everyone. */
   requireNote?: boolean;
   firstMove?: boolean;

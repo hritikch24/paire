@@ -197,7 +197,7 @@ function DiscoveryExperience() {
   useEffect(() => {
     if (!garbaOpen && filter === "garba") setFilter(null);
   }, [garbaOpen, filter]);
-  const chooseFilter = (next: FeedFilter) => {
+  const chooseFilter = useCallback((next: FeedFilter) => {
     if (next === "garba") {
       if (!garbaOpen) {
         showToast("Garba Nights is closed until next Navratri.");
@@ -220,7 +220,7 @@ function DiscoveryExperience() {
       return;
     }
     setFilter(next);
-  };
+  }, [garbaOpen, settings?.locationEnabled, navigation, myGarbaNights.length, premium.isLoading, plusLocked]);
   const allowance = useQuery({ queryKey: ["daily-allowance", uid], queryFn: fetchDailyAllowance, enabled: Boolean(uid), staleTime: 30_000, retry: 1 });
   const refreshAllowance = allowance.refetch;
   useFocusEffect(useCallback(() => { if (uid) void refreshAllowance(); }, [uid, refreshAllowance]));
@@ -355,6 +355,17 @@ function DiscoveryExperience() {
   useEffect(() => {
     void load(true);
   }, [load, preferencesKey]);
+
+  const handledIntent = useRef<number | null>(null);
+  const intent = route.params?.intent;
+  useEffect(() => {
+    if (Platform.OS !== "web" || !intent || handledIntent.current === intent.nonce) return;
+    handledIntent.current = intent.nonce;
+    setMode("solo");
+    const next = intent.edition === "garba" ? "garba" : null;
+    chooseFilter(next);
+    if (filterRef.current === next) void load(true);
+  }, [intent, chooseFilter, load]);
 
   // A Plus pass that starts while the deck is empty (bought from the prompt below) opens up
   // everyone passed on before straight away.

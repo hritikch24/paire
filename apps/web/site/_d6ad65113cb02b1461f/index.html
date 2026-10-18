@@ -63,6 +63,9 @@
 
     <p class="m-section">MEMBERS COMING BACK</p>
     <div class="m-grid" id="returning"></div>
+    <p class="m-section">BROWSER REMINDERS</p>
+    <div class="m-grid" id="notifications"></div>
+    <p class="m-sub">Reminder counts cover 7 India calendar days. Accepted means a browser push service accepted the request; it does not confirm display or reading. Opens count signed-in visits from the latest reminder.</p>
     <p class="m-sub">A return means activity or an explicit sign-in at least 24 hours after joining. These counts exclude staff, test and disabled accounts. Activity includes sessions that stay signed in; explicit sign-ins exclude token refreshes. Hidden activity may not be counted.</p>
 
     <p class="m-section">WHO JOINED AND WHO'S ON</p>
@@ -130,6 +133,7 @@
       cards("accounts", [[fmt(m.accounts.total), "accounts in total"], [fmt(m.accounts.signedInToday), "logged in, last 24 hours"], [fmt(m.accounts.signedIn7d), "logged in, last 7 days"], [fmt(m.accounts.new7d), "new accounts, last 7 days"], [fmt(m.accounts.google), "use Google sign-in"], [fmt(m.accounts.emailConfirmed), "emails confirmed"]]);
       cards("profiles", [[fmt(m.profiles.total), "profiles created"], [`${fmt(m.profiles.women)} / ${fmt(m.profiles.men)}`, "women / men"], [fmt(m.profiles.active24h), "active in the app, 24 hours"], [fmt(m.profiles.active7d), "active in the app, 7 days"], [fmt(m.profiles.verified), "photo-verified"], [fmt(m.activity.matches), `matches (${fmt(m.activity.matches24h)} today)`], [fmt(m.activity.messages), "messages sent"], [fmt(m.activity.swipes), "likes & passes"], [`₹${fmt(m.plus.rupees)}`, `Plus sales (${fmt(m.plus.orders)} orders)`], [`₹${fmt(m.unlimitedChat?.rupees ?? 0)}`, `Unlimited Chat sales (${fmt(m.unlimitedChat?.orders ?? 0)} orders)`]]);
       cards("returning", [[fmt(m.returning?.active24h ?? 0), "returning members active, 24 hours"], [fmt(m.returning?.active7d ?? 0), "returning members active, 7 days"], [fmt(m.returning?.signIns24h ?? 0), "returning sign-ins, 24 hours"], [fmt(m.returning?.signIns7d ?? 0), "returning sign-ins, 7 days"]]);
+      cards("notifications", [[fmt(m.notifications?.browsers ?? 0), "registered browsers"], [fmt(m.notifications?.attempts7d ?? 0), "reminder attempts"], [fmt(m.notifications?.acceptedMembers7d ?? 0), "member reminders accepted"], [fmt(m.notifications?.opens7d ?? 0), "reminder opens"]]);
       people("new-people", m.people?.newSignups ?? [], "No new sign-ups this week.");
       people("seen-people", m.people?.recentLogins ?? [], "Nobody logged in today.");
       const max = Math.max(1, ...m.visits.daily.map((d) => Math.max(d.views, d.visitors, d.signups)));

@@ -64,7 +64,7 @@ export type UserSettings = {
   sharedVibesOnly?: boolean;
   /** Open to a one-night stand. Private: only ever revealed to someone who also opted in. */
   openToCasual?: boolean;
-  notifications?: { matches?: boolean; messages?: boolean; previews?: boolean };
+  notifications?: { matches?: boolean; messages?: boolean; previews?: boolean; reminders?: boolean };
   /** "Her rules": privacy and control options, free for everyone. */
   /** Likes must carry a note (unless I liked them first). */
   requireNote?: boolean;

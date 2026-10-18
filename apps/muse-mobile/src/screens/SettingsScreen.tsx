@@ -1,10 +1,12 @@
 import { WebNotifications } from "../components/WebNotifications";
+import { HomeScreenInstall } from "../components/HomeScreenInstall";
+import { LocationDetails } from "../components/LocationDetails";
 import { Alert } from "../services/dialog";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Application from "expo-application";
 import { useCallback, useEffect, useState } from "react";
-import { Linking } from "react-native";
+import { Linking, Platform } from "react-native";
 import { Text, YStack } from "tamagui";
 import { ChipGroup } from "../components/Chip";
 import { DeleteAccountSheet } from "../components/DeleteAccountSheet";
@@ -97,6 +99,10 @@ export function SettingsScreen() {
       if (result.status === "granted") {
         await save({ locationEnabled: true, location: result.location });
       } else if (result.status === "denied") {
+        if (Platform.OS === "web") {
+          showToast("Allow location using the site controls beside your browser's address bar, then try again.");
+          return;
+        }
         Alert.alert("Location is off", "Allow location for Paire in your phone settings to see distances.", [
           { text: "Not now", style: "cancel" },
           { text: "Open settings", onPress: () => void Linking.openSettings() }
@@ -185,6 +191,7 @@ export function SettingsScreen() {
             onValueChange={(value) => void toggleLocation(value)}
             testID="settings-location"
           />
+          <LocationDetails />
           <ToggleRow
             testID="settings-same-intent"
             icon="heart-circle-outline"
@@ -336,6 +343,7 @@ export function SettingsScreen() {
         </SettingsSection>
 
         <WebNotifications />
+        <HomeScreenInstall />
 
         {features.notifications ? (
           <SettingsSection

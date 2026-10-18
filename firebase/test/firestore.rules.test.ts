@@ -261,6 +261,13 @@ describe("server-only collections", () => {
     await assertSucceeds(ref.set({ notifications: { matches: true, messages: true, previews: false } }));
     await assertSucceeds(ref.update({ "notifications.previews": true }));
     await assertFails(ref.update({ "notifications.previews": "true" }));
+    await assertSucceeds(ref.update({ "notifications.reminders": true }));
+    await assertFails(ref.update({ "notifications.reminders": "true" }));
+    await assertFails(ref.update({ "notifications.messages": "yes" }));
+    await assertFails(dbFor("jules").doc("users/alexa/private/settings").update({ "notifications.reminders": true }));
+    await assertFails(dbFor("alexa").doc("notificationReminders/alexa").get());
+    await assertFails(dbFor("alexa").doc("notificationReminders/alexa").set({ enabled: true }));
+    await assertFails(dbFor("alexa").doc("notificationStats/2026-10-18").set({ opens: 100 }));
     await assertFails(dbFor("jules").doc("users/alexa/private/settings").update({ "notifications.previews": true }));
   });
   test("clients cannot write swipes, matches, blocks or discovery data", async () => {

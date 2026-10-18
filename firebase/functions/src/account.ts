@@ -35,6 +35,7 @@ async function recursiveDelete(ref: DocumentReference): Promise<void> {
 export async function purgeUserData(uid: string): Promise<void> {
   await purgeVerificationData(uid);
   await deleteQueryResults(db.collection("webPushSubscriptions").where("uid", "==", uid));
+  await db.doc(`notificationReminders/${uid}`).delete();
   await db.doc(`billing/${uid}`).delete();
   // Payment records (razorpayOrders, ccavenueOrders) are kept for tax law, as the privacy policy says; the queue isn't.
   await db.doc(`webPassLedger/${uid}`).delete();

@@ -4,6 +4,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { isSupportView } from "../services/supportMode";
+import { callFunction } from "../services/firebase";
 
 /** Delayed until AppStack mounts, so shared links survive sign-in and onboarding. */
 export function useWebLinks() {
@@ -25,6 +26,12 @@ export function useWebLinks() {
       } else if (url.searchParams.get("duo") === "1" && url.searchParams.get("for") === uid) {
         navigation.navigate("App", { screen: "Duo" });
         url.searchParams.delete("duo"); url.searchParams.delete("for");
+      } else if (["people", "garba"].includes(url.searchParams.get("discover") || "") && url.searchParams.get("for") === uid) {
+        const edition = url.searchParams.get("discover") as "people" | "garba";
+        navigation.navigate("App", { screen: "Tabs", params: { screen: "Discover", params: { intent: { edition, nonce: Date.now() } } } });
+        const id = url.searchParams.get("reminder");
+        if (id && /^[a-f0-9-]{36}$/.test(id)) void callFunction("recordReminderOpen", { id }).catch(() => undefined);
+        url.searchParams.delete("discover"); url.searchParams.delete("reminder"); url.searchParams.delete("for");
       } else return;
       window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
     };

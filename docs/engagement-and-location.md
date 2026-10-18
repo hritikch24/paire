@@ -1,0 +1,42 @@
+# Browser reminders and location
+
+2026-10-18. Web only. Match/message notifications remain event-driven. A separate **People & events** switch in Settings explicitly opts into discovery and seasonal reminders; missing/false means off, including every existing account. Enabling the category does not bypass browser permission. The compact setup prompt leads to Settings without opening a permission dialog. Profile also links to these controls.
+
+## Reminder rules
+
+- Daily scheduler check at **18:30 Asia/Kolkata**. General discovery reminders are eligible on Tuesday/Friday only; seasonal checks run daily while Garba Nights is open.
+- At most **two attempts in a rolling seven days**, at least **72 hours apart**. Failed sends also consume an attempt, preventing repeated retries. Members active in the last 24 hours or absent for more than 30 days are skipped.
+- A discovery reminder requires an unswiped, mutually eligible new profile created since the recipient last visited/was reminded, and within the last seven days. The scan is bounded to the first 100 indexed candidates. No eligible result means no message.
+- Garba reminders require chosen nights tonight/tomorrow, approximate location refreshed in the last seven days, and an eligible person within 50 km sharing one of those nights. At most one attempt per season. No dates, names, profile photos or private preference details appear in the push.
+- Current profiles/settings and verification are checked after the discovery index scan. Blocks, previous swipes, test cohorts, incognito and mutual preferences apply. Hidden, unverified, disabled and staff recipients are skipped. Opt-out is checked again before sending.
+- A transaction reserves each attempt before the network request, preventing overlapping scheduled runs from duplicating it. These reminders use browser subscriptions only; native notification behavior is unchanged.
+
+The push opens the appropriate People/Garba edition, checks the receiving account, and records one open per latest reminder. A notification is a route back to the app, never a claim that someone liked or messaged the recipient. No emails, fabricated activity, blanket marketing send or new payments are involved.
+
+## Operation and measurement
+
+`runtime/notifications.remindersEnabled === true` is required. Missing/false is off. Set this deliberately when the backend and browser app are released; set false to stop scheduled reminders. Existing per-member consent is never backfilled. `notificationReminders/{uid}` stores the opt-in queue, last two recent attempts, latest reminder id/type/open and the last Garba season attempted. Account deletion removes it. The settings trigger mirrors opt-in; browser registration repairs a missed mirror. Both collections remain server-only under existing default-deny rules.
+
+The scheduler binds the existing `WEB_PUSH_VAPID_PRIVATE_KEY`; preserve its existing key pair. Deploy `sendEngagementReminders`, `recordReminderOpen`, `onUserSettingsWritten`, `registerWebPush`, `getMetrics`, `deleteAccount`, `onAuthUserDeleted` and Firestore rules before the browser release. The dashboard adds registered browsers, reminder attempts, member reminders accepted by a push service, and reminder opens over seven India calendar days. Push service acceptance is not proof of device display, reading or increased retention. Compare reminder opens and returning-member activity over time; a causal retention claim needs a controlled experiment.
+
+## Location behavior
+
+Location was already optional and used for mutual distance preferences and local Garba matching. On the web it now uses the browser's own Geolocation API with a 12-second timeout, five-minute maximum cache age and no high-accuracy request. Coordinates are rounded to two decimals before storage, roughly a 1 km grid. Other members receive rounded distances, never coordinates. There is no new reverse-geocoding provider, background tracking, IP-based inference or proof of a person's physical identity/location. The profile city is edited separately.
+
+Only an explicit Use/Refresh click can prompt. Foreground refresh reads only previously granted permission; one-time/expired permissions do not cause surprise dialogs. A same-cell position is refreshed at most daily to keep its timestamp useful. Settings explains the active state, last refreshed date, browser permission recovery and manual Refresh. Turning location off clears the saved point. Browsing without it remains available; distance limits cannot reliably exclude profiles without known positions.
+
+## Research and product choice
+
+- [Chrome/web.dev permission guidance](https://web.dev/articles/permissions-best-practices): context and a deliberate action before asking for access. This supports an inline setup action and explicit settings choices.
+- [MDN Web Push best practices](https://developer.mozilla.org/en-US/docs/Web/API/Push_API/Best_Practices): useful, timely notifications and easy opt-out. This supports real eligibility checks, a separate reminder preference and frequency limits.
+- [Geolocation API options](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition): finite timeout, cache control and permission checks. This fixes the browser's unbounded location wait without adding more tracking.
+- [WebKit's iOS/iPadOS Web Push requirements](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/): a Home Screen web app and a deliberate permission action. The additional product improvement is an **Add Paire to Home Screen** control/guide in Settings, with a native browser installation prompt where supported and clear manual steps elsewhere.
+- [Firebase scheduled functions](https://firebase.google.com/docs/functions/schedule-functions): scheduled invocations can overlap. Reservation transactions protect the reminder budget.
+
+The current priority is making real connections easier to resume and measuring that behavior. A useful next experiment is a small, optional first-conversation prompt chosen from shared interests after a match; Paire already has suggested openers, so validate whether members use those before building another overlapping feature.
+
+## Validation
+
+Use `./scripts/verify.sh` and the isolated browser QA described in `web-preview.md`. The reminder tests cover explicit consent, inactivity, frequency, stale/hidden/blocked/incognito profiles, current preferences, Garba season/location rules, overlapping scheduler runs and recipient-bound open deduplication. Browser QA uses fictional accounts and a mocked push broker. Actual provider delivery and physical-device behavior require opted-in devices and are not claimed by emulator tests.
+
+Validation passed: **498 automated checks** (109 app, 239 Functions unit, 52 rules, 98 integration). The browser suite passed sharing, account binding, explicit reminder opt-in/opt-out, reminder routing/open measurement, rounded location, refresh/disable/permission recovery, and the Home Screen guide at 320 px. Discovery regression passed six viewport sizes, touch scrolling, Pass/Undo, note composition, Vibe first and Duos.

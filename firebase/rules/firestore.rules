@@ -237,8 +237,9 @@ service cloud.firestore {
         && (!('ageGap' in d) || d.ageGap == null || d.ageGap in ['older', 'intoOlder'])
         && (!('garbaNights' in d) || d.garbaNights == null || validGarbaNights(d.garbaNights))
         && (!('notifications' in d) || (d.notifications is map
-            && d.notifications.keys().hasOnly(['matches', 'messages', 'previews'])
-            && (!('previews' in d.notifications) || d.notifications.previews is bool)))
+            && d.notifications.keys().hasOnly(['matches', 'messages', 'previews', 'reminders'])
+            && optBool(d.notifications, 'matches') && optBool(d.notifications, 'messages')
+            && optBool(d.notifications, 'previews') && optBool(d.notifications, 'reminders')))
         && optNumber(d, 'updatedAt');
     }
 

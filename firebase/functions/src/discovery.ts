@@ -64,6 +64,12 @@ export const onUserSettingsWritten = onDocumentWritten(
   { document: "users/{uid}/private/settings", region: REGION },
   async (event) => {
     const uid = event.params.uid;
+    const reminders = event.data?.after.get("notifications.reminders") === true;
+    if (!event.data?.after.exists) await db.doc(`notificationReminders/${uid}`).delete();
+    else if (reminders !== (event.data?.before.get("notifications.reminders") === true)) {
+      // Separate explicit opt-in; never enroll existing browser subscribers automatically.
+      await db.doc(`notificationReminders/${uid}`).set({ enabled: reminders }, { merge: true });
+    }
     // Hiding activity forgets it: presence sessions, last active, and the profile's last-active time.
     if (event.data?.after.get("showPresence") === false && event.data?.before.get("showPresence") !== false) {
       await clearPresence(uid);

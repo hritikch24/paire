@@ -5,7 +5,7 @@ import { Platform, Pressable } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { features } from "../config/features";
 import { requestApproximateLocation } from "../services/locationService";
-import { getPushPermission, registerPushToken, requestPushPermission } from "../services/notificationService";
+import { getPushPermission, isPushRegistered, registerPushToken, requestPushPermission } from "../services/notificationService";
 import { updateProfile, updateSettings } from "../services/profileService";
 import { useAuthStore } from "../store/authStore";
 import type { AppStackParamList } from "../navigation/types";
@@ -53,10 +53,15 @@ export function SetupNudge() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!features.notifications) return;
-    void getPushPermission()
-      .then((permission) => setNotificationsOn(permission === "granted"))
+    if (!features.notifications && Platform.OS !== "web") return;
+    const update = () => void getPushPermission()
+      .then((permission) => setNotificationsOn(Platform.OS === "web" ? isPushRegistered() : permission === "granted"))
       .catch(() => undefined);
+    update();
+    if (Platform.OS === "web") {
+      window.addEventListener("paire-push-change", update);
+      return () => window.removeEventListener("paire-push-change", update);
+    }
   }, []);
 
   const pending = [
@@ -70,6 +75,10 @@ export function SetupNudge() {
   const act = async () => {
     if (nudge.id === "photo") {
       navigation.navigate("EditPhotos");
+      return;
+    }
+    if (nudge.id === "notifications" && Platform.OS === "web") {
+      navigation.navigate("Settings");
       return;
     }
     setBusy(true);

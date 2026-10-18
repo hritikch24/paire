@@ -2,10 +2,11 @@
 
 Every commit that changes the web product: www.paire.in, the browser app at `/app/`, the backend and rules it uses, and legal copy. Newest first. See `CLAUDE.md` for the rules.
 
-**Status key:** *pushed* = on GitHub `main` only (a push never deploys) · *Vercel* = website and browser app deployed · *Firebase* = functions/rules deployed.
+**Status key:** *pushed* = on GitHub `main` · *Vercel* = website and browser app deployed · *Firebase* = functions/rules deployed. Since 2026-10-17, pushes to `main` also trigger Vercel; mark Vercel only after checking the deployment.
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-18 | pending | Opt-in People & events browser reminders with relevance checks, two-per-week cap and open metrics; Home Screen install guide; browser location timeout, status and refresh controls. 498 automated checks and emulator browser/discovery QA passed. | local |
 | 2026-10-18 | `81c2be4` | Monthly offer: web month pass (₹299) runs 60 days (buy 1 month, get 1 free); Plus screen, Discover offer, chat card and site pricing lead with monthly and per-day prices. **Needs functions deploy** for the extra days. | pushed |
 | 2026-10-17 | `a14a25c` | All-India positioning: no more "Delhi NCR first" in the app (side panel, Discover header), homepage hero/FAQ/footer, Garba page, content pages and llms.txt. Web only. | pushed |
 | 2026-10-17 | `8582c84` | End of Discover: a simple Paire Plus offer from ₹20 a day for free members; the offer and the Plus screen no longer mention passed profiles coming back (the feature still works for Plus). Web only. | pushed |

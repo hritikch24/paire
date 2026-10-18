@@ -40,3 +40,4 @@ export { cleanupPhotoChecks } from "./verificationCleanup";
 
 export { getWebPushConfig, registerWebPush, unregisterWebPush } from "./webPush";
 export { getSharedProfile } from "./sharedProfiles";
+export { sendEngagementReminders, recordReminderOpen } from "./reminders";
