@@ -17,7 +17,7 @@ export type MemberRow = {
   unlimitedChat: boolean;
 };
 
-export type MemberPayment = { source: "razorpay" | "upi" | "ccavenue"; product: string; amountInr: number; status: string; at: number | null; utr?: string | null; expiresAt?: number | null };
+export type MemberPayment = { source: "razorpay" | "upi" | "ccavenue" | "support"; product: string; amountInr: number; status: string; at: number | null; utr?: string | null; expiresAt?: number | null };
 
 export type MemberDetail = {
   uid: string;

@@ -276,6 +276,8 @@ describe("server-only collections", () => {
     await assertFails(alexa.doc("matches/alexa_jules").set(matchDoc()));
     await assertFails(alexa.doc("blocks/alexa/blocked/jules").set({ targetUid: "jules" }));
     await assertFails(alexa.doc("discovery/alexa").get());
+    await assertFails(alexa.doc("supportPlusGrants/alexa").get());
+    await assertFails(alexa.doc("supportPlusGrants/alexa").set({ status: "active", expiresAt: 9999999999999 }));
     await assertFails(alexa.collection("discovery").get());
     await assertFails(alexa.doc("moderation/alexa").get());
     await assertFails(alexa.doc("moderation/alexa").set({ verification: { status: "verified" } }));

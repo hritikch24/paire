@@ -119,8 +119,15 @@ async function ccavenueApi(mode: CcavenueMode, command: "orderStatusTracker" | "
     throw new HttpsError("unavailable", "The payment service didn't respond. Please try again.");
   }
   try {
-    return parseApiResponse(await response.text(), key);
+    const text = await response.text();
+    const envelope = new URLSearchParams(text);
+    if (envelope.get("status") === "1" && (envelope.get("enc_error_code") === "51407" || /access[_ ]code/i.test(envelope.get("enc_response") ?? ""))) {
+      logger.error("CCAvenue status API credentials rejected", { command, code: envelope.get("enc_error_code") || "access-code" });
+      throw new HttpsError("unavailable", "We couldn't verify your payment yet. Please contact support if you were charged.");
+    }
+    return parseApiResponse(text, key);
   } catch (error) {
+    if (error instanceof HttpsError) throw error;
     logger.error("CCAvenue API response unreadable (check the working key and CCAVENUE_ENV)", { command, error: String(error) });
     throw new HttpsError("unavailable", "The payment service didn't respond. Please try again.");
   }
@@ -172,12 +179,13 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
   type Outcome = "granted" | "duplicate" | "orphaned" | "rejected" | "revoked" | "closed";
   const outcome = await db.runTransaction(async (tx): Promise<Outcome> => {
     // Every read first (transactions can't read after writing).
-    const [fresh, user, moderation, unlock, ledger] = await tx.getAll(
+    const [fresh, user, moderation, unlock, ledger, support] = await tx.getAll(
       ref,
       db.doc(`users/${order.uid}`),
       db.doc(`moderation/${order.uid}`),
       db.doc(`chatUnlocks/${order.uid}`),
-      db.doc(`webPassLedger/${order.uid}`)
+      db.doc(`webPassLedger/${order.uid}`),
+      db.doc(`supportPlusGrants/${order.uid}`)
     );
     const status = fresh.get("status") as Status;
     const now = Date.now();
@@ -218,6 +226,16 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
       return "rejected";
     }
     if (kind === "plus") {
+      // A previous owner-authorized recovery already fulfilled this payment. Link
+      // the first matching verified order without granting the same pass twice.
+      const covered = support.get("coveredOrderIds");
+      if (support.get("status") === "active" && support.get("amountReportedPaise") === order.amountPaise &&
+        Array.isArray(covered) && covered.includes(orderId) && !support.get("confirmedOrderId") &&
+        Number(support.get("expiresAt")) > now && Number.isFinite(support.get("startsAt"))) {
+        tx.update(ref, { ...record, status: "paid", paidAt: now, startsAt: support.get("startsAt"), expiresAt: support.get("expiresAt"), awaiting: false, fulfilledBySupportGrant: true });
+        tx.update(support.ref, { status: "reconciled", confirmedOrderId: orderId, reconciledAt: now });
+        return "granted";
+      }
       // Passes never overlap: this one starts when any running pass (web or store) ends.
       const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry);
       const { startsAt, expiresAt } = passWindow(now, passDays(order.plan!), queuedUntil);

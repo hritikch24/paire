@@ -63,3 +63,13 @@ Everything below needs you. Nothing deploys or switches on by itself.
 - `apps/muse-mobile/__tests__/chatAccess.test.ts`: drafts survive the redirect.
 
 **Not yet verified:** a real CCAvenue sandbox or live run (this needs merchant credentials), CCAvenue's exact status strings for every bank, and the browser round trip against CCAvenue's real payment page.
+
+## Payment recovery (2026-10-18)
+
+A production status lookup returned `status=1`, `Access_code: Invalid Parameter` (51407). This is an API credential/authorization failure, not evidence that a customer wasn't charged. The backend now throws a verification error for that response, leaves the checkout unconfirmed, and lets the member retry/contact support. Merchant API credentials/authorization still need correction; no checkout or status result is fabricated to work around this.
+
+For an explicitly owner-authorized recovery, the server can honor an audited `supportPlusGrants/{uid}` record (`status: active`, finite `startsAt`/`expiresAt`, reported amount, owner confirmation source, reason and covered checkout ids). These records have no client write or read access. `webPassExpiry` includes the grant so refreshing premium or chat doesn't erase it. The billing cache, pass queue and chat mirror are updated together with the recovery/audit record. The advertised ₹299 month includes the current bonus month (60 days total).
+
+The gateway orders stay unconfirmed until CCAvenue verifies them. On the first subsequently verified paid order covered by a matching active recovery, settlement attaches that order to the existing dates and marks the support grant reconciled; it does not add a second pass. Refunds then operate on the verified order normally. Member admin distinguishes the owner recovery from gateway payments and labels unverified checkouts as unconfirmed. Account deletion removes the grant; the separate financial support audit remains for reconciliation. Activation email sends are explicitly owner-directed, use the existing Resend service and store the returned email id on the grant to prevent repeats.
+
+Verification: `./scripts/verify.sh` passed 500 tests, including rejected credentials, recovery refresh persistence, one-time reconciliation, later refund and client denial for support grants. Production account recovery is an owner-authorized operation, not a QA login or a new charge.

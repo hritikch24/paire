@@ -38,13 +38,14 @@ const upi = require("../src/upiPayments") as typeof import("../src/upiPayments")
 
 const API = "https://apitest.ccavenue.com/apis/servlet/DoWebTrans";
 type FakeOrder = { order_no: string; reference_no: string; order_status: string; order_amt: number; order_currncy: string };
-const fake = { orders: new Map<string, FakeOrder>(), refunds: [] as Array<{ reference_no: string; refund_amount: string }>, calls: 0 };
+const fake = { orders: new Map<string, FakeOrder>(), refunds: [] as Array<{ reference_no: string; refund_amount: string }>, calls: 0, apiDenied: false };
 let tracking = 300000000000;
 
 /** CCAvenue's API in the test environment, as far as the server uses it. */
 async function fakeCcavenue(url: string, init?: Parameters<typeof fetch>[1]): Promise<Response> {
   if (url !== API) return new Response("not faked", { status: 404 });
   fake.calls += 1;
+  if (fake.apiDenied) return new Response("status=1&enc_response=Access_code%3A+Invalid+Parameter&enc_error_code=51407", { status: 200 });
   const form = new URLSearchParams(String(init?.body));
   const reply = (payload: unknown) => new Response(`status=0&enc_response=${ccavenueEncrypt(JSON.stringify(payload), WORKING_KEY)}`, { status: 200 });
   if (form.get("access_code") !== process.env.CCAVENUE_ACCESS_CODE) return new Response("status=1&enc_response=Access code invalid", { status: 200 });
@@ -71,6 +72,7 @@ afterAll(async () => {
   await admin.doc("runtime/trust").set({ requireVerification: false });
 });
 beforeEach(async () => {
+  fake.apiDenied = false;
   await admin.doc("runtime/trust").set({ requireVerification: false, ccavenueSales: true });
   process.env.CCAVENUE_ENV = "test";
 });
@@ -154,6 +156,32 @@ describe("CCAvenue orders", () => {
 });
 
 describe("settling a payment", () => {
+  test("rejected status API credentials are a verification error, never a failed/unpaid payment", async () => {
+    const uid = await buyer();
+    const { orderId } = await start(uid);
+    fake.apiDenied = true;
+    await expect(call(cc.confirmCcavenueOrder, uid, { orderId })).rejects.toThrow(/couldn't verify/);
+    expect(await orderOf(orderId)).toMatchObject({ status: "created" });
+    expect(await unlockOf(uid)).toBeUndefined();
+  });
+
+  test("owner-authorized Plus recovery survives refresh and later gateway confirmation fulfills it once", async () => {
+    const uid = await buyer();
+    const { orderId } = await start(uid, { plan: "month" });
+    const startsAt = Date.now(), expiresAt = startsAt + 60 * 86_400_000;
+    await admin.doc(`supportPlusGrants/${uid}`).set({ uid, status: "active", startsAt, expiresAt, amountReportedPaise: 29900, coveredOrderIds: [orderId], confirmationSource: "owner_statement" });
+    expect(await billing.syncPremium(uid)).toMatchObject({ active: true, expiresAt });
+    expect((await admin.doc(`moderation/${uid}`).get()).get("chatAccess.premiumUntil")).toBe(expiresAt);
+    const remote = pay(orderId, { order_amt: 299 });
+    await call(cc.confirmCcavenueOrder, uid, { orderId });
+    expect(await orderOf(orderId)).toMatchObject({ status: "paid", expiresAt, fulfilledBySupportGrant: true });
+    expect((await admin.doc(`supportPlusGrants/${uid}`).get()).get("status")).toBe("reconciled");
+    await call(cc.confirmCcavenueOrder, uid, { orderId });
+    expect((await billing.syncPremium(uid)).expiresAt).toBe(expiresAt);
+    remote.order_status = "Refunded";
+    await call(cc.confirmCcavenueOrder, uid, { orderId });
+    expect((await billing.syncPremium(uid)).active).toBe(false);
+  });
   test("a paid order unlocks chat once CCAvenue's API confirms it, and the browser returns with only the order id", async () => {
     const uid = await buyer();
     const { orderId } = await start(uid);

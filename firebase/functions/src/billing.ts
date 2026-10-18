@@ -72,17 +72,21 @@ export async function storeExpiryIfEnabled(uid: string, now = Date.now()): Promi
 
 /** Latest expiry among the member's paid, unrefunded web passes. 0 when none. */
 export async function webPassExpiry(uid: string, now = Date.now()): Promise<number> {
-  const [paid, upi, ccavenue] = await Promise.all([
+  const [paid, upi, ccavenue, support] = await Promise.all([
     db.collection("razorpayOrders").where("uid", "==", uid).where("status", "==", "paid").get(),
     // Plus passes paid by UPI and approved by a moderator (upiPayments.ts).
     db.collection("upiUnlockOrders").where("uid", "==", uid).where("status", "==", "approved").get(),
     // Plus passes paid through CCAvenue (ccavenue.ts).
-    db.collection("ccavenueOrders").where("uid", "==", uid).where("status", "==", "paid").get()
+    db.collection("ccavenueOrders").where("uid", "==", uid).where("status", "==", "paid").get(),
+    // A separately audited owner-authorized recovery, never a fabricated gateway success.
+    db.doc(`supportPlusGrants/${uid}`).get()
   ]);
+  const supportUntil = support.get("status") === "active" && Number(support.get("startsAt")) <= now &&
+    typeof support.get("expiresAt") === "number" ? support.get("expiresAt") as number : 0;
   return [...paid.docs, ...[...upi.docs, ...ccavenue.docs].filter((doc) => doc.get("kind") === "plus")].reduce((latest, doc) => {
     const expiresAt = doc.get("expiresAt");
     return typeof expiresAt === "number" && expiresAt > now ? Math.max(latest, expiresAt) : latest;
-  }, 0);
+  }, Number.isFinite(supportUntil) && supportUntil > now ? supportUntil : 0);
 }
 
 /**
