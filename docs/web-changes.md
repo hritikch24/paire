@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-18 | `677547a` | Legal pages India only: Terms say Paire is only for people in India; UK/EU, US and Canada sections removed from Privacy, Refunds, Safety, Copyright and Your privacy choices. Meta Pixel still consent-only (DPDP). Web only. | pushed |
 | 2026-10-18 | `d37d48f` | Legal pages for India, US, UK and Canada: expanded Terms, Privacy, Refunds, Safety; new `/privacy-choices/`, `/copyright/`, `/accessibility/`; Meta Pixel only after consent (never with GPC); no more "every member is selfie-verified". Owner checklist: `docs/legal-compliance.md`. Web only. | pushed |
 | 2026-10-18 | `e07345a` | Verified badge on cards and profiles; 7-day Plus ₹119, or ₹99 for photo-verified members (server-priced). Site, Terms and Refunds updated. **Needs functions deploy.** | pushed |
 | 2026-10-18 | `81c2be4` | Monthly offer: web month pass (₹299) runs 60 days (buy 1 month, get 1 free); Plus screen, Discover offer, chat card and site pricing lead with monthly and per-day prices. **Needs functions deploy** for the extra days. | pushed |

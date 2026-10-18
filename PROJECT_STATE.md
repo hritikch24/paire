@@ -2,8 +2,8 @@
 
 Last updated: 2026-10-18
 
-## Legal pages for India, US, UK and Canada (2026-10-18)
-- Terms, Privacy, Refunds and Safety expanded; new `/privacy-choices/`, `/copyright/` and `/accessibility/` pages. The Meta Pixel loads only after a visitor allows it (never with Global Privacy Control).
+## Legal pages, India only (2026-10-18)
+- Paire is only for people in India (Terms); all legal pages follow Indian law only. Terms, Privacy, Refunds and Safety expanded; new `/privacy-choices/`, `/copyright/` and `/accessibility/` pages. The Meta Pixel loads only after a visitor allows it (never with Global Privacy Control).
 - **Needs you:** set the `PAIRE_*` legal details in Vercel, a lawyer's review, and the other items in `docs/legal-compliance.md` (company, DMCA agent, UK/EU representatives if you market there).
 
 ## Verified badge and verified price (2026-10-18)

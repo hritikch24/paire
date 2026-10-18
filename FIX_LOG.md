@@ -373,3 +373,6 @@ Final regression: 251 automated tests, all six Android UI flows and the combined
 - Meta Pixel now loads only after consent (banner "No thanks" / "Allow"); never with GPC. Content pages no longer claim every member is selfie-verified.
 - Checks: site build; browser test of banner, deny, allow, GPC and all legal pages; app lint, typecheck and unit tests; functions tests. The only failure is the rules test that already fails on `main`.
 - Owner checklist: `docs/legal-compliance.md`.
+
+## 2026-10-18: Legal pages India only
+- Owner: keep Paire India-only. Terms: only for people living in and using Paire from India; Indian law and courts only. Privacy rights section covers the DPDP Act only; UK/EU, US and Canada text, the UK/EU 14-day cancellation, foreign emergency numbers and DMCA wording removed (`677547a`). Build and consent browser test pass.
