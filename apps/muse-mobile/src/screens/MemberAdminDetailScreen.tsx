@@ -85,11 +85,11 @@ export function MemberAdminDetailScreen() {
             {data.payments.length ? (
               data.payments.map((payment, index) => (
                 <YStack key={`${payment.source}-${index}`} paddingVertical={6} borderBottomWidth={1} borderBottomColor="$border" gap={2}>
-                  <XStack justifyContent="space-between">
+                  <XStack justifyContent="space-between" flexWrap="wrap" gap="$1">
                     <Text fontSize="$2" fontWeight="700">{payment.product} · ₹{payment.amountInr}</Text>
-                    <Text fontSize="$2" color={payment.status === "paid" || payment.status === "approved" ? "$primary" : "$textMuted"}>{payment.status}</Text>
+                    <Text fontSize="$2" maxWidth="100%" color={payment.status === "paid" || payment.status === "approved" ? "$primary" : "$textMuted"}>{payment.status}</Text>
                   </XStack>
-                  <Text fontSize="$1" color="$textMuted">{payment.source === "upi" ? "UPI" : payment.source === "ccavenue" ? "CCAvenue" : "Razorpay"} · {when(payment.at)}{payment.utr ? ` · UTR ${payment.utr}` : ""}{payment.expiresAt ? ` · until ${when(payment.expiresAt)}` : ""}</Text>
+                  <Text fontSize="$1" color="$textMuted">{payment.source === "upi" ? "UPI" : payment.source === "ccavenue" ? "CCAvenue" : payment.source === "support" ? "Owner recovery" : "Razorpay"} · {when(payment.at)}{payment.utr ? ` · UTR ${payment.utr}` : ""}{payment.expiresAt ? ` · until ${when(payment.expiresAt)}` : ""}</Text>
                 </YStack>
               ))
             ) : (
