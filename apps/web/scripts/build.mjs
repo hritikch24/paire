@@ -83,7 +83,7 @@ cpSync(resolve(web, "site"), output, { recursive: true });
 
 // Meta Pixel for ads (PAIRE_META_PIXEL_ID in Vercel): PageView everywhere, Lead when someone opens the app,
 // and the app itself reports CompleteRegistration and Purchase (src/services/analytics.ts).
-// It loads only with consent (UK PECR/GDPR, US state "sharing" opt-outs): a small banner asks once, the
+// It loads only with consent (India DPDP Act: consent before processing): a small banner asks once, the
 // answer is kept in localStorage ("paire_ads_consent": "granted" | "denied", changeable on
 // /privacy-choices/), and a Global Privacy Control signal always counts as "no". Without consent no
 // Meta code or cookie is loaded, and the app's conversion calls do nothing (window.fbq doesn't exist).
