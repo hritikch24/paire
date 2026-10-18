@@ -3,13 +3,20 @@ import { sameSecret } from "./billing";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Paire Plus passes sold on the web. Amounts are in paise (INR), GST inclusive. Never trust a client amount. */
+/**
+ * Paire Plus passes sold on the web. Amounts are in paise (INR), GST inclusive. Never trust a client amount.
+ * `bonusDays` is the web offer on top of the paid days: buy 1 month, get 1 month free (set it to 0 to end
+ * the offer; passes already bought keep their days). Mirrored in apps/muse-mobile/src/config/premium.ts.
+ */
 export const PLUS_PASSES = {
-  day: { days: 1, amountPaise: 2000, label: "Paire Plus · 1 day" },
-  week: { days: 7, amountPaise: 9900, label: "Paire Plus · 7 days" },
-  month: { days: 30, amountPaise: 29900, label: "Paire Plus · 30 days" }
+  day: { days: 1, bonusDays: 0, amountPaise: 2000, label: "Paire Plus · 1 day" },
+  week: { days: 7, bonusDays: 0, amountPaise: 9900, label: "Paire Plus · 7 days" },
+  month: { days: 30, bonusDays: 30, amountPaise: 29900, label: "Paire Plus · 1 month + 1 month free" }
 } as const;
 export type PlusPlan = keyof typeof PLUS_PASSES;
+
+/** How long a web pass runs: the paid days plus any offer days. */
+export const passDays = (plan: PlusPlan) => PLUS_PASSES[plan].days + PLUS_PASSES[plan].bonusDays;
 
 export function isPlusPlan(value: unknown): value is PlusPlan {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(PLUS_PASSES, value);

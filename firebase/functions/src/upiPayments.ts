@@ -6,7 +6,7 @@ import QRCode from "qrcode";
 import { db } from "./admin";
 import { billingEnabled, storeExpiryIfEnabled, syncPremium, webPassExpiry } from "./billing";
 import { syncChatAccess, upiSalesOpen, upiVpa } from "./chatEntitlement";
-import { isPlusPlan, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
+import { isPlusPlan, passDays, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth, requireReadAuth } from "./lib/auth";
 import { consumeDailyQuota } from "./quota";
@@ -248,7 +248,7 @@ export const reviewUpiPayment = onCall({ region: REGION, secrets: ["REVENUECAT_S
       if (!user.exists) throw new HttpsError("failed-precondition", "This account was deleted. Refund the payment by hand.");
       if (kind === "plus") {
         const queuedUntil = Math.max(Number(ledger?.get("until")) || 0, storeExpiry);
-        const { startsAt, expiresAt } = passWindow(now, PLUS_PASSES[order.get("plan") as PlusPlan].days, queuedUntil);
+        const { startsAt, expiresAt } = passWindow(now, passDays(order.get("plan") as PlusPlan), queuedUntil);
         tx.set(ledgerRef, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
         tx.update(ref, { ...audit, status: "approved", startsAt, expiresAt });
         return "approved";

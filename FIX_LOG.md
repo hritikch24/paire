@@ -353,3 +353,9 @@ Final regression: 251 automated tests, all six Android UI flows and the combined
 - `LuckySpin.web.tsx` (stub `LuckySpin.tsx` for native): "🎲 Lucky spin" in the Discover footer spins through loaded cards and moves the pick to the top. Names and ages only; nothing is sent.
 - `apps/web/site/vibe-quiz/`: static quiz page (four plain-English result types, WhatsApp/share/copy, `?r=` result links), registered in the build (footer, visit beacon, sitemap), homepage menu and `llms.txt`.
 - Checks: app lint, typecheck, 106 unit tests; browser checks on emulators for both new features (a tap recorded a like, a hold recorded a Super Like, the spin's pick was the next card), the quiz at 375 and 1280 px, and `e2e/discovery-layout.cjs` / `e2e/discovery-empty.cjs` (all sizes pass).
+
+## 2026-10-18: Monthly offer (buy 1 month, get 1 month free)
+- Server: `PLUS_PASSES` gains `bonusDays` (month: 30) and `passDays(plan)`; Razorpay, UPI and CCAvenue grants use it, so a web month pass runs 60 days. Unit test (`passDays`) and a CCAvenue integration test (₹299 month order → 60 days).
+- App (web): `config/premium.ts` `bonusDays`, `MONTH_OFFER`, `webPlan()` (days, per-day price, saving vs daily). Plus screen lists month first and selected, with the offer ribbon and "SAVE 75%", per-day price as the headline for each plan, "Get 2 months · ₹299". End-of-Discover offer, chat access card and Discover footer lead with "from ₹5 a day". Native store passes untouched.
+- Site: homepage pricing card is the month offer (₹5 a day, ₹299 for 60 days), day/week card beside it; JSON-LD offer, FAQ, pricing/about/compare pages, llms.txt, Terms and Refunds updated.
+- Checks: app lint, typecheck, 106 unit tests; functions 234 unit tests; payment and feed integration suites (43) on isolated emulators; screenshots of the Plus screen and the end-of-Discover offer on emulators.

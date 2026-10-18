@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { webCheckout } from "../services/billingService";
+import { MONTH_OFFER, PREMIUM_PLANS, webPlan } from "../config/premium";
 import { ccavenueCheckout, confirmCcavenuePayment, startCcavenuePayment } from "../services/ccavenueService";
 import { ChatAccess, fetchChatAccess, purchaseChatUnlock, startUpiUnlock, UpiOrder } from "../services/chatAccessService";
 import { errorCode, friendlyError } from "../services/errors";
@@ -163,7 +164,7 @@ export function ChatAccessCard({ access, matchId, onGetPlus, onVerify }: Props) 
       ) : (
         <YStack gap="$2">
           <PrimaryButton testID="chat-access-plus" disabled={phase === "loading"} onPress={onGetPlus}>Get Paire Plus</PrimaryButton>
-          <Text fontSize="$1" color="$textMuted" lineHeight={18}>Passes from ₹20 that never auto-renew. Messaging is included while your pass runs, plus more likes and Super Likes.</Text>
+          <Text fontSize="$1" color="$textMuted" lineHeight={18}>{webCheckout ? `From ₹${webPlan(PREMIUM_PLANS[2]).perDay} a day (${MONTH_OFFER.toLowerCase()}), and it never auto-renews.` : "Passes from ₹20 that never auto-renew."} Messaging is included while your pass runs, plus more likes and Super Likes.</Text>
           {canBuy ? (
             <>
               <SecondaryButton testID="chat-access-unlock" loading={phase === "loading"} onPress={() => void (byUpi ? payByUpi() : ccavenueOnly ? payByCcavenue() : unlockChat())}>

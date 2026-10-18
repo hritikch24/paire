@@ -693,7 +693,7 @@ function DiscoveryExperience() {
           </Pressable>
           {mode === "solo" ? <LuckySpin profiles={deck} onPick={(chosen) => setDeck((current) => [chosen, ...current.filter((profile) => profile.uid !== chosen.uid)])} /> : null}
           <Pressable testID="discover-premium" accessibilityRole="button" accessibilityLabel="View daily limits and premium plans" onPress={() => navigation.navigate("Premium")} style={{ minHeight: 44, justifyContent: "center" }}>
-            <Text color="$primary" fontSize="$1" fontWeight="700">{allowance.data && !allowance.isError ? `${allowance.data.remaining.likes} likes left today` : "Free daily likes · Plus from ₹20"}</Text>
+            <Text color="$primary" fontSize="$1" fontWeight="700">{allowance.data && !allowance.isError ? `${allowance.data.remaining.likes} likes left today` : Platform.OS === "web" ? "Free daily likes · Plus from ₹5/day" : "Free daily likes · Plus from ₹20"}</Text>
           </Pressable>
         </XStack>
       ) : null}
