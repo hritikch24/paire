@@ -6,7 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
-| 2026-10-19 | pending | Metrics includes retained owner-confirmed payment receipts, deduplicates later gateway confirmation and reversals, excludes test/gift grants, and preserves paise. Added dry-run-first receipt recording script. 511 checks and browser display checks at 320/390/1280px passed. | local; not pushed or deployed |
+| 2026-10-19 | `5c44410` | Metrics includes retained owner-confirmed payment receipts, deduplicates later gateway confirmation and reversals, excludes test/gift grants, and preserves paise. Added dry-run-first receipt recording script. 511 checks and browser display checks at 320/390/1280px passed. | release in progress |
 | 2026-10-19 | — | Recorded the additional owner-confirmed ₹99 receipt alongside the existing ₹299 recovery audit. Read-only revenue preview totals ₹438.95 across 4 payments, including ₹398 owner-confirmed. Premium expiry, gateway orders, charges, refunds and emails unchanged. | financial receipt recorded; metrics release pending |
 | 2026-10-18 | `b47be2a` | Member admin labels owner recovery separately from payment gateways, with wrapped payment statuses on narrow screens. App lint/typecheck and live bundle check passed. | pushed, Vercel |
 | 2026-10-18 | `b8ef459` | Owner-authorized Plus recovery source survives refresh, preserves an audit and reconciles a later verified gateway order without a duplicate pass. CCAvenue access-code errors remain verification errors; member admin distinguishes support recovery and unconfirmed checkouts. 500 checks passed. | pushed, Vercel, Firebase (15 functions) |
