@@ -79,8 +79,10 @@ export function PremiumScreen() {
     if (byCcavenue) await confirmCcavenuePayment({ kind: "plus" }).catch(() => null);
     await premium.refetch();
   };
-  const priceLabel = webCheckout || byUpi ? `₹${plan.priceInr}` : (product?.priceString ?? `₹${plan.priceInr}`);
-  const offer = webCheckout ? webPlan(plan) : null;
+  // The member's own price from the server (photo-verified members pay less for 7 days).
+  const priceOf = (item: (typeof PREMIUM_PLANS)[number]) => premium.data?.prices?.[item.id] ?? item.priceInr;
+  const priceLabel = webCheckout || byUpi ? `₹${priceOf(plan)}` : (product?.priceString ?? `₹${plan.priceInr}`);
+  const offer = webCheckout ? webPlan(plan, priceOf(plan)) : null;
   // "2 months" says the offer in two words on the buy button.
   const buyLabel = offer && plan.bonusDays ? "2 months" : plan.label;
   const plans = webCheckout ? [...PREMIUM_PLANS].reverse() : PREMIUM_PLANS;
@@ -137,10 +139,13 @@ export function PremiumScreen() {
         <YStack gap="$2" accessibilityRole="radiogroup" accessibilityLabel="Plus pass duration">
           {plans.map((item) => {
             const active = selected === item.id;
-            const view = webCheckout ? webPlan(item) : null;
+            const view = webCheckout ? webPlan(item, priceOf(item)) : null;
             const deal = Boolean(view && item.bonusDays);
+            // 7 days: ₹99 for photo-verified members instead of ₹119.
+            const verifiedDeal = Boolean(view && priceOf(item) < item.priceInr);
+            const verifyForDeal = Boolean(view && !verifiedDeal && item.verifiedPriceInr < item.priceInr && premium.data && !premium.data.photoVerified);
             return (
-              <Pressable key={item.id} testID={`premium-plan-${item.id}`} accessibilityRole="radio" accessibilityState={{ checked: active }} accessibilityLabel={`${view?.label ?? item.label}, ${item.priceInr} rupees, ${view ? `${view.days} days, ${view.perDay} rupees a day` : item.detail}, no auto-renewal`} onPress={() => setSelected(item.id)}>
+              <Pressable key={item.id} testID={`premium-plan-${item.id}`} accessibilityRole="radio" accessibilityState={{ checked: active }} accessibilityLabel={`${view?.label ?? item.label}, ${view ? priceOf(item) : item.priceInr} rupees, ${view ? `${view.days} days, ${view.perDay} rupees a day` : item.detail}, no auto-renewal`} onPress={() => setSelected(item.id)}>
                 <YStack borderWidth={active || deal ? 2 : 1} borderColor={active ? "$primary" : deal ? "$primary" : "$border"} borderRadius={20} backgroundColor={active ? "$primarySoft" : "$backgroundStrong"} overflow="hidden">
                   {deal ? (
                     <XStack testID="premium-month-offer" backgroundColor="$primary" paddingHorizontal="$4" paddingVertical={6} alignItems="center" gap="$2">
@@ -154,10 +159,18 @@ export function PremiumScreen() {
                     <YStack flex={1} gap={3}>
                       <Text fontSize="$5" fontWeight="700">{view?.label ?? item.label}</Text>
                       <Text fontSize="$2" color="$textMuted">{view ? view.detail : nativeBillingAvailable ? item.detail : `₹${dailyPrice(item.priceInr, item.days)}/day · ${item.detail}`}</Text>
+                      {verifiedDeal ? (
+                        <XStack testID="premium-verified-price" gap={4} alignItems="center"><Icon name="checkmark-circle" size={13} color="#1D9BF0" /><Text fontSize="$1" fontWeight="700" color="#0B6CB0">Verified price</Text></XStack>
+                      ) : verifyForDeal ? (
+                        <Text testID="premium-verify-for-price" fontSize="$1" fontWeight="700" color="$primary" onPress={() => navigation.navigate("Verification")}>{`₹${item.verifiedPriceInr} if you verify your photos ›`}</Text>
+                      ) : null}
                     </YStack>
                     <YStack alignItems="flex-end" gap={2}>
                       {view ? <Text fontSize={deal ? "$7" : "$6"} fontWeight="700" color={deal ? "$primary" : "$text"}>{`₹${view.perDay}/day`}</Text> : null}
-                      <Text fontSize={view ? "$2" : "$6"} fontWeight={view ? "400" : "700"} color={view ? "$textMuted" : "$text"}>{products.data?.find((product) => product.identifier === item.productId)?.priceString ?? `₹${item.priceInr}${view ? " total" : ""}`}</Text>
+                      <XStack gap={4} alignItems="center">
+                        {verifiedDeal ? <Text fontSize="$2" color="$textMuted" textDecorationLine="line-through">{`₹${item.priceInr}`}</Text> : null}
+                        <Text fontSize={view ? "$2" : "$6"} fontWeight={view ? "400" : "700"} color={view ? "$textMuted" : "$text"}>{products.data?.find((product) => product.identifier === item.productId)?.priceString ?? `₹${view ? priceOf(item) : item.priceInr}${view ? " total" : ""}`}</Text>
+                      </XStack>
                       {!view ? <Text fontSize="$1" fontWeight="700" color="$primary">{products.data?.length ? item.detail : item.badge}</Text> : null}
                     </YStack>
                   </XStack>

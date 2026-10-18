@@ -2,6 +2,11 @@
 
 Last updated: 2026-10-17
 
+## Verified badge and verified price (2026-10-18)
+- **7-day pass: ₹119, or ₹99 for photo-verified members.** The server picks the price per member when the order is created (`PLUS_PASSES.week.verifiedAmountPaise`, `plusPricePaise`, `photoVerified(uid)` in `trust.ts`) for CCAvenue, UPI and Razorpay; `getPremiumStatus` returns the member's `prices` and `photoVerified`. Day (₹20) and month (₹299, 60 days) are the same for everyone.
+- **Verified badge** (web): a blue "✓ Verified" on Discover cards, Vibe first cards, full profiles and your own profile. The Plus screen shows "Verified price" (₹119 struck through) or "₹99 if you verify your photos ›".
+- Site, content pages, llms.txt, Terms, Refunds and README show ₹119 / ₹99 verified. **Needs a functions deploy** with the web deploy.
+
 ## Monthly offer: buy 1 month, get 1 month free (2026-10-18)
 - The ₹299 month pass runs **60 days** when bought on the web (`PLUS_PASSES.month.bonusDays = 30` in `firebase/functions/src/lib/razorpay.ts`; set it to 0 to end the offer). Store passes in the app are unchanged.
 - The web pushes monthly: it's selected first on the Plus screen with a "Buy 1 month, get 1 month free · SAVE 75%" ribbon and per-day prices for every plan (₹5, ₹14, ₹20 a day); the end-of-Discover offer leads with "Get 2 months · ₹299" and still mentions the ₹20 day pass. Website pricing, content pages, llms.txt, Terms and Refunds describe the offer.

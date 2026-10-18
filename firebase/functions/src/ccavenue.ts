@@ -25,9 +25,9 @@ import {
   returnUrl,
   rupees
 } from "./lib/ccavenue";
-import { isPlusPlan, passDays, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
+import { isPlusPlan, passDays, passWindow, PlusPlan, plusPricePaise } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
-import { verifiedUsers } from "./trust";
+import { photoVerified, verifiedUsers } from "./trust";
 
 /**
  * Unlimited Chat and Paire Plus paid through CCAvenue (cards, UPI, netbanking,
@@ -317,7 +317,7 @@ export const createCcavenueOrder = onCall({ region: REGION, secrets: SECRETS, ti
 
   let orderId = newCcavenueOrderId();
   while ((await db.doc(`ccavenueOrders/${orderId}`).get()).exists) orderId = newCcavenueOrderId();
-  const amountPaise = kind === "plus" ? PLUS_PASSES[plan as PlusPlan].amountPaise : CHAT_UNLOCK.amountPaise;
+  const amountPaise = kind === "plus" ? plusPricePaise(plan as PlusPlan, await photoVerified(uid)) : CHAT_UNLOCK.amountPaise;
   await db.doc(`ccavenueOrders/${orderId}`).set({
     uid,
     kind,

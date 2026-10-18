@@ -8,7 +8,7 @@ const paireColumn = {
   notes: "Every like can carry a note",
   women: "Notes-only likes, I'll message first, incognito, private photos: all free",
   verify: "Email + live selfie check required for everyone before liking or chatting",
-  price: "Free; Plus passes from ₹5/day (₹299 for 2 months), ₹99/week, ₹20/day, never auto-renew",
+  price: "Free; Plus passes from ₹5/day (₹299 for 2 months), ₹119/week (₹99 photo-verified), ₹20/day, never auto-renew",
   india: "Built in India: no caste field, prices in rupees, Garba Nights, Duos"
 };
 

@@ -435,8 +435,9 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     const created = await call(upi.createUpiUnlockOrder, uid, { plan: "week" });
     if (created.status !== "order") throw new Error("expected an order");
     expect(created.order).toMatchObject({ kind: "plus", product: "Paire Plus · 7 days" });
-    expect(created.order.amountPaise).toBeGreaterThan(9900);
-    expect(created.order.amountPaise).toBeLessThan(10000);
+    // Not photo-verified: ₹119 (plus the unique paise).
+    expect(created.order.amountPaise).toBeGreaterThan(11900);
+    expect(created.order.amountPaise).toBeLessThan(12000);
     // A Plus order and an Unlimited Chat order are separate.
     const reference = utr();
     await call(upi.submitUpiPayment, uid, { orderId: created.order.orderId, utr: reference });

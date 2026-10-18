@@ -23,6 +23,12 @@ export async function verifiedUsers(uids: string[], tx?: Transaction): Promise<S
   return new Set(unique.filter((_, index) => snaps[index * 2 + 1].get("status") !== "banned" && snaps[index * 2 + 1].get("emailVerified") === true && (!required || snaps[index * 2 + 1].get("cohort") === "test" || verificationState(snaps[index * 2 + 1].get("verification"), snaps[index * 2].get("photoUrls")) === "verified")));
 }
 
+/** Whether a member's photos are verified right now (the badge and the verified price), whatever the policy. */
+export async function photoVerified(uid: string): Promise<boolean> {
+  const [profile, moderation] = await db.getAll(db.doc(`users/${uid}`), db.doc(`moderation/${uid}`));
+  return verificationState(moderation.get("verification"), profile.get("photoUrls")) === "verified";
+}
+
 /**
  * Throws unless every member may date. `caller` (default: the first uid) gets the
  * "confirm your email" message; anyone else just isn't available. Outside a

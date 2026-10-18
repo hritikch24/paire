@@ -12,6 +12,7 @@ import {
   passDays,
   passWindow,
   paymentMatchesOrder,
+  plusPricePaise,
   PLUS_PASSES,
   PlusPlan,
   validCheckoutSignature,
@@ -19,7 +20,7 @@ import {
 } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
 import { razorpay } from "./razorpayClient";
-import { verifiedUsers } from "./trust";
+import { photoVerified, verifiedUsers } from "./trust";
 
 /**
  * Paire Plus on the web, through Razorpay (UPI, cards, netbanking).
@@ -110,29 +111,30 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
   if (status.active) throw new HttpsError("failed-precondition", "Your Plus pass is already active.");
 
   const pass = PLUS_PASSES[plan];
+  const amountPaise = plusPricePaise(plan, await photoVerified(uid));
   const order = await razorpay<{ id: string; amount: number; currency: string }>("/orders", {
     method: "POST",
     body: {
-      amount: pass.amountPaise,
+      amount: amountPaise,
       currency: "INR",
       receipt: `plus_${plan}_${Date.now()}`,
       notes: { uid, plan, product: "paire_plus" }
     }
   });
-  if (!isRazorpayId(order.id, "order") || order.amount !== pass.amountPaise) {
+  if (!isRazorpayId(order.id, "order") || order.amount !== amountPaise) {
     throw new HttpsError("unavailable", "The payment service returned an unexpected order. Please try again.");
   }
   await db.doc(`razorpayOrders/${order.id}`).set({
     uid,
     plan,
-    amountPaise: pass.amountPaise,
+    amountPaise,
     currency: "INR",
     status: "created",
     createdAt: FieldValue.serverTimestamp()
   });
   return {
     orderId: order.id,
-    amount: pass.amountPaise,
+    amount: amountPaise,
     currency: "INR",
     keyId: process.env.RAZORPAY_KEY_ID,
     name: "Paire",

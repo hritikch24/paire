@@ -5,6 +5,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import { VerifiedBadge } from "./VerifiedBadge";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Extrapolation,
@@ -449,6 +450,7 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
                 <Text color="white" fontSize={28} lineHeight={34} fontWeight="700" numberOfLines={1}>
                   {blindMode ? `Mystery match, ${profile.age}` : `${profile.displayName}, ${profile.age}`}
                 </Text>
+                {Platform.OS === "web" && profile.photoVerified && !blindMode ? <VerifiedBadge onDark /> : null}
                 {location ? (
                   <Text color="rgba(255,255,255,0.85)" fontSize="$3" numberOfLines={1}>
                     {location}

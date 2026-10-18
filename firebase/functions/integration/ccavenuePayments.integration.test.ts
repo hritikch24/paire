@@ -272,8 +272,9 @@ describe("Paire Plus through CCAvenue", () => {
     const uid = await buyer();
     expect(await call(billing.getPremiumStatus, uid)).toMatchObject({ active: false, ccavenuePurchaseAvailable: true });
     const { orderId, plain } = await start(uid, { plan: "week" });
-    expect(plain.get("amount")).toBe("99.00");
-    const order = pay(orderId, { order_amt: 99 });
+    // Not photo-verified: ₹119 for 7 days.
+    expect(plain.get("amount")).toBe("119.00");
+    const order = pay(orderId, { order_amt: 119 });
     await respond({ encResp: encResp(orderId) });
     const saved = (await orderOf(orderId))!;
     expect(saved).toMatchObject({ kind: "plus", plan: "week", status: "paid" });
@@ -283,6 +284,20 @@ describe("Paire Plus through CCAvenue", () => {
     order.order_status = "Refunded";
     await call(cc.confirmCcavenueOrder, uid, { orderId });
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(0);
+  });
+
+  test("photo-verified members pay ₹99 for 7 days, and the price is the server's", async () => {
+    const uid = await buyer();
+    const photos = ["https://example.com/a.jpg"];
+    const now = Date.now();
+    await admin.doc(`users/${uid}`).set({ photoUrls: photos }, { merge: true });
+    await admin.doc(`moderation/${uid}`).set({ verification: { status: "verified", schemaVersion: 2, storageBound: true, photoUrls: photos, verifiedAt: now - 1000, expiresAt: now + 86_400_000 } }, { merge: true });
+    expect(await call(billing.getPremiumStatus, uid)).toMatchObject({ photoVerified: true, prices: { day: 20, week: 99, month: 299 } });
+    const { orderId, plain } = await start(uid, { plan: "week", amount: 1 });
+    expect(plain.get("amount")).toBe("99.00");
+    expect(await orderOf(orderId)).toMatchObject({ amountPaise: 9900 });
+    // Someone else, unverified, sees and pays ₹119.
+    expect(await call(billing.getPremiumStatus, await buyer())).toMatchObject({ photoVerified: false, prices: { week: 119 } });
   });
 
   test("the month pass runs 60 days: buy 1 month, get 1 month free, at the 1-month price", async () => {
