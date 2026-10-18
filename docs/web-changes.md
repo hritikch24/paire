@@ -6,8 +6,8 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
-| 2026-10-18 | pending | Member admin labels owner recovery separately from payment gateways, with wrapped payment statuses on narrow screens. | local |
-| 2026-10-18 | `b8ef459` | Owner-authorized Plus recovery source survives refresh, preserves an audit and reconciles a later verified gateway order without a duplicate pass. CCAvenue access-code errors remain verification errors; member admin distinguishes support recovery and unconfirmed checkouts. 500 checks passed. | pushed, Firebase (15 functions) |
+| 2026-10-18 | `b47be2a` | Member admin labels owner recovery separately from payment gateways, with wrapped payment statuses on narrow screens. App lint/typecheck and live bundle check passed. | pushed, Vercel |
+| 2026-10-18 | `b8ef459` | Owner-authorized Plus recovery source survives refresh, preserves an audit and reconciles a later verified gateway order without a duplicate pass. CCAvenue access-code errors remain verification errors; member admin distinguishes support recovery and unconfirmed checkouts. 500 checks passed. | pushed, Vercel, Firebase (15 functions) |
 | 2026-10-18 | `2554ff4` | Opt-in People & events browser reminders with relevance checks, two-per-week cap and open metrics; Home Screen install guide; browser location timeout, status and refresh controls. 498 automated checks and emulator browser/discovery QA passed. | pushed, Vercel, Firebase (7 functions, Firestore rules); scheduled reminders enabled for explicitly opted-in members |
 | 2026-10-18 | `81c2be4` | Monthly offer: web month pass (₹299) runs 60 days (buy 1 month, get 1 free); Plus screen, Discover offer, chat card and site pricing lead with monthly and per-day prices. **Needs functions deploy** for the extra days. | pushed |
 | 2026-10-17 | `a14a25c` | All-India positioning: no more "Delhi NCR first" in the app (side panel, Discover header), homepage hero/FAQ/footer, Garba page, content pages and llms.txt. Web only. | pushed |
