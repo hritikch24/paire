@@ -6,11 +6,11 @@ import QRCode from "qrcode";
 import { db } from "./admin";
 import { billingEnabled, storeExpiryIfEnabled, syncPremium, webPassExpiry } from "./billing";
 import { syncChatAccess, upiSalesOpen, upiVpa } from "./chatEntitlement";
-import { isPlusPlan, passDays, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
+import { isPlusPlan, passDays, passWindow, PLUS_PASSES, PlusPlan, plusPricePaise } from "./lib/razorpay";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth, requireReadAuth } from "./lib/auth";
 import { consumeDailyQuota } from "./quota";
-import { verifiedUsers } from "./trust";
+import { photoVerified, verifiedUsers } from "./trust";
 
 /**
  * Unlimited Chat paid by UPI straight into Paire's own account (MUSE_UPI_VPA),
@@ -142,7 +142,7 @@ export const createUpiUnlockOrder = onCall({ region: REGION, secrets: ["REVENUEC
   const now = Date.now();
   let orderId = newOrderId();
   while ((await db.doc(`upiUnlockOrders/${orderId}`).get()).exists) orderId = newOrderId();
-  const base = kind === "plus" ? PLUS_PASSES[plan as PlusPlan].amountPaise : CHAT_UNLOCK.amountPaise;
+  const base = kind === "plus" ? plusPricePaise(plan as PlusPlan, await photoVerified(uid)) : CHAT_UNLOCK.amountPaise;
   const amountPaise = await reserveAmount(orderId, base, now);
   const ref = db.doc(`upiUnlockOrders/${orderId}`);
   await ref.set({

@@ -6,13 +6,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * Paire Plus passes sold on the web. Amounts are in paise (INR), GST inclusive. Never trust a client amount.
  * `bonusDays` is the web offer on top of the paid days: buy 1 month, get 1 month free (set it to 0 to end
- * the offer; passes already bought keep their days). Mirrored in apps/muse-mobile/src/config/premium.ts.
+ * the offer; passes already bought keep their days). `verifiedAmountPaise` is the price for photo-verified
+ * members (7 days: ₹99 instead of ₹119). Mirrored in apps/muse-mobile/src/config/premium.ts.
  */
 export const PLUS_PASSES = {
-  day: { days: 1, bonusDays: 0, amountPaise: 2000, label: "Paire Plus · 1 day" },
-  week: { days: 7, bonusDays: 0, amountPaise: 9900, label: "Paire Plus · 7 days" },
-  month: { days: 30, bonusDays: 30, amountPaise: 29900, label: "Paire Plus · 1 month + 1 month free" }
+  day: { days: 1, bonusDays: 0, amountPaise: 2000, verifiedAmountPaise: 2000, label: "Paire Plus · 1 day" },
+  week: { days: 7, bonusDays: 0, amountPaise: 11900, verifiedAmountPaise: 9900, label: "Paire Plus · 7 days" },
+  month: { days: 30, bonusDays: 30, amountPaise: 29900, verifiedAmountPaise: 29900, label: "Paire Plus · 1 month + 1 month free" }
 } as const;
+
+/** What this member pays for a pass: the verified price once their photos are verified. */
+export const plusPricePaise = (plan: PlusPlan, photoVerified: boolean) =>
+  photoVerified ? PLUS_PASSES[plan].verifiedAmountPaise : PLUS_PASSES[plan].amountPaise;
 export type PlusPlan = keyof typeof PLUS_PASSES;
 
 /** How long a web pass runs: the paid days plus any offer days. */

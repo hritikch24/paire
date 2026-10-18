@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your privacy choices — Paire</title>
+  <meta name="description" content="Turn Paire's advertising measurement (Meta Pixel) on or off, Paire never sells your personal data.">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main><div class="card"><strong>Private preview · Legal draft</strong><p>The public brand, support email and business address are pending. These pages must be finalized before launch.</p><a href="/">Back to Paire</a></div>
+  <header class="site"><span class="mark">C</span><a href="/">Paire</a></header>
+  <h1>Your privacy choices</h1>
+  <p class="muted">Paire never sells your personal data and never shows third-party ads.</p>
+
+  <h2>Advertising measurement</h2>
+  <p>When we run ads, we'd like to use the Meta Pixel on our website to see whether those ads bring sign-ups and purchases. It receives the pages you visit on our site and whether you signed up or bought a pass. It never receives your profile, photos, messages, matches or preferences. It stays off unless you allow it.</p>
+  <div class="card" id="choice" aria-live="polite">
+    <p id="choice-status">Checking your choice…</p>
+    <p><button type="button" id="choice-deny">Don't allow (opt out)</button> <button type="button" id="choice-allow">Allow</button></p>
+  </div>
+  <p>This choice is saved in this browser. If you use Paire in another browser or device, set it there too. If your browser sends a Global Privacy Control signal, advertising measurement stays off.</p>
+
+  <h2>Your other rights</h2>
+  <p>You can access, correct, download or delete your data, and withdraw consent for anything you agreed to. See <a href="/privacy#regional">your rights under Indian law</a>, delete your account in the app or on the <a href="/delete-account">account deletion page</a>, or email <a href="mailto:[SUPPORT EMAIL]">[SUPPORT EMAIL]</a>.</p>
+
+  <footer><a href="/terms">Terms</a> · <a href="/privacy">Privacy Policy</a> · <a href="/privacy-choices">Your privacy choices</a> · <a href="/community-guidelines">Community Guidelines</a> · <a href="/safety">Safety</a> · <a href="/refunds">Refunds</a> · <a href="/copyright">Copyright</a> · <a href="/accessibility">Accessibility</a> · <a href="/contact">Contact</a> · <a href="/delete-account">Delete account</a></footer>
+</main>
+<script>
+(function () {
+  var KEY = "paire_ads_consent";
+  var status = document.getElementById("choice-status");
+  var gpc = navigator.globalPrivacyControl === true;
+  function get() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function clearMetaCookies() {
+    ["_fbp", "_fbc"].forEach(function (name) {
+      var host = location.hostname, parts = host.split(".");
+      var domains = ["", host, "." + parts.slice(-2).join(".")];
+      domains.forEach(function (domain) {
+        document.cookie = name + "=; Max-Age=0; path=/" + (domain ? "; domain=" + domain : "");
+      });
+    });
+  }
+  function show() {
+    var c = get();
+    status.textContent = gpc
+      ? "Your browser sends Global Privacy Control, so advertising measurement is off."
+      : c === "granted" ? "Advertising measurement is allowed in this browser."
+      : c === "denied" ? "Advertising measurement is off in this browser (you opted out)."
+      : "Advertising measurement is off: you haven't allowed it.";
+  }
+  document.getElementById("choice-deny").onclick = function () {
+    try { localStorage.setItem(KEY, "denied"); } catch (e) {}
+    clearMetaCookies();
+    show();
+  };
+  document.getElementById("choice-allow").onclick = function () {
+    try { localStorage.setItem(KEY, "granted"); } catch (e) {}
+    show();
+  };
+  show();
+})();
+</script>
+</body>
+</html>

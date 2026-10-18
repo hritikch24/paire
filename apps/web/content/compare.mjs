@@ -8,7 +8,7 @@ const paireColumn = {
   notes: "Every like can carry a note",
   women: "Notes-only likes, I'll message first, incognito, private photos: all free",
   verify: "Email + live selfie check required for everyone before liking or chatting",
-  price: "Free; Plus passes from ₹5/day (₹299 for 2 months), ₹99/week, ₹20/day, never auto-renew",
+  price: "Free; Plus passes from ₹5/day (₹299 for 2 months), ₹119/week (₹99 photo-verified), ₹20/day, never auto-renew",
   india: "Built in India: no caste field, prices in rupees, Garba Nights, Duos"
 };
 
@@ -48,7 +48,7 @@ export const compare = [
 ${NOTE}`,
     faq: [
       ["Is Paire better than Tinder?", "It depends on what you want. Tinder is much bigger. Paire is built for fewer, better conversations: likes come with notes, seeing who likes you is free, and every member passes a live selfie check."],
-      ["What is a good Tinder alternative in India?", "Paire is an Indian Tinder alternative where seeing who likes you is free, every like can carry a note, women set the rules and every member is selfie-verified."],
+      ["What is a good Tinder alternative in India?", "Paire is an Indian Tinder alternative where seeing who likes you is free, every like can carry a note, women set the rules, every member confirms their email and verified members carry a blue badge."],
       ["Can I use Paire and Tinder at the same time?", "Yes. Many people use more than one app."]
     ],
     related: ["compare/bumble/", "compare/hinge/", "guides/best-dating-apps-india/", "pricing/"]

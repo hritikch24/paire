@@ -6,7 +6,8 @@ import { requireReadAuth, isSupportSession } from "./lib/auth";
 import { parsePasses, sameSecret, validRevenueCatSignature } from "./lib/billing";
 import { ccavenueSalesOpen, chatPolicy, syncChatAccess, upiSalesOpen } from "./chatEntitlement";
 import { consumeDailyQuota } from "./quota";
-import { verifiedUsers } from "./trust";
+import { PLUS_PASSES, PlusPlan, plusPricePaise } from "./lib/razorpay";
+import { photoVerified, verifiedUsers } from "./trust";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 /** Paid features switch on only with MUSE_BILLING_ENABLED=true (after live QA). */
@@ -40,6 +41,10 @@ export type PremiumStatus = {
   /** An earlier Razorpay checkout never went through (nothing was charged): say so, and offer UPI. */
   previousPaymentFailed?: boolean;
   purchaseBlockReason?: "verification-required";
+  /** This member's web prices in rupees (photo-verified members pay less for 7 days). */
+  prices?: Record<PlusPlan, number>;
+  /** Their photos are verified: the badge, and the verified price. */
+  photoVerified?: boolean;
 };
 
 /** Latest expiry among the member's store passes, recording transaction ownership. 0 when none. */
@@ -113,6 +118,11 @@ export const getPremiumStatus = onCall({ region: REGION, secrets: ["REVENUECAT_S
   const status: PremiumStatus = cached
     ? { active: expiresAt > Date.now(), expiresAt: expiresAt > Date.now() ? expiresAt : null, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, ccavenuePurchaseAvailable: false }
     : await syncPremium(uid);
+  if (!isSupportSession(request)) {
+    const verified = await photoVerified(uid);
+    status.photoVerified = verified;
+    status.prices = Object.fromEntries(Object.keys(PLUS_PASSES).map((plan) => [plan, plusPricePaise(plan as PlusPlan, verified) / 100])) as Record<PlusPlan, number>;
+  }
   if (!status.active) {
     const orders = await db.collection("razorpayOrders").where("uid", "==", uid).limit(20).get();
     if (orders.docs.some((doc) => doc.get("status") === "created") && !orders.docs.some((doc) => doc.get("status") === "paid")) status.previousPaymentFailed = true;

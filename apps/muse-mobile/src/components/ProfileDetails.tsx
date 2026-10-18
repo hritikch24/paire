@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+import { VerifiedBadge } from "./VerifiedBadge";
 import { ageGapLabel } from "../data/ageGap";
 import { garbaBadge } from "../data/garba";
 import type { ReactNode } from "react";
@@ -149,7 +151,14 @@ export function ProfileDetails({ profile }: { profile: ProfileViewData }) {
           </Text>
         </XStack>
       ) : null}
-      {profile.photoVerified ? <Text color="$primary" fontSize="$2">Photos checked · a photo check doesn’t guarantee safety</Text> : null}
+      {profile.photoVerified ? (
+        Platform.OS === "web" ? (
+          <XStack testID="profile-verified" gap="$2" alignItems="center" flexWrap="wrap">
+            <VerifiedBadge size="large" />
+            <Text color="$textMuted" fontSize="$1">Photos checked with a live selfie. It doesn’t guarantee safety.</Text>
+          </XStack>
+        ) : <Text color="$primary" fontSize="$2">Photos checked · a photo check doesn’t guarantee safety</Text>
+      ) : null}
       {profile.ageGap ? <Text testID="profile-agegap" color="$primary" fontSize="$2" fontWeight="700">{ageGapLabel(profile.ageGap, profile.gender)}</Text> : null}
       {profile.garbaShared ? <Text testID="profile-garba" color="$primary" fontSize="$2" fontWeight="700">{garbaBadge(profile.garbaShared)}</Text> : null}
       {profile.bio ? (

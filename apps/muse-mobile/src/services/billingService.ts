@@ -19,6 +19,10 @@ export type PremiumStatus = {
   /** An earlier card/Razorpay checkout didn't go through; nothing was charged. */
   previousPaymentFailed?: boolean;
   purchaseBlockReason?: "verification-required";
+  /** This member's web prices in rupees (photo-verified members pay less for 7 days). */
+  prices?: Partial<Record<PremiumPlanId, number>>;
+  /** Their photos are verified: the badge, and the verified price. */
+  photoVerified?: boolean;
 };
 export const fetchPremiumStatus = () => callFunction<PremiumStatus>("getPremiumStatus");
 

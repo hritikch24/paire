@@ -2,7 +2,8 @@ import { ageGapLabel } from "../data/ageGap";
 import { garbaBadge } from "../data/garba";
 import { Image } from "expo-image";
 import { useRef, useState } from "react";
-import { Pressable, ScrollView } from "react-native";
+import { Platform, Pressable, ScrollView } from "react-native";
+import { VerifiedBadge } from "./VerifiedBadge";
 import { Text, XStack, YStack } from "tamagui";
 import { cardBasics } from "../data/basics";
 import { datingIntentionMap } from "../data/datingIntentions";
@@ -43,7 +44,7 @@ export function VibeFirstCard({ profile, onOpen }: { profile: DiscoverProfile; o
           <XStack alignItems="center" justifyContent="space-between" gap="$2" minHeight={48}>
             <YStack flex={1} gap={2}>
               <Text fontSize={25} lineHeight={31} fontWeight="700" accessibilityRole="header">{profile.displayName}, {profile.age}</Text>
-              {profile.photoVerified ? <XStack gap={4} alignItems="center"><Icon name="shield-checkmark" size={14} color="primary" /><Text fontSize={10} color="$primary">Photos checked</Text></XStack> : null}
+              {profile.photoVerified ? (Platform.OS === "web" ? <VerifiedBadge /> : <XStack gap={4} alignItems="center"><Icon name="shield-checkmark" size={14} color="primary" /><Text fontSize={10} color="$primary">Photos checked</Text></XStack>) : null}
               <Text color="$textMuted" fontSize="$1">{profile.city || "Location not shared"}</Text>
               {basicsLine ? <Text color="$textMuted" fontSize="$1">{basicsLine}</Text> : null}
               {profile.requiresNote ? <XStack gap={4} alignItems="center"><Icon name="chatbubble-ellipses" size={12} color="primary" /><Text fontSize={11} color="$primary" fontWeight="700">Likes with a note only</Text></XStack> : null}

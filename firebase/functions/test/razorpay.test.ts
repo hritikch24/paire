@@ -2,6 +2,7 @@ import { createHmac } from "crypto";
 import {
   isPlusPlan,
   passDays,
+  plusPricePaise,
   isRazorpayId,
   passWindow,
   paymentMatchesOrder,
@@ -14,9 +15,14 @@ const DAY = 24 * 60 * 60 * 1000;
 const sign = (value: string | Buffer, secret: string) => createHmac("sha256", secret).update(value).digest("hex");
 
 describe("Paire Plus on the web", () => {
-  it("prices passes on the server: ₹20, ₹99 and ₹299", () => {
+  it("prices passes on the server: ₹20, ₹119 (₹99 photo-verified) and ₹299", () => {
     expect(PLUS_PASSES.day.amountPaise).toBe(2000);
-    expect(PLUS_PASSES.week).toMatchObject({ amountPaise: 9900, days: 7 });
+    // 7 days: ₹119, or ₹99 for photo-verified members. Day and month are the same for everyone.
+    expect(PLUS_PASSES.week).toMatchObject({ amountPaise: 11900, verifiedAmountPaise: 9900, days: 7 });
+    expect(plusPricePaise("week", false)).toBe(11900);
+    expect(plusPricePaise("week", true)).toBe(9900);
+    expect(plusPricePaise("month", true)).toBe(plusPricePaise("month", false));
+    expect(plusPricePaise("day", true)).toBe(2000);
     expect(PLUS_PASSES.month).toMatchObject({ amountPaise: 29900, days: 30 });
     // Web offer: buy 1 month, get 1 month free. Day and week passes have no bonus.
     expect(passDays("month")).toBe(60);

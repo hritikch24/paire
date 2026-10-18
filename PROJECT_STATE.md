@@ -1,6 +1,15 @@
 # Muse: project state
 
-Last updated: 2026-10-17
+Last updated: 2026-10-18
+
+## Legal pages, India only (2026-10-18)
+- Paire is only for people in India (Terms); all legal pages follow Indian law only. Terms, Privacy, Refunds and Safety expanded; new `/privacy-choices/`, `/copyright/` and `/accessibility/` pages. The Meta Pixel loads only after a visitor allows it (never with Global Privacy Control).
+- **Needs you:** set the `PAIRE_*` legal details in Vercel, a lawyer's review, and the other items in `docs/legal-compliance.md` (company, DMCA agent, UK/EU representatives if you market there).
+
+## Verified badge and verified price (2026-10-18)
+- **7-day pass: ₹119, or ₹99 for photo-verified members.** The server picks the price per member when the order is created (`PLUS_PASSES.week.verifiedAmountPaise`, `plusPricePaise`, `photoVerified(uid)` in `trust.ts`) for CCAvenue, UPI and Razorpay; `getPremiumStatus` returns the member's `prices` and `photoVerified`. Day (₹20) and month (₹299, 60 days) are the same for everyone.
+- **Verified badge** (web): a blue "✓ Verified" on Discover cards, Vibe first cards, full profiles and your own profile. The Plus screen shows "Verified price" (₹119 struck through) or "₹99 if you verify your photos ›".
+- Site, content pages, llms.txt, Terms, Refunds and README show ₹119 / ₹99 verified. **Needs a functions deploy** with the web deploy.
 
 ## Monthly offer: buy 1 month, get 1 month free (2026-10-18)
 - The ₹299 month pass runs **60 days** when bought on the web (`PLUS_PASSES.month.bonusDays = 30` in `firebase/functions/src/lib/razorpay.ts`; set it to 0 to end the offer). Store passes in the app are unchanged.
