@@ -5,7 +5,7 @@ export const core = [
   {
     path: "about/", crumb: "About Paire", published: D, updated: D, eyebrow: "ABOUT PAIRE",
     title: "About Paire — An Indian Dating App Where Women Set the Rules",
-    description: "Paire is an Indian dating app for men and women, built in India. Every like comes with a note, women set the rules, every member is email- and selfie-verified, and seeing who likes you is free.",
+    description: "Paire is an Indian dating app for men and women, built in India. Every like comes with a note, women set the rules, every member confirms their email, verified members carry a blue badge, and seeing who likes you is free.",
     h1: "About <em>Paire</em>",
     lede: "Paire is a dating app made in India for adult men and women: from a first coffee to a long-term partner. We built it because dating here deserved better than endless swiping, fake profiles and paywalls.",
     summary: [

@@ -365,3 +365,11 @@ Final regression: 251 automated tests, all six Android UI flows and the combined
 - App (web): `VerifiedBadge` on Discover cards, Vibe first cards, profile details and the member's own profile; Plus screen uses the member's server prices, shows "Verified price" with the struck-through ₹119 or "₹99 if you verify your photos ›" (opens Verification); profile Plus card copy. Native unchanged.
 - Site/legal: ₹119 for 7 days (₹99 photo-verified) in pricing, JSON-LD offers, FAQ, content pages, llms.txt, Terms, Refunds, README.
 - Checks: functions 234 unit + 44 payment/feed integration tests on isolated emulators; app lint, typecheck, 106 unit tests; browser check on emulators (badge on a verified member's card and own profile, ₹99 vs ₹119 on the Plus screen) and `e2e/discovery-layout.cjs` at all sizes.
+
+## 2026-10-18: Legal hardening for India, US, UK and Canada
+- Terms: no-background-check and liability callout, offenders barred, IT Rules prohibited-content list, copyright section, complaints and appeals timelines (24 h / 15 days; 24 h for intimate images and impersonation), wider disclaimers with non-excludable rights preserved, indemnity, local consumer law preserved, general clauses (severability, entire agreement, notices).
+- Privacy: cookies section, rights by region (India DPDP, UK/EU GDPR legal bases and ICO, US state laws incl. California sharing and GPC, Canada PIPEDA/Quebec), international transfers, facial data retention schedule (BIPA), breach notification.
+- New pages: `/privacy-choices/` (advertising measurement on/off, GPC), `/copyright/` (India and DMCA notice, counter-notice), `/accessibility/` (WCAG 2.1 AA). Refunds: UK/EU 14-day cancellation. Safety: no-background-check notice and US/UK/Canada/EU emergency numbers. All legal footers and the site footer link every page.
+- Meta Pixel now loads only after consent (banner "No thanks" / "Allow"); never with GPC. Content pages no longer claim every member is selfie-verified.
+- Checks: site build; browser test of banner, deny, allow, GPC and all legal pages; app lint, typecheck and unit tests; functions tests. The only failure is the rules test that already fails on `main`.
+- Owner checklist: `docs/legal-compliance.md`.

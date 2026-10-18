@@ -83,9 +83,14 @@ cpSync(resolve(web, "site"), output, { recursive: true });
 
 // Meta Pixel for ads (PAIRE_META_PIXEL_ID in Vercel): PageView everywhere, Lead when someone opens the app,
 // and the app itself reports CompleteRegistration and Purchase (src/services/analytics.ts).
+// It loads only with consent (UK PECR/GDPR, US state "sharing" opt-outs): a small banner asks once, the
+// answer is kept in localStorage ("paire_ads_consent": "granted" | "denied", changeable on
+// /privacy-choices/), and a Global Privacy Control signal always counts as "no". Without consent no
+// Meta code or cookie is loaded, and the app's conversion calls do nothing (window.fbq doesn't exist).
 const pixelId = /^\d{6,20}$/.test(siteVar("META_PIXEL_ID") ?? "") ? siteVar("META_PIXEL_ID") : "";
+const pixelCode = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId}');fbq('track','PageView');document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href^="/app/"]');if(a)fbq('track','Lead')});`;
 const pixel = pixelId
-  ? `<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId}');fbq('track','PageView');document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href^="/app/"]');if(a)fbq('track','Lead')});</script>`
+  ? `<script>(function(){var K='paire_ads_consent',w=window,d=document;function get(){try{return localStorage.getItem(K)}catch(e){return null}}function set(v){try{localStorage.setItem(K,v)}catch(e){}}function load(){if(w.fbq)return;${pixelCode}}w.paireAdsConsent={get:get,set:set,load:load};if(navigator.globalPrivacyControl===true||navigator.webdriver)return;var c=get();if(c==='granted'){load();return}if(c==='denied')return;function ask(){if(d.getElementById('paire-consent'))return;var b=d.createElement('div');b.id='paire-consent';b.setAttribute('role','region');b.setAttribute('aria-label','Advertising measurement choice');b.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483000;max-width:560px;margin:0 auto;background:#302a2c;color:#faf6f0;border-radius:16px;padding:14px 16px;font:13px/1.5 system-ui,sans-serif;box-shadow:0 10px 30px #0004;display:flex;flex-wrap:wrap;gap:10px;align-items:center';b.innerHTML='<span style="flex:1 1 260px">May we use the Meta Pixel to measure our ads? It never sees your profile, photos or messages. <a href="/privacy-choices/" style="color:#e8b0ab">Learn more</a></span>';function btn(t,v,p){var x=d.createElement('button');x.type='button';x.textContent=t;x.style.cssText='border:0;border-radius:99px;padding:9px 16px;font:600 13px system-ui,sans-serif;cursor:pointer;'+(p?'background:#e8b0ab;color:#302a2c':'background:transparent;color:#faf6f0;border:1px solid #faf6f088');x.onclick=function(){set(v);b.remove();if(v==='granted')load()};return x}b.appendChild(btn('No thanks','denied'));b.appendChild(btn('Allow','granted',1));d.body.appendChild(b)}if(d.body)ask();else d.addEventListener('DOMContentLoaded',ask)})()</script>`
   : "";
 
 // Anonymous page counts for /metrics/: no cookies, no IP or user IDs. The browser only remembers
@@ -152,7 +157,7 @@ const legalDetails = {
 const missing = Object.entries(legalDetails).filter(([, value]) => !value).map(([key]) => key);
 const escapeHtml = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const DRAFT_BANNER = /<div class="card"><strong>Private preview · Legal draft<\/strong>.*?<\/div>/s;
-for (const page of ["privacy", "terms", "community-guidelines", "safety", "delete-account", "refunds", "contact"]) {
+for (const page of ["privacy", "terms", "community-guidelines", "safety", "delete-account", "refunds", "contact", "privacy-choices", "copyright", "accessibility"]) {
   let html = readFileSync(resolve(web, "legal", `${page}.html`), "utf8");
   for (const [placeholder, value] of Object.entries(legalDetails)) {
     if (value) html = html.split(placeholder).join(escapeHtml(value));
@@ -187,7 +192,7 @@ if (indexable && siteUrl) {
     ["garba-nights/", today, "0.9", "weekly"],
     ["vibe-quiz/", today, "0.8", "monthly"],
     ...contentPages.map((page) => [page.path, page.updated ?? today, page.type === "hub" ? "0.8" : page.path.startsWith("guides/") || page.path.startsWith("compare/") ? "0.8" : "0.7", "monthly"]),
-    ...["safety/", "community-guidelines/", "contact/", "terms/", "privacy/", "refunds/"].map((page) => [page, today, page === "safety/" ? "0.6" : "0.3", "yearly"])
+    ...["safety/", "community-guidelines/", "contact/", "terms/", "privacy/", "refunds/", "privacy-choices/", "copyright/", "accessibility/"].map((page) => [page, today, page === "safety/" ? "0.6" : "0.3", "yearly"])
   ];
   writeFileSync(
     resolve(output, "sitemap.xml"),

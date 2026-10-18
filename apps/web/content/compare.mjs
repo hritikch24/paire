@@ -48,7 +48,7 @@ export const compare = [
 ${NOTE}`,
     faq: [
       ["Is Paire better than Tinder?", "It depends on what you want. Tinder is much bigger. Paire is built for fewer, better conversations: likes come with notes, seeing who likes you is free, and every member passes a live selfie check."],
-      ["What is a good Tinder alternative in India?", "Paire is an Indian Tinder alternative where seeing who likes you is free, every like can carry a note, women set the rules and every member is selfie-verified."],
+      ["What is a good Tinder alternative in India?", "Paire is an Indian Tinder alternative where seeing who likes you is free, every like can carry a note, women set the rules, every member confirms their email and verified members carry a blue badge."],
       ["Can I use Paire and Tinder at the same time?", "Yes. Many people use more than one app."]
     ],
     related: ["compare/bumble/", "compare/hinge/", "guides/best-dating-apps-india/", "pricing/"]

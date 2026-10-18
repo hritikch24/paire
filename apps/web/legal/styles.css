@@ -50,3 +50,4 @@ td, th { text-align: left; padding: 8px; border-bottom: 1px solid var(--border);
 .address-hide, .legal-address[open] .address-show, .legal-address[open] .address-mask { display: none; }
 .legal-address[open] .address-hide { display: inline; }
 .address-value { padding: 8px 12px; border-left: 3px solid var(--border); overflow-wrap: anywhere; }
+.callout { background: var(--card); border-left: 4px solid #a43754; border-radius: 10px; padding: 12px 16px; margin: 16px 0; }

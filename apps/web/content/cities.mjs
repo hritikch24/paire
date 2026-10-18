@@ -26,7 +26,7 @@ ${extra}
 <h2>Meeting people in ${name} on Paire</h2>
 <p>Paire shows people near you with an approximate distance (never your exact location). Every member has confirmed their email and passed a live selfie check, every like can carry a note, and seeing who likes you is free. Set your intention, from casual to serious, and turn on <em>same intentions only</em> to see people who want the same thing. Women can accept only likes with a note and choose to message first.</p>`,
     faq: [
-      [`Is there a good dating app in ${name}?`, `Paire is a dating app for ${name} and the rest of India where every member is selfie-verified, every like can carry a note, women set the rules and seeing who likes you is free.`],
+      [`Is there a good dating app in ${name}?`, `Paire is a dating app for ${name} and the rest of India where every member confirms their email, verified members carry a blue badge, every like can carry a note, women set the rules and seeing who likes you is free.`],
       [`Where should I go on a first date in ${name}?`, `Somewhere public and easy to leave, like ${ideas[0][0]} or ${ideas[1][0]}. Coffee or a walk in daylight keeps a first meeting relaxed.`],
       ...faq
     ],

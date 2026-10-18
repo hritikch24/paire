@@ -1,6 +1,10 @@
 # Muse: project state
 
-Last updated: 2026-10-17
+Last updated: 2026-10-18
+
+## Legal pages for India, US, UK and Canada (2026-10-18)
+- Terms, Privacy, Refunds and Safety expanded; new `/privacy-choices/`, `/copyright/` and `/accessibility/` pages. The Meta Pixel loads only after a visitor allows it (never with Global Privacy Control).
+- **Needs you:** set the `PAIRE_*` legal details in Vercel, a lawyer's review, and the other items in `docs/legal-compliance.md` (company, DMCA agent, UK/EU representatives if you market there).
 
 ## Verified badge and verified price (2026-10-18)
 - **7-day pass: ₹119, or ₹99 for photo-verified members.** The server picks the price per member when the order is created (`PLUS_PASSES.week.verifiedAmountPaise`, `plusPricePaise`, `photoVerified(uid)` in `trust.ts`) for CCAvenue, UPI and Razorpay; `getPremiumStatus` returns the member's `prices` and `photoVerified`. Day (₹20) and month (₹299, 60 days) are the same for everyone.
