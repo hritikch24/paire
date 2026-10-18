@@ -7,7 +7,7 @@ import { updateSettings } from "../services/profileService";
 import { isSupportView } from "../services/supportMode";
 import { useAuthStore } from "../store/authStore";
 import { MIN_AGE, MAX_AGE } from "../utils/age";
-import { PREMIUM_PLANS } from "../config/premium";
+import { MONTH_OFFER, PREMIUM_PLANS, webPlan } from "../config/premium";
 import { withSettingsDefaults } from "../utils/profile";
 
 type Props = {
@@ -52,19 +52,27 @@ export function DiscoverEmpty({ onReload, plus, onGetPlus }: Props) {
     }
   };
 
-  const dayPrice = PREMIUM_PLANS.find((plan) => plan.id === "day")?.priceInr ?? 20;
+  const hint = wider
+    ? `Try ages ${ageMin}–${ageMax}${settings.locationEnabled && maxDistanceKm !== null ? ` within ${maxDistanceKm} km` : settings.locationEnabled ? " at any distance" : ""}.`
+    : "New people will appear here when they join.";
+  const day = PREMIUM_PLANS.find((plan) => plan.id === "day")!;
+  const month = PREMIUM_PLANS.find((plan) => plan.id === "month")!;
+  const monthly = webPlan(month);
 
   if (!plus && !isSupportView) {
+    // Free members: the monthly offer leads (with its per-day price); a day pass and widening the search stay in view.
     return (
       <YStack testID="discover-empty-plus" flex={1} alignItems="center" justifyContent="center" paddingVertical="$5" paddingHorizontal="$3" gap="$3">
         <Text fontSize="$5" fontWeight="700" textAlign="center">Want to meet more people?</Text>
+        <Text testID="discover-month-offer" fontSize="$3" fontWeight="700" color="$primary" textAlign="center">{`🎁 ${MONTH_OFFER}`}</Text>
         <Text fontSize="$2" color="$textMuted" textAlign="center" maxWidth={300} lineHeight={20}>
-          {`Get Paire Plus for just ₹${dayPrice} a day: 100 likes and 5 Super Likes a day, and your likes are shown first. No auto-renewal.`}
+          {`Paire Plus for just ₹${monthly.perDay} a day: ₹${month.priceInr} for ${monthly.days} days. 100 likes and 5 Super Likes a day, and your likes are shown first. No auto-renewal. Or try one day for ₹${day.priceInr}.`}
         </Text>
         <YStack width="100%" maxWidth={280} gap="$2">
-          <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>{`Get Paire Plus · ₹${dayPrice}/day`}</PrimaryButton>
+          <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>{`Get 2 months · ₹${month.priceInr}`}</PrimaryButton>
+          <Text testID="discover-expand-description" fontSize="$1" color="$textMuted" textAlign="center">{wider ? `Or widen your search. ${hint}` : hint}</Text>
           <SecondaryButton testID="discover-expand" loading={busy} disabled={!uid} onPress={() => void expand()}>
-            {wider ? `Expand search to ages ${ageMin}–${ageMax}` : "Check for new people"}
+            {wider ? "Expand search" : "Check again"}
           </SecondaryButton>
         </YStack>
       </YStack>
@@ -75,7 +83,7 @@ export function DiscoverEmpty({ onReload, plus, onGetPlus }: Props) {
     <YStack testID="discover-empty" flex={1} alignItems="center" justifyContent="center" paddingVertical="$5" paddingHorizontal="$3" gap="$3">
       <Text fontSize="$5" fontWeight="700" textAlign="center">You're all caught up</Text>
       <Text testID="discover-expand-description" fontSize="$2" color="$textMuted" textAlign="center" maxWidth={280}>
-        {wider ? `Try ages ${ageMin}–${ageMax}${settings.locationEnabled && maxDistanceKm !== null ? ` within ${maxDistanceKm} km` : settings.locationEnabled ? " at any distance" : ""}.` : "New people will appear here when they join."}
+        {hint}
       </Text>
       <YStack width="100%" maxWidth={280}>
         <PrimaryButton testID="discover-expand" height={48} minHeight={48} loading={busy} disabled={!uid || isSupportView} onPress={() => void expand()}>

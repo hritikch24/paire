@@ -10,7 +10,7 @@ import { Icon } from "../components/Icon";
 import { PrimaryButton, SecondaryButton } from "../components/MuseButton";
 import { Screen } from "../components/Screen";
 import { ScreenHeader } from "../components/ScreenHeader";
-import { ALLOWANCE, dailyPrice, PREMIUM_PLANS, PremiumPlanId } from "../config/premium";
+import { ALLOWANCE, dailyPrice, MONTH_OFFER, PREMIUM_PLANS, PremiumPlanId, webPlan } from "../config/premium";
 import {
   fetchPassProducts,
   fetchPremiumStatus,
@@ -33,7 +33,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export function PremiumScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const [selected, setSelected] = useState<PremiumPlanId>("week");
+  // On the web the month pass (with a free month) leads and is chosen by default.
+  const [selected, setSelected] = useState<PremiumPlanId>(webCheckout ? "month" : "week");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const uid = useAuthStore((state) => state.user?.uid);
@@ -79,6 +80,11 @@ export function PremiumScreen() {
     await premium.refetch();
   };
   const priceLabel = webCheckout || byUpi ? `₹${plan.priceInr}` : (product?.priceString ?? `₹${plan.priceInr}`);
+  const offer = webCheckout ? webPlan(plan) : null;
+  // "2 months" says the offer in two words on the buy button.
+  const buyLabel = offer && plan.bonusDays ? "2 months" : plan.label;
+  const plans = webCheckout ? [...PREMIUM_PLANS].reverse() : PREMIUM_PLANS;
+  const fromPerDay = webCheckout ? Math.min(...PREMIUM_PLANS.map((item) => Number(webPlan(item).perDay))) : 10;
   const payByUpi = async () => {
     setBusy(true); setMessage(null);
     try {
@@ -113,8 +119,8 @@ export function PremiumScreen() {
   return (
     <Screen scroll testID="premium-screen" header={<ScreenHeader title="Paire Plus" />} footer={
       <YStack gap="$2">
-        <Text textAlign="center" fontSize="$2" color="$textMuted">{priceLabel} for {plan.detail.toLowerCase()} · one-time payment · no auto-renewal</Text>
-        <PrimaryButton testID="premium-purchase" loading={busy} disabled={!canPurchase} onPress={() => void act()}>{premium.data?.active ? "Your pass is active" : upiSubmitted ? "Confirming your UPI payment" : canPurchase ? (byUpi ? `Pay ${priceLabel} by UPI · ${plan.label}` : `Get ${plan.label} · ${priceLabel}`) : "Plus is coming soon"}</PrimaryButton>
+        <Text textAlign="center" fontSize="$2" color="$textMuted">{priceLabel} for {offer ? `${offer.days} days` : plan.detail.toLowerCase()} · one-time payment · no auto-renewal</Text>
+        <PrimaryButton testID="premium-purchase" loading={busy} disabled={!canPurchase} onPress={() => void act()}>{premium.data?.active ? "Your pass is active" : upiSubmitted ? "Confirming your UPI payment" : canPurchase ? (byUpi ? `Pay ${priceLabel} by UPI · ${buyLabel}` : `Get ${buyLabel} · ${priceLabel}`) : "Plus is coming soon"}</PrimaryButton>
         {byCcavenue && !ccavenueOnly && ready ? <SecondaryButton testID="premium-ccavenue" disabled={busy} onPress={() => void payByCcavenue()}>{`Pay ${priceLabel} by card, netbanking or wallet`}</SecondaryButton> : null}
         <Text textAlign="center" fontSize="$1" color="$textMuted">{upiSubmitted ? "Thanks! Your pass starts as soon as we confirm your UPI payment, usually within a few hours." : canPurchase ? (byUpi ? `Pay by UPI straight to Paire: scan the QR code, or open PhonePe, Google Pay, Paytm or any UPI app.${byCcavenue ? " Or pay by card, netbanking or wallet through CCAvenue." : ""}` : ccavenueOnly ? "Pay securely with cards, UPI, netbanking or wallets via CCAvenue. You'll come back here after paying." : webCheckout ? "Pay securely with UPI, cards or netbanking via Razorpay." : "Pay securely through your app store.") : premium.data?.active ? `Available until ${new Date(premium.data.expiresAt!).toLocaleString("en-IN")}.` : "Purchases aren’t available yet. You won’t be charged."}</Text>
       </YStack>
@@ -124,26 +130,38 @@ export function PremiumScreen() {
           <Icon name="sparkles" size={28} color="primary" />
         </YStack>
         <YStack gap="$2">
-          <Text color="$primary" fontSize="$2" fontWeight="700" letterSpacing={2}>PAIRE PLUS · FROM ₹10 A DAY</Text>
+          <Text color="$primary" fontSize="$2" fontWeight="700" letterSpacing={2}>{`PAIRE PLUS · FROM ₹${fromPerDay} A DAY`}</Text>
           <Text fontSize={34} lineHeight={40} fontWeight="700" accessibilityRole="header">More reach.{"\n"}Never more rules.</Text>
           <Text fontSize="$4" color="$textMuted" lineHeight={24}>{paidChat ? "Matching and safety are free. Plus is a pass for meeting more people, with messaging included while it runs: no subscription, no auto-renewal." : "Everything that matters is free. Plus is a pass for when you want to meet more people: no subscription, no auto-renewal."}</Text>
         </YStack>
         <YStack gap="$2" accessibilityRole="radiogroup" accessibilityLabel="Plus pass duration">
-          {PREMIUM_PLANS.map((item) => {
+          {plans.map((item) => {
             const active = selected === item.id;
+            const view = webCheckout ? webPlan(item) : null;
+            const deal = Boolean(view && item.bonusDays);
             return (
-              <Pressable key={item.id} testID={`premium-plan-${item.id}`} accessibilityRole="radio" accessibilityState={{ checked: active }} accessibilityLabel={`${item.label}, ${item.priceInr} rupees, ${item.detail}, no auto-renewal`} onPress={() => setSelected(item.id)}>
-                <XStack borderWidth={active ? 2 : 1} borderColor={active ? "$primary" : "$border"} borderRadius={20} backgroundColor={active ? "$primarySoft" : "$backgroundStrong"} padding="$4" alignItems="center" gap="$3">
-                  <Icon name={active ? "radio-button-on" : "radio-button-off"} color={active ? "primary" : "textMuted"} />
-                  <YStack flex={1} gap={3}>
-                    <Text fontSize="$5" fontWeight="700">{item.label}</Text>
-                    <Text fontSize="$2" color="$textMuted">{nativeBillingAvailable ? item.detail : `₹${dailyPrice(item.priceInr, item.days)}/day · ${item.detail}`}</Text>
-                  </YStack>
-                  <YStack alignItems="flex-end" gap={4}>
-                    <Text fontSize="$6" fontWeight="700">{products.data?.find((product) => product.identifier === item.productId)?.priceString ?? `₹${item.priceInr}`}</Text>
-                    <Text fontSize="$1" fontWeight="700" color="$primary">{products.data?.length ? item.detail : item.badge}</Text>
-                  </YStack>
-                </XStack>
+              <Pressable key={item.id} testID={`premium-plan-${item.id}`} accessibilityRole="radio" accessibilityState={{ checked: active }} accessibilityLabel={`${view?.label ?? item.label}, ${item.priceInr} rupees, ${view ? `${view.days} days, ${view.perDay} rupees a day` : item.detail}, no auto-renewal`} onPress={() => setSelected(item.id)}>
+                <YStack borderWidth={active || deal ? 2 : 1} borderColor={active ? "$primary" : deal ? "$primary" : "$border"} borderRadius={20} backgroundColor={active ? "$primarySoft" : "$backgroundStrong"} overflow="hidden">
+                  {deal ? (
+                    <XStack testID="premium-month-offer" backgroundColor="$primary" paddingHorizontal="$4" paddingVertical={6} alignItems="center" gap="$2">
+                      <Text fontSize="$2" aria-hidden>🎁</Text>
+                      <Text fontSize="$2" fontWeight="700" color="$primaryForeground" flex={1}>{MONTH_OFFER}</Text>
+                      <Text fontSize="$1" fontWeight="700" color="$primaryForeground">{`SAVE ${view!.savePercent}%`}</Text>
+                    </XStack>
+                  ) : null}
+                  <XStack padding="$4" alignItems="center" gap="$3">
+                    <Icon name={active ? "radio-button-on" : "radio-button-off"} color={active ? "primary" : "textMuted"} />
+                    <YStack flex={1} gap={3}>
+                      <Text fontSize="$5" fontWeight="700">{view?.label ?? item.label}</Text>
+                      <Text fontSize="$2" color="$textMuted">{view ? view.detail : nativeBillingAvailable ? item.detail : `₹${dailyPrice(item.priceInr, item.days)}/day · ${item.detail}`}</Text>
+                    </YStack>
+                    <YStack alignItems="flex-end" gap={2}>
+                      {view ? <Text fontSize={deal ? "$7" : "$6"} fontWeight="700" color={deal ? "$primary" : "$text"}>{`₹${view.perDay}/day`}</Text> : null}
+                      <Text fontSize={view ? "$2" : "$6"} fontWeight={view ? "400" : "700"} color={view ? "$textMuted" : "$text"}>{products.data?.find((product) => product.identifier === item.productId)?.priceString ?? `₹${item.priceInr}${view ? " total" : ""}`}</Text>
+                      {!view ? <Text fontSize="$1" fontWeight="700" color="$primary">{products.data?.length ? item.detail : item.badge}</Text> : null}
+                    </YStack>
+                  </XStack>
+                </YStack>
               </Pressable>
             );
           })}
@@ -165,10 +183,10 @@ export function PremiumScreen() {
           <Text fontSize="$5" fontWeight="700">What Plus adds</Text>
           {[
             ...(paidChat ? [["Unlimited messaging", `Send messages in all your chats while your pass runs. Only want to chat? Unlimited Chat is ₹${chat?.unlock.priceInr ?? 49} once, for messaging only, and never expires.`]] : []),
-            ["4× the likes", `${ALLOWANCE.plus.likes} likes and ${ALLOWANCE.plus.supers} Super Likes a day, instead of ${ALLOWANCE.free.likes} and ${ALLOWANCE.free.supers}.`],
+            [`${Math.round(ALLOWANCE.plus.likes / ALLOWANCE.free.likes)}× the likes`, `${ALLOWANCE.plus.likes} likes and ${ALLOWANCE.plus.supers} Super Likes a day, instead of ${ALLOWANCE.free.likes} and ${ALLOWANCE.free.supers}.`],
             ["Priority likes", "Your likes are listed ahead of other plain likes in their “Likes you”. A note still beats everything, so write one."],
             ["Age-gap filter", "Show only Silver Foxes and Cougars (35+), or only people into someone older, and see each person's side on their card."],
-            ["A pass, not a trap", "1 day, 7 days or 30 days. It simply ends: no auto-renewal, no cancellation hunt."]
+            ["A pass, not a trap", `${webCheckout ? "1 day, 7 days or 2 months" : "1 day, 7 days or 30 days"}. It simply ends: no auto-renewal, no cancellation hunt.`]
           ].map(([title, description]) => (
             <XStack key={title} gap="$3" alignItems="flex-start">
               <Icon name="add-circle-outline" color="primary" size={22} />

@@ -285,6 +285,17 @@ describe("Paire Plus through CCAvenue", () => {
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(0);
   });
 
+  test("the month pass runs 60 days: buy 1 month, get 1 month free, at the 1-month price", async () => {
+    const uid = await buyer();
+    const { orderId, plain } = await start(uid, { plan: "month" });
+    expect(plain.get("amount")).toBe("299.00");
+    pay(orderId, { order_amt: 299 });
+    await call(cc.confirmCcavenueOrder, uid, { orderId });
+    const saved = (await orderOf(orderId))!;
+    expect(saved).toMatchObject({ kind: "plus", plan: "month", status: "paid" });
+    expect(saved.expiresAt - saved.startsAt).toBe(60 * 24 * 60 * 60 * 1000);
+  });
+
   test("Plus can't be bought while billing is off", async () => {
     process.env.MUSE_BILLING_ENABLED = "false";
     try {

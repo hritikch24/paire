@@ -98,7 +98,7 @@ const origin = siteUrl || "https://www.paire.in";
 const verificationTags = [["google-site-verification", siteVar("GOOGLE_SITE_VERIFICATION")], ["msvalidate.01", siteVar("BING_SITE_VERIFICATION")]]
   .filter(([, value]) => value && /^[\w-]{10,100}$/.test(value))
   .map(([name, value]) => `<meta name="${name}" content="${value}">`).join("");
-for (const page of ["index.html", "garba-nights/index.html"]) {
+for (const page of ["index.html", "garba-nights/index.html", "vibe-quiz/index.html"]) {
   const file = resolve(output, page);
   writeFileSync(
     file,
@@ -116,6 +116,7 @@ const contentPages = [...core, ...compare, ...cities, ...guidesA, ...guidesB];
 const linkable = [
   ...contentPages,
   { path: "garba-nights/", crumb: "Garba Nights", h1: "Garba Nights", description: "Find a Garba or Dandiya partner this Navratri: pick your nights and meet people near you going on the same nights." },
+  { path: "vibe-quiz/", crumb: "Dating vibe quiz", h1: "What's your dating vibe?", description: "A free 1-minute quiz: are you a Cozy Romantic, Midnight Philosopher, Adventure Spark or Movie Dreamer, and who do you click with?" },
   { path: "safety/", crumb: "Dating safety guide", h1: "Dating safety", description: "Paire's safety guide: before you meet, on the date, and how reporting works." }
 ];
 for (const page of contentPages) {
@@ -184,6 +185,7 @@ if (indexable && siteUrl) {
   const entries = [
     ["", today, "1.0", "daily"],
     ["garba-nights/", today, "0.9", "weekly"],
+    ["vibe-quiz/", today, "0.8", "monthly"],
     ...contentPages.map((page) => [page.path, page.updated ?? today, page.type === "hub" ? "0.8" : page.path.startsWith("guides/") || page.path.startsWith("compare/") ? "0.8" : "0.7", "monthly"]),
     ...["safety/", "community-guidelines/", "contact/", "terms/", "privacy/", "refunds/"].map((page) => [page, today, page === "safety/" ? "0.6" : "0.3", "yearly"])
   ];

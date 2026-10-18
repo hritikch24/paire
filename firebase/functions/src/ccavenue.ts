@@ -25,7 +25,7 @@ import {
   returnUrl,
   rupees
 } from "./lib/ccavenue";
-import { isPlusPlan, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
+import { isPlusPlan, passDays, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
 import { verifiedUsers } from "./trust";
 
@@ -220,7 +220,7 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
     if (kind === "plus") {
       // Passes never overlap: this one starts when any running pass (web or store) ends.
       const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry);
-      const { startsAt, expiresAt } = passWindow(now, PLUS_PASSES[order.plan!].days, queuedUntil);
+      const { startsAt, expiresAt } = passWindow(now, passDays(order.plan!), queuedUntil);
       tx.set(ledger.ref, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
       tx.update(ref, { ...record, status: "paid", paidAt: now, startsAt, expiresAt, awaiting: false });
       return "granted";

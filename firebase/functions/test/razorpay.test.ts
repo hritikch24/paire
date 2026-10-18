@@ -1,6 +1,7 @@
 import { createHmac } from "crypto";
 import {
   isPlusPlan,
+  passDays,
   isRazorpayId,
   passWindow,
   paymentMatchesOrder,
@@ -17,6 +18,10 @@ describe("Paire Plus on the web", () => {
     expect(PLUS_PASSES.day.amountPaise).toBe(2000);
     expect(PLUS_PASSES.week).toMatchObject({ amountPaise: 9900, days: 7 });
     expect(PLUS_PASSES.month).toMatchObject({ amountPaise: 29900, days: 30 });
+    // Web offer: buy 1 month, get 1 month free. Day and week passes have no bonus.
+    expect(passDays("month")).toBe(60);
+    expect(passDays("week")).toBe(7);
+    expect(passDays("day")).toBe(1);
     expect(isPlusPlan("week")).toBe(true);
     expect(isPlusPlan("lifetime")).toBe(false);
     expect(isPlusPlan("toString")).toBe(false);

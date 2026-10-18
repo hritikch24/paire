@@ -9,6 +9,7 @@ import { requireAuth } from "./lib/auth";
 import {
   isPlusPlan,
   isRazorpayId,
+  passDays,
   passWindow,
   paymentMatchesOrder,
   PLUS_PASSES,
@@ -74,7 +75,7 @@ export async function grantWebPass(orderId: string, paymentId: string): Promise<
     const [fresh, ledger] = await tx.getAll(ref, ledgerRef);
     if (fresh.get("status") !== "created") return;
     const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry);
-    const { startsAt, expiresAt } = passWindow(now, PLUS_PASSES[order.plan].days, queuedUntil);
+    const { startsAt, expiresAt } = passWindow(now, passDays(order.plan), queuedUntil);
     tx.update(ref, { status: "paid", paymentId, paidAt: now, startsAt, expiresAt, updatedAt: FieldValue.serverTimestamp() });
     tx.set(ledgerRef, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
   });

@@ -2,6 +2,15 @@
 
 Last updated: 2026-10-17
 
+## Monthly offer: buy 1 month, get 1 month free (2026-10-18)
+- The ₹299 month pass runs **60 days** when bought on the web (`PLUS_PASSES.month.bonusDays = 30` in `firebase/functions/src/lib/razorpay.ts`; set it to 0 to end the offer). Store passes in the app are unchanged.
+- The web pushes monthly: it's selected first on the Plus screen with a "Buy 1 month, get 1 month free · SAVE 75%" ribbon and per-day prices for every plan (₹5, ₹14, ₹20 a day); the end-of-Discover offer leads with "Get 2 months · ₹299" and still mentions the ₹20 day pass. Website pricing, content pages, llms.txt, Terms and Refunds describe the offer.
+- **Needs a functions deploy** (`firebase deploy --only functions`) for the extra 30 days to be granted, in the same go as the web deploy.
+
+## Site review and new Discover features (2026-10-17)
+- Full browser review on emulators (`docs/qa-2026-10-17.md`): sign-up, onboarding, Discover, matches, chat, profile and Plus at phone and desktop sizes. Fixed the "4× the likes" claim (it's 10×), the README's free like count and a cut-off Discover header line; the empty-Discover browser test follows the Plus offer.
+- **Hold to Super Like** (web): hold the heart until the ring fills. **Lucky spin** (web): spins through your cards and brings one to the top (names only, nothing sent). **Dating vibe quiz** at `/vibe-quiz/`: shareable, no sign-up, nothing leaves the browser.
+
 ## See everyone again with Paire Plus (2026-10-17)
 - **Free members** who have seen everyone in their range get a Paire Plus offer on the web instead of "You're all caught up" (with "Expand search" still there).
 - **Plus members** go straight on: once everyone new is seen, the feed brings back the people they passed on (never likes, matches or blocks), and they can like them this time. A pass bought from the prompt opens this up immediately. Server: `getDiscoverFeed({ revisit })` (Plus only) and second-look swipes in `swipe`. Tests: `integration/revisitFeed.integration.test.ts`.
