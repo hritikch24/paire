@@ -278,6 +278,8 @@ describe("server-only collections", () => {
     await assertFails(alexa.doc("discovery/alexa").get());
     await assertFails(alexa.doc("supportPlusGrants/alexa").get());
     await assertFails(alexa.doc("supportPlusGrants/alexa").set({ status: "active", expiresAt: 9999999999999 }));
+    await assertFails(alexa.doc("billingSupportAudit/receipt").get());
+    await assertFails(alexa.doc("billingSupportAudit/receipt").set({ action: "payment-received", amountReportedPaise: 29900, confirmationSource: "owner_statement" }));
     await assertFails(alexa.collection("discovery").get());
     await assertFails(alexa.doc("moderation/alexa").get());
     await assertFails(alexa.doc("moderation/alexa").set({ verification: { status: "verified" } }));

@@ -75,3 +75,21 @@ The gateway orders stay unconfirmed until CCAvenue verifies them. On the first s
 Verification: `./scripts/verify.sh` passed 500 tests, including rejected credentials, recovery refresh persistence, one-time reconciliation, later refund and client denial for support grants. Production account recovery is an owner-authorized operation, not a QA login or a new charge.
 
 Released in `b8ef459` / `b47be2a`: 15 affected Functions deployed successfully, Vercel is live, and the live admin bundle check passed. A production callback reconciliation confirmed the same CCAvenue 51407 rejection; merchant API authorization remains unresolved. The requested customer recovery was applied with a separate owner-confirmed audit, and Resend reported its activation email from `noreply@paire.in` delivered. Actual gateway orders remain unconfirmed; no gateway payment status was invented. Restore working status API credentials/authorization and verify from the production backend before considering automatic activation repaired.
+
+## Revenue from manual confirmations (2026-10-19)
+
+Metrics includes approved UPI payments and owner-confirmed receipts from the retained `billingSupportAudit` collection. Existing `plus-payment-recovery` audits count their `amountReportedPaise`, not the duration of Premium. Future recovery operations must write the grant and its financial audit together. Complimentary access without confirmed money is not revenue. Amounts are summed in integer paise and displayed without rounding away paise.
+
+For an owner-confirmed payment that needs a financial receipt only, use:
+
+```sh
+node scripts/record-manual-payment.mjs --project muse-352ba \
+  --source ccavenue --order ORDER_ID --email MEMBER_EMAIL \
+  --reason 'Owner confirmed this payment was received'
+```
+
+It uses the logged-in Firebase CLI, checks the selected order's owner, amount, product, currency and mode, and defaults to a dry run. After reviewing the output, append `--confirm` to record it. Sources are `ccavenue`, `upi`, `razorpay` (Plus) and `razorpay-chat`. The deterministic audit id and transaction prevent duplicate approvals. Already paid/approved orders or receipts already covering the order need no extra receipt. This operation changes no entitlement, gateway order, charge, refund or email. A separate payment needs a separate receipt; multiple checkout attempts for one payment remain aliases of one receipt.
+
+Receipts have `action: payment-received`, `status: confirmed`, `confirmationSource: owner_statement`, `paymentProviderVerified: false`, `uid`, `currency: INR`, `amountReportedPaise`, `kind` (`plus`/`chat`), `orderSource`, `coveredOrderIds`, `approvedBy`, `reason`, and `createdAt`. Recovery audits use their existing schema and imply Plus/CCAvenue. These documents remain server-only and survive account deletion and pass expiry.
+
+The metrics reader uses one consistent database snapshot. A matching paid/approved order replaces its manual receipt in the count; refunded/charged-back/revoked payments no longer count. A test order, wrong owner, wrong amount, complimentary grant, or unconfirmed receipt cannot add revenue. Manually marking a receipt refunded/revoked also removes its manual revenue; the script does not perform refunds. The dashboard separately states how much revenue is owner-confirmed and awaiting gateway confirmation. CCAvenue authorization is still unresolved; this accounting change does not fix gateway verification.

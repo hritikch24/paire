@@ -3,6 +3,7 @@ import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { adminAuth, db } from "./admin";
 import { REGION } from "./config";
 import { deviceKey, istDay, isBot, METRICS_SHARDS, pageKey, sourceKey } from "./lib/metrics";
+import { readRevenue } from "./revenue";
 
 /**
  * Page views from www.paire.in (sent through the site's own /v/ address). Counts
@@ -137,14 +138,13 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
   const testDocs = testUids.size ? (await db.getAll(...[...testUids].map((uid) => users.doc(uid)))).filter((doc) => doc.exists) : [];
   const testCount = (predicate: (doc: DocumentSnapshot) => boolean) => testDocs.filter(predicate).length;
   const since = (ms: number) => now - ms;
-  const [profiles, women, men, active24h, active7d, verified, plusPaid] = await Promise.all([
+  const [profiles, women, men, active24h, active7d, verified] = await Promise.all([
     count(users),
     count(users.where("gender", "==", "woman")),
     count(users.where("gender", "==", "man")),
     count(users.where("lastActiveAt", ">=", since(dayMs))),
     count(users.where("lastActiveAt", ">=", since(7 * dayMs))),
-    count(db.collection("moderation").where("verification.status", "==", "verified")),
-    db.collection("razorpayOrders").where("status", "==", "paid").select("amountPaise").get()
+    count(db.collection("moderation").where("verification.status", "==", "verified"))
   ]);
   const activeMembers = await users.where("lastActiveAt", ">=", since(7 * dayMs)).select("createdAt", "lastActiveAt").get();
   for (const doc of activeMembers.docs) {
@@ -156,13 +156,7 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
       if (now - active < dayMs) returning.active24h++;
     }
   }
-  const upiPaid = await db.collection("upiUnlockOrders").where("status", "==", "approved").select("amountPaise", "kind").get();
-  const sum = (docs: DocumentSnapshot[]) => Math.round(docs.reduce((total, doc) => total + (Number(doc.get("amountPaise")) || 0), 0) / 100);
-  const upiPlus = upiPaid.docs.filter((doc) => doc.get("kind") === "plus");
-  const upiChat = upiPaid.docs.filter((doc) => doc.get("kind") !== "plus");
-  const ccavenuePaid = await db.collection("ccavenueOrders").where("status", "==", "paid").select("amountPaise", "kind").get();
-  const ccavenuePlus = ccavenuePaid.docs.filter((doc) => doc.get("kind") === "plus");
-  const ccavenueChat = ccavenuePaid.docs.filter((doc) => doc.get("kind") !== "plus");
+  const revenue = await readRevenue();
   const [matches, matches24h, messages, swipes] = await Promise.all([
     count(db.collection("matches")),
     count(db.collection("matches").where("createdAt", ">=", Timestamp.fromMillis(since(dayMs)))),
@@ -202,8 +196,7 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
       verified
     },
     activity: { matches, matches24h, messages, swipes },
-    plus: { orders: plusPaid.size + upiPlus.length + ccavenuePlus.length, rupees: sum(plusPaid.docs) + sum(upiPlus) + sum(ccavenuePlus) },
-    unlimitedChat: { orders: upiChat.length + ccavenueChat.length, rupees: sum(upiChat) + sum(ccavenueChat) },
+    ...revenue,
     testAccounts: testUids.size
   };
 }
