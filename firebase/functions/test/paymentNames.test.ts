@@ -45,9 +45,9 @@ describe("payment display names", () => {
     expect(PLUS_PASSES.month.amountPaise).toBe(29900);
     expect(passDays("month")).toBe(60);
     expect(CHAT_UNLOCK).toMatchObject({ label: "Messaging · one-time ₹49 unlock", product: "paire_unlimited_chat", amountPaise: 4900 });
-    expect(checkoutHost("order_ABC123def")).toEqual({ name: "Hosted merchant", hostedUrl: "https://kraftai.in/pay/start?order=order_ABC123def" });
+    expect(checkoutHost("order_ABC123def")).toEqual({ name: "Hosted merchant", hostedUrl: "https://kraftai.in/?order=order_ABC123def" });
     process.env.KRAFTAI_CHECKOUT_URL = "https://kraftai.in/pay/start";
-    expect(checkoutHost("order_ABC123def")).toEqual({ name: "Hosted merchant", hostedUrl: "https://kraftai.in/pay/start?order=order_ABC123def" });
+    expect(checkoutHost("order_ABC123def")).toEqual({ name: "Hosted merchant", hostedUrl: "https://kraftai.in/?order=order_ABC123def" });
   });
 
   it("lets each full label override the generated name and ignores blank settings", async () => {

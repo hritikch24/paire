@@ -219,7 +219,7 @@ describe("Unlimited Chat orders", () => {
       const result = await call(createPlusOrder, uid, { plan });
       expect(fake.orders.get(result.orderId)?.notes).toEqual({ product: "kraftai_plus", plan });
       expect(result.description).toMatch(/^KraftAI Plus/);
-      expect(result.hostedUrl).toMatch(/^https:\/\/kraftai\.in\/pay\/start\?order=/);
+      expect(result.hostedUrl).toMatch(/^https:\/\/kraftai\.in\/\?order=/);
       expect((await admin.doc(`razorpayOrders/${result.orderId}`).get()).get("uid")).toBe(uid);
     }
   });

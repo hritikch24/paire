@@ -2,18 +2,18 @@
 
 Paire's web payments (Paire Plus ₹20 / ₹99 / ₹299 and Unlimited Chat ₹49) go through **KraftAI's Razorpay account**, which is registered for kraftai.in. So Razorpay Checkout opens on kraftai.in, not on paire.in. Everything else stays here: Paire's server creates every order and confirms every payment with Razorpay before granting.
 
-New Razorpay orders require `KRAFTAI_CHECKOUT_URL=https://kraftai.in/pay/start`. Missing or invalid settings refuse checkout; the browser app never opens inline Razorpay Checkout on paire.in.
+New Razorpay orders require `KRAFTAI_CHECKOUT_URL=https://kraftai.in`. Missing or invalid settings refuse checkout; the browser app never opens inline Razorpay Checkout on paire.in.
 
 ## Flow
 
 ```
 paire.in/app ── createPlusOrder / createChatUnlockOrder ──▶ Razorpay order (notes.product, notes.plan)
-     │  checkout.hostedUrl = https://kraftai.in/pay/start?order=order_…
+     │  checkout.hostedUrl = https://kraftai.in/?order=order_…
      ▼
-kraftai.in/pay/start          no-referrer redirect to /pay/checkout
+kraftai.in/?order=…          internal rewrite to the validated checkout; browser stays at /
      ▼
 kraftai.in/pay/checkout       fetches the order from Razorpay; opens Checkout only if it's a supported
-     │                        order, unpaid, INR, at exactly kraftai.in's published price
+     │                        order, unpaid, INR, at exactly the validated app price
      ▼  Razorpay Checkout (redirect mode, name "KraftAI")
 kraftai.in/pay/checkout/callback checks Checkout's signature and that it's the same order
      │  303
@@ -30,7 +30,7 @@ granted once (razorpayWebhook covers closed tabs and late UPI captures)
 
 ## Prices must match on both sites
 
-kraftai.in publishes the plans at `kraftai.in/paire` and refuses any order at another amount. The tables:
+The former `kraftai.in/paire` page is retired and redirects to the homepage. App order validation still uses its own price table; website builder credit plans are a separate product and never substitute for app purchases. The tables:
 
 - Paire: `PLUS_PASSES` (`firebase/functions/src/lib/razorpay.ts`), `CHAT_UNLOCK` (`config.ts`), and `KRAFTAI_PUBLISHED_PAISE` (`lib/kraftai.ts`). `test/kraftai.test.ts` fails if they drift apart.
 - KraftAI: `PAIRE_PLANS` in `kanoon-simplified/src/lib/paire.ts`.
@@ -99,9 +99,9 @@ the two creation functions plus the KraftAI deployment.
 
 ## Turning it on (owner)
 
-1. **Razorpay account.** Ask Razorpay support to add Paire (paire.in, online dating passes) as a product of the KraftAI account. They review the business behind every payment; selling an undisclosed business through an account risks a freeze of the whole account, KraftAI's own sales included. `kraftai.in/paire` is the page to point them at.
-2. **KraftAI (Vercel).** Deploy `kanoon-simplified` with `/pay/start`. It uses the existing `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`. `PAIRE_APP_URL` is optional (default `https://www.paire.in/app/`).
-3. **Paire functions.** Set `KRAFTAI_CHECKOUT_URL=https://kraftai.in/pay/start` in `firebase/functions/.env`, then `firebase deploy --only functions`.
+1. **Razorpay account.** Ask Razorpay support to add Paire (paire.in, online dating passes) as a product of the KraftAI account. They review the business behind every payment; selling an undisclosed business through an account risks a freeze of the whole account, KraftAI's own sales included. Share the actual app and its pricing with them; website builder plans do not describe app purchases.
+2. **KraftAI (Vercel).** Deploy `kanoon-simplified` with the root payment rewrite first. Older `/pay/start` and `/pay/paire` links redirect to the root payment URL. It uses the existing `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`. `PAIRE_APP_URL` is optional (default `https://www.paire.in/app/`).
+3. **Paire functions.** Set `KRAFTAI_CHECKOUT_URL=https://kraftai.in` in `firebase/functions/.env`, then `firebase deploy --only functions`.
 4. **Webhook.** In the Razorpay dashboard, make sure `razorpayWebhook` (Paire's function URL) is a webhook with `payment.captured`, `refund.processed`, `payment.dispute.*` and `RAZORPAY_WEBHOOK_SECRET`.
 5. **Sales switches** (unchanged by this work): Plus needs `MUSE_BILLING_ENABLED` and `runtime/trust.razorpayPlusSales` (on unless set to false); chat needs `MUSE_CHAT_UNLOCK_ENABLED`, `MUSE_CHAT_UNLOCK_LIVE` and `runtime/trust.unlockSales` (`scripts/set-runtime-flags.mjs`; run it without changes to print the current state). Whatever Razorpay checkout is open when step 3 deploys moves to kraftai.in. With CCAvenue also on, the Plus screen uses Razorpay as the main button.
 6. **Legal copy.** Terms, Refunds and Privacy name CCAvenue/Razorpay today. Add that payments are taken by KraftAI and show as KraftAI on bank statements (fewer "unknown merchant" chargebacks).

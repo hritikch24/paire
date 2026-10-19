@@ -6,15 +6,15 @@ import { HttpsError } from "firebase-functions/v2/https";
  * KraftAI's Razorpay account, which is registered for kraftai.in, so Checkout
  * has to open there rather than on paire.in:
  *
- *   paire.in (order created here, server side) → kraftai.in/pay/start?order=… (Checkout)
+ *   paire.in (order created here, server side) → kraftai.in/?order=… (Checkout)
  *   → kraftai.in/pay/checkout/callback → paire.in/app/?kraftai=paid&kind=…&order=…&payment=…&signature=…
  *
  * Nothing about granting changes: confirmPlusPayment / confirmChatUnlock and the
  * signed webhook still verify every payment with Razorpay. kraftai.in only opens
- * Checkout for Paire orders at its own published prices (kanoon-simplified
+ * Checkout for Paire orders at their validated app prices (kanoon-simplified
  * src/lib/paire.ts must match PLUS_PASSES and CHAT_UNLOCK).
  *
- * KRAFTAI_CHECKOUT_URL (functions .env), e.g. https://kraftai.in/pay/start.
+ * KRAFTAI_CHECKOUT_URL (functions .env), e.g. https://kraftai.in.
  * Required for new orders; unset or invalid refuses checkout.
  */
 export function hostedCheckoutBase(raw = process.env.KRAFTAI_CHECKOUT_URL): URL | null {
@@ -24,7 +24,7 @@ export function hostedCheckoutBase(raw = process.env.KRAFTAI_CHECKOUT_URL): URL 
     const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
     const merchant = url.hostname === "kraftai.in" || url.hostname === "www.kraftai.in";
     if ((merchant && url.protocol === "https:") || (local && (url.protocol === "http:" || url.protocol === "https:"))) {
-      url.pathname = "/pay/start";
+      url.pathname = "/";
       url.search = "";
       url.hash = "";
       return url;
@@ -51,8 +51,9 @@ export function checkoutHost(orderId: string): { name: string; hostedUrl: string
 }
 
 /**
- * The prices kraftai.in publishes and will charge (PAIRE_PLANS in kanoon-simplified
- * src/lib/paire.ts), in paise. kraftai.in refuses any order at another amount, so a
+ * The app order prices kraftai.in accepts (PAIRE_PLANS in kanoon-simplified
+ * src/lib/paire.ts), in paise. These are separate from website builder credits.
+ * kraftai.in refuses any app order at another amount, so a
  * Paire price change must land on both sites together: a test fails here until this
  * table, and kraftai.in, are updated too.
  */
