@@ -6,6 +6,7 @@ Every commit that changes the web product: www.paire.in, the browser app at `/ap
 
 | Date | Commit | Change | Status |
 |---|---|---|---|
+| 2026-10-19 | `0c516a6` | Plus screen and Unlimited Chat card say Paire is owned by KraftAI, so buyers see KraftAI on the payment page and bank statement. App lint, typecheck and 109 tests passed. | pushed |
 | 2026-10-19 | — | Owner request: Razorpay is the only web payment method. `KRAFTAI_CHECKOUT_URL=https://kraftai.in/pay/paire` set and `createPlusOrder`/`createChatUnlockOrder` redeployed; `razorpayPlusSales` and `unlockSales` on; UPI sales off. Live check: a real unpaid ₹20 Paire order opened Razorpay Checkout on kraftai.in (no payment made). Not yet checked with a member account or a real payment. | Firebase (2 functions), runtime switches on muse-352ba |
 | 2026-10-19 | — | Owner request: kept passes for 7 members whose live CCAvenue payments never confirmed (status API 51407). One pass per member at the largest plan attempted (5 × day, 1 × week, 1 × month); supportPlusGrants + billingSupportAudit `plus-payment-recovery`, owner statement, provider-unverified, ₹498 reported. Owner's own test account excluded. No emails sent. | production data updated |
 | 2026-10-19 | — | Owner request: CCAvenue sales switched off (`runtime/trust.ccavenueSales=false`) because live order-status checks fail and members' payments weren't confirming. Direct UPI stays on (already on); Razorpay stays off. 28 live CCAvenue orders remain unconfirmed (2 members already covered by owner receipts). | runtime switch changed on muse-352ba |
