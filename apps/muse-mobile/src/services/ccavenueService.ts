@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import { stashDrafts } from "../utils/chatAccess";
+import { rememberReturnChat, stashDrafts } from "../utils/chatAccess";
 import { callFunction } from "./firebase";
 
 /**
@@ -20,19 +20,6 @@ export type CcavenueResult = {
   /** This payment is being returned: the account already had what it bought. */
   refunding?: boolean;
 };
-
-const RETURN_CHAT = "paire.ccavenueReturnChat";
-
-/** The chat a payment was started from, once (cleared as it's read). */
-export function takeReturnChat(): string | null {
-  try {
-    const matchId = sessionStorage.getItem(RETURN_CHAT);
-    sessionStorage.removeItem(RETURN_CHAT);
-    return matchId && /^[A-Za-z0-9_-]{1,256}$/.test(matchId) ? matchId : null;
-  } catch {
-    return null;
-  }
-}
 
 /** CCAvenue's non-seamless checkout is a form POST (encRequest + access_code), not a link. */
 function postTo(redirect: Redirect) {
@@ -62,12 +49,7 @@ export async function startCcavenuePayment(plan?: "day" | "week" | "month", retu
   if (created.status !== "redirect") return created.status;
   // Composed messages, and the chat they were written in, come back with the member.
   stashDrafts();
-  try {
-    if (returnToChat) sessionStorage.setItem(RETURN_CHAT, returnToChat);
-    else sessionStorage.removeItem(RETURN_CHAT);
-  } catch {
-    // Storage off: they land on the app's home screen instead.
-  }
+  rememberReturnChat(returnToChat);
   postTo(created.redirect);
   return "redirecting";
 }

@@ -99,8 +99,11 @@ export function PremiumScreen() {
     if (!restore && ccavenueOnly) return payByCcavenue();
     if (!uid || (!restore && !webCheckout && !product)) return;
     setBusy(true); setMessage(null);
+    let leaving = false;
     try {
       const result = restore ? await restorePasses(uid) : webCheckout ? await purchaseWebPass(plan.id, colors.gradient[1] ?? "#B83A5E") : await purchasePass(uid, product!);
+      // Checkout on kraftai.in: the page is leaving, so keep the button busy (no second order).
+      if ("redirecting" in result) { leaving = true; return; }
       const pending = "pending" in result && result.pending === true;
       if (!restore && webCheckout && (result.active || pending)) trackConversion("Purchase", { value: plan.priceInr, currency: "INR" });
       setMessage(result.active ? "Your Plus pass is active. Enjoy a little more possibility." : restore ? "No active pass was found. Consumable passes may need support to recover after reinstalling." : pending ? "Payment received. Your bank is still confirming it; your pass starts as soon as it does (usually a few minutes). Refresh below." : "Purchase received. Refresh your status in a moment while we confirm it.");
@@ -114,7 +117,7 @@ export function PremiumScreen() {
         const latest = await premium.refetch();
         setMessage(latest.data?.active ? "Your Plus pass is active. Enjoy a little more possibility." : "Payment window closed. If you completed a payment, your pass will appear here within a few minutes (tap Refresh).");
       }
-    } finally { setBusy(false); }
+    } finally { if (!leaving) setBusy(false); }
   };
   return (
     <Screen scroll testID="premium-screen" header={<ScreenHeader title="Paire Plus" />} footer={
@@ -122,7 +125,7 @@ export function PremiumScreen() {
         <Text textAlign="center" fontSize="$2" color="$textMuted">{priceLabel} for {offer ? `${offer.days} days` : plan.detail.toLowerCase()} · one-time payment · no auto-renewal</Text>
         <PrimaryButton testID="premium-purchase" loading={busy} disabled={!canPurchase} onPress={() => void act()}>{premium.data?.active ? "Your pass is active" : upiSubmitted ? "Confirming your UPI payment" : canPurchase ? (byUpi ? `Pay ${priceLabel} by UPI · ${buyLabel}` : `Get ${buyLabel} · ${priceLabel}`) : "Plus is coming soon"}</PrimaryButton>
         {byCcavenue && !ccavenueOnly && ready ? <SecondaryButton testID="premium-ccavenue" disabled={busy} onPress={() => void payByCcavenue()}>{`Pay ${priceLabel} by card, netbanking or wallet`}</SecondaryButton> : null}
-        <Text textAlign="center" fontSize="$1" color="$textMuted">{upiSubmitted ? "Thanks! Your pass starts as soon as we confirm your UPI payment, usually within a few hours." : canPurchase ? (byUpi ? `Pay by UPI straight to Paire: scan the QR code, or open PhonePe, Google Pay, Paytm or any UPI app.${byCcavenue ? " Or pay by card, netbanking or wallet through CCAvenue." : ""}` : ccavenueOnly ? "Pay securely with cards, UPI, netbanking or wallets via CCAvenue. You'll come back here after paying." : webCheckout ? "Pay securely with UPI, cards or netbanking via Razorpay." : "Pay securely through your app store.") : premium.data?.active ? `Available until ${new Date(premium.data.expiresAt!).toLocaleString("en-IN")}.` : "Purchases aren’t available yet. You won’t be charged."}</Text>
+        <Text textAlign="center" fontSize="$1" color="$textMuted">{upiSubmitted ? "Thanks! Your pass starts as soon as we confirm your UPI payment, usually within a few hours." : canPurchase ? (byUpi ? `Pay by UPI straight to Paire: scan the QR code, or open PhonePe, Google Pay, Paytm or any UPI app.${byCcavenue ? " Or pay by card, netbanking or wallet through CCAvenue." : ""}` : ccavenueOnly ? "Pay securely with cards, UPI, netbanking or wallets via CCAvenue. You'll come back here after paying." : webCheckout ? "Pay securely with UPI, cards or netbanking via Razorpay, through KraftAI, the company behind Paire. You'll come back here after paying." : "Pay securely through your app store.") : premium.data?.active ? `Available until ${new Date(premium.data.expiresAt!).toLocaleString("en-IN")}.` : "Purchases aren’t available yet. You won’t be charged."}</Text>
       </YStack>
     }>
       <YStack paddingTop="$4" gap="$5">

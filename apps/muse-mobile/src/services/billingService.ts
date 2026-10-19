@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import type { PurchasesStoreProduct } from "react-native-purchases";
 import { env } from "../config/env";
 import { PREMIUM_PLANS, PremiumPlanId } from "../config/premium";
+import { rememberReturnChat, stashDrafts } from "../utils/chatAccess";
 import { auth, callFunction } from "./firebase";
 
 export type PremiumStatus = {
@@ -25,8 +26,12 @@ export const fetchPremiumStatus = () => callFunction<PremiumStatus>("getPremiumS
 /** On the web, Plus passes are paid with Razorpay (UPI, cards, netbanking). */
 export const webCheckout = Platform.OS === "web";
 
-/** A server-created Razorpay order: the server set the product, price and account. */
-export type CheckoutOrder = { orderId: string; amount: number; currency: string; keyId: string; name: string; description: string; email: string | null };
+/**
+ * A server-created Razorpay order: the server set the product, price and account.
+ * `hostedUrl`: Checkout opens on kraftai.in (whose Razorpay account takes Paire's
+ * payments) instead of in this page; see docs/kraftai-checkout.md.
+ */
+export type CheckoutOrder = { orderId: string; amount: number; currency: string; keyId: string; name: string; description: string; email: string | null; hostedUrl?: string | null };
 type PlusOrder = CheckoutOrder;
 export type CheckoutResult = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
 type RazorpayCheckout = new (options: Record<string, unknown>) => { open: () => void; on: (event: string, handler: (response: unknown) => void) => void };
@@ -58,6 +63,17 @@ export class CheckoutCancelled extends Error {
   }
 }
 
+/**
+ * Web: leaves for Checkout on kraftai.in. It sends the member back to
+ * /app/?kraftai=… (useKraftaiReturn), where the server verifies the payment as
+ * usual. Drafts and the chat they were in come back with them.
+ */
+export function leaveForHostedCheckout(order: CheckoutOrder, returnToChat?: string) {
+  stashDrafts();
+  rememberReturnChat(returnToChat);
+  window.location.assign(order.hostedUrl!);
+}
+
 /** Opens Razorpay Checkout for a server-created order. Resolves with Checkout's signed response, which the server still verifies. */
 export async function openCheckout(order: CheckoutOrder, theme: string): Promise<CheckoutResult> {
   const Razorpay = await loadCheckout();
@@ -84,8 +100,12 @@ export async function openCheckout(order: CheckoutOrder, theme: string): Promise
  * Razorpay Checkout takes the payment, and the server confirms it with Razorpay
  * before granting anything. A successful popup alone never grants Plus.
  */
-export async function purchaseWebPass(planId: PremiumPlanId, theme: string): Promise<PremiumStatus & { pending?: boolean }> {
+export async function purchaseWebPass(planId: PremiumPlanId, theme: string): Promise<(PremiumStatus & { pending?: boolean }) | { redirecting: true }> {
   const order = await callFunction<PlusOrder>("createPlusOrder", { plan: planId });
+  if (order.hostedUrl) {
+    leaveForHostedCheckout(order);
+    return { redirecting: true };
+  }
   const result = await openCheckout(order, theme);
   try {
     return await callFunction<PremiumStatus & { pending?: boolean }>("confirmPlusPayment", {

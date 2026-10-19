@@ -17,7 +17,30 @@ export function sendLocked(access: ChatAccess | undefined, chatCreatedAt: number
 const drafts = new Map<string, string>();
 const STASH = "paire.chatDrafts";
 
-/** Web: keeps drafts in this tab across a full-page payment redirect (CCAvenue). */
+const RETURN_CHAT = "paire.ccavenueReturnChat";
+
+/** Web: remembers, for this tab, the chat a full-page payment (CCAvenue, kraftai.in) was started from. */
+export function rememberReturnChat(matchId?: string) {
+  try {
+    if (matchId) sessionStorage.setItem(RETURN_CHAT, matchId);
+    else sessionStorage.removeItem(RETURN_CHAT);
+  } catch {
+    // Storage off: they land on the app's home screen instead.
+  }
+}
+
+/** The chat a payment was started from, once (cleared as it's read). */
+export function takeReturnChat(): string | null {
+  try {
+    const matchId = sessionStorage.getItem(RETURN_CHAT);
+    sessionStorage.removeItem(RETURN_CHAT);
+    return matchId && /^[A-Za-z0-9_-]{1,256}$/.test(matchId) ? matchId : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Web: keeps drafts in this tab across a full-page payment redirect (CCAvenue, kraftai.in). */
 export function stashDrafts() {
   try {
     if (drafts.size && typeof sessionStorage !== "undefined") sessionStorage.setItem(STASH, JSON.stringify([...drafts]));

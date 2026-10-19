@@ -6,6 +6,7 @@ import { handleChatUnlockWebhook } from "./chatAccess";
 import { razorpayConfigured, razorpayPlusOpen, storeExpiryIfEnabled, syncPremium, webPassExpiry } from "./billing";
 import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
+import { checkoutHost } from "./lib/kraftai";
 import {
   isPlusPlan,
   isRazorpayId,
@@ -135,9 +136,10 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
     amount: pass.amountPaise,
     currency: "INR",
     keyId: process.env.RAZORPAY_KEY_ID,
-    name: "Paire",
     description: pass.label,
-    email: (request.auth?.token.email as string | undefined) ?? null
+    email: (request.auth?.token.email as string | undefined) ?? null,
+    // name, and hostedUrl when Checkout opens on kraftai.in (lib/kraftai.ts).
+    ...checkoutHost(order.id)
   };
 });
 

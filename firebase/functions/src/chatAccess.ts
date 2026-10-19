@@ -8,6 +8,7 @@ import { chatPolicy, syncChatAccess } from "./chatEntitlement";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth, requireReadAuth, isSupportSession } from "./lib/auth";
 import { ChatAccessMirror, entitled, paidChatEnforced, razorpayMode, RazorpayMode, unlockPaymentVerdict, UnlockPayment, unlockReceipt } from "./lib/chatAccess";
+import { checkoutHost } from "./lib/kraftai";
 import { isRazorpayId, validCheckoutSignature } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
 import { razorpay } from "./razorpayClient";
@@ -299,7 +300,7 @@ export async function disputeChatUnlock(paymentId: unknown, orderId: unknown, ev
 }
 
 type RazorpayOrder = { id?: string; status?: string; amount?: number; currency?: string };
-type CheckoutPayload = { orderId: string; amount: number; currency: string; keyId: string | undefined; name: string; description: string; email: string | null };
+type CheckoutPayload = { orderId: string; amount: number; currency: string; keyId: string | undefined; name: string; description: string; email: string | null; hostedUrl: string | null };
 type CreateResult = { status: "checkout"; checkout: CheckoutPayload } | { status: "owned" } | { status: "pending" };
 
 const checkoutPayload = (orderId: string, email: string | null): CheckoutPayload => ({
@@ -307,9 +308,10 @@ const checkoutPayload = (orderId: string, email: string | null): CheckoutPayload
   amount: CHAT_UNLOCK.amountPaise,
   currency: CHAT_UNLOCK.currency,
   keyId: process.env.RAZORPAY_KEY_ID,
-  name: "Paire",
   description: CHAT_UNLOCK.label,
-  email
+  email,
+  // name, and hostedUrl when Checkout opens on kraftai.in (lib/kraftai.ts).
+  ...checkoutHost(orderId)
 });
 
 /**

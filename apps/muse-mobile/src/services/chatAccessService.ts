@@ -1,4 +1,4 @@
-import { CheckoutOrder, openCheckout } from "./billingService";
+import { CheckoutOrder, leaveForHostedCheckout, openCheckout } from "./billingService";
 import { callFunction } from "./firebase";
 
 /**
@@ -43,11 +43,17 @@ type ConfirmResult = { status: "owned" | "pending"; access: ChatAccess };
  * account (reusing an open one, never a second charge), Razorpay Checkout takes
  * the payment, and the server confirms it with Razorpay before unlocking. A
  * Checkout success alone never unlocks anything. Throws CheckoutCancelled if
- * the window is closed.
+ * the window is closed. With Checkout on kraftai.in, resolves "redirecting"
+ * as the page leaves.
  */
-export async function purchaseChatUnlock(theme: string): Promise<"owned" | "pending"> {
+export async function purchaseChatUnlock(theme: string, returnToChat?: string): Promise<"owned" | "pending" | "redirecting"> {
   const created = await callFunction<CreateResult>("createChatUnlockOrder");
   if (created.status !== "checkout") return created.status;
+  // Checkout on kraftai.in: the page leaves, and comes back to this chat.
+  if (created.checkout.hostedUrl) {
+    leaveForHostedCheckout(created.checkout, returnToChat);
+    return "redirecting";
+  }
   const result = await openCheckout(created.checkout, theme);
   try {
     const confirmed = await callFunction<ConfirmResult>("confirmChatUnlock", {

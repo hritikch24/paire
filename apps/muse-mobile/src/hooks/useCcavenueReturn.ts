@@ -5,10 +5,10 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import { showToast } from "../components/Toast";
 import type { AppStackParamList } from "../navigation/types";
-import { confirmCcavenuePayment, takeReturnChat } from "../services/ccavenueService";
+import { confirmCcavenuePayment } from "../services/ccavenueService";
 import { isSupportView } from "../services/supportMode";
 import { useAuthStore } from "../store/authStore";
-import { restoreDrafts } from "../utils/chatAccess";
+import { restoreDrafts, takeReturnChat } from "../utils/chatAccess";
 
 const ORDER = /^PA[A-Z0-9]{14}$/;
 

@@ -1,0 +1,38 @@
+import { CHAT_UNLOCK } from "../src/config";
+import { checkoutHost, hostedCheckoutBase, KRAFTAI_PUBLISHED_PAISE } from "../src/lib/kraftai";
+import { PLUS_PASSES } from "../src/lib/razorpay";
+
+describe("Checkout hosted on kraftai.in", () => {
+  const original = process.env.KRAFTAI_CHECKOUT_URL;
+  afterEach(() => {
+    if (original === undefined) delete process.env.KRAFTAI_CHECKOUT_URL;
+    else process.env.KRAFTAI_CHECKOUT_URL = original;
+  });
+
+  it("keeps Checkout on paire.in when no host is configured", () => {
+    delete process.env.KRAFTAI_CHECKOUT_URL;
+    expect(checkoutHost("order_ABC123def")).toEqual({ name: "Paire", hostedUrl: null });
+  });
+
+  it("sends the order to kraftai.in, named KraftAI, when configured", () => {
+    process.env.KRAFTAI_CHECKOUT_URL = "https://kraftai.in/pay/paire";
+    expect(checkoutHost("order_ABC123def")).toEqual({ name: "KraftAI", hostedUrl: "https://kraftai.in/pay/paire?order=order_ABC123def" });
+  });
+
+  it("only accepts https, or http on localhost for local testing", () => {
+    expect(hostedCheckoutBase("http://kraftai.in/pay/paire")).toBeNull();
+    expect(hostedCheckoutBase("javascript:alert(1)")).toBeNull();
+    expect(hostedCheckoutBase("not a url")).toBeNull();
+    expect(hostedCheckoutBase("")).toBeNull();
+    expect(hostedCheckoutBase("http://localhost:3000/pay/paire")?.toString()).toBe("http://localhost:3000/pay/paire");
+  });
+
+  it("charges exactly what kraftai.in publishes (change both sites together)", () => {
+    expect({
+      day: PLUS_PASSES.day.amountPaise,
+      week: PLUS_PASSES.week.amountPaise,
+      month: PLUS_PASSES.month.amountPaise,
+      chat: CHAT_UNLOCK.amountPaise
+    }).toEqual(KRAFTAI_PUBLISHED_PAISE);
+  });
+});

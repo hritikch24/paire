@@ -99,7 +99,8 @@ export function ChatAccessCard({ access, matchId, onGetPlus, onVerify }: Props) 
     setPhase("loading");
     setError(null);
     try {
-      const status = await purchaseChatUnlock(gradient[1] ?? "#B83A5E");
+      const status = await purchaseChatUnlock(gradient[1] ?? "#B83A5E", matchId);
+      if (status === "redirecting") return; // The page is leaving for checkout on kraftai.in.
       const next = await settle(false).catch(() => null);
       if (status === "owned" || next?.unlimited) {
         showToast("Unlimited chat unlocked. Your message is still in the box — tap send when you're ready.", "success");
