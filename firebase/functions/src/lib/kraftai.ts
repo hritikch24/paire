@@ -1,3 +1,5 @@
+import { PAYMENT_NAMES } from "./payment-names";
+
 /**
  * Razorpay Checkout hosted on kraftai.in. Paire's web payments run through
  * KraftAI's Razorpay account, which is registered for kraftai.in, so Checkout
@@ -29,10 +31,10 @@ export function hostedCheckoutBase(raw = process.env.KRAFTAI_CHECKOUT_URL): URL 
 /** How Checkout is presented for an order: where it opens, and the merchant name it shows. */
 export function checkoutHost(orderId: string): { name: string; hostedUrl: string | null } {
   const base = hostedCheckoutBase();
-  if (!base) return { name: "Paire", hostedUrl: null };
+  if (!base) return { name: PAYMENT_NAMES.directMerchant, hostedUrl: null };
   base.searchParams.set("order", orderId);
-  // The payment is taken by KraftAI, so Checkout and the bank statement say so.
-  return { name: "KraftAI", hostedUrl: base.toString() };
+  // Checkout's display name is configured separately from the registered merchant identity.
+  return { name: PAYMENT_NAMES.hostedMerchant, hostedUrl: base.toString() };
 }
 
 /**

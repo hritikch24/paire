@@ -35,6 +35,55 @@ kraftai.in publishes the plans at `kraftai.in/paire` and refuses any order at an
 
 Change a price in all of them together and deploy KraftAI first.
 
+## Changing payment display names
+
+Names are configured in `firebase/functions/src/lib/payment-names.ts` and mirrored
+in `kanoon-simplified/src/lib/payment-names.ts`. Set matching environment values in
+`firebase/functions/.env` and KraftAI's Vercel environment (`.env.local` locally):
+
+| Variable | Default |
+|---|---|
+| `PAIRE_PLUS_NAME` | `Paire Plus` |
+| `PAIRE_CHAT_NAME` | `Paire Unlimited Chat` |
+| `PAIRE_PLUS_DAY_LABEL` | UI: `<Plus name> · 1 day` |
+| `PAIRE_PLUS_WEEK_LABEL` | UI: `<Plus name> · 7 days` |
+| `PAIRE_PLUS_MONTH_LABEL` | UI: `<Plus name> · 1 month + 1 month free` |
+| `PAIRE_CHAT_LABEL` | UI: `<Chat name> · one-time ₹49 unlock` |
+| `RAZORPAY_PLUS_NAME` | Optional separate Plus name for Razorpay |
+| `RAZORPAY_CHAT_NAME` | Optional separate Chat name for Razorpay |
+| `RAZORPAY_PLUS_DAY_LABEL` | Optional full Razorpay description for the day plan |
+| `RAZORPAY_PLUS_WEEK_LABEL` | Optional full Razorpay description for the week plan |
+| `RAZORPAY_PLUS_MONTH_LABEL` | Optional full Razorpay description for the month plan |
+| `RAZORPAY_CHAT_LABEL` | Optional full Razorpay description for Chat |
+| `PAIRE_CHECKOUT_NAME` | `Paire` (direct checkout) |
+| `KRAFTAI_CHECKOUT_NAME` | `KraftAI` (hosted checkout) |
+
+For example, `PAIRE_PLUS_NAME="Premium"` changes the generated labels to
+`Premium · 1 day`, `Premium · 7 days`, etc. Full-label overrides take precedence;
+leave them unset if they should follow future name changes. Blank values fall
+back to defaults and surrounding whitespace is trimmed. KraftAI's pricing and
+payment pages use the UI labels. Muse's own browser app keeps its existing UI copy.
+
+To show `Paire Plus` in our UI but send `KraftAI Plus` to Razorpay, set
+`PAIRE_PLUS_NAME="Paire Plus"` and `RAZORPAY_PLUS_NAME="KraftAI Plus"` in both
+projects. Likewise, set `RAZORPAY_CHAT_NAME="KraftAI Unlimited Chat"` for Chat.
+The Razorpay popup also shows the Razorpay description to buyers. Without a
+Razorpay override, descriptions inherit the corresponding UI labels, including
+full-label overrides. `RAZORPAY_*_LABEL` takes precedence over `RAZORPAY_*_NAME`.
+`PLUS_PASSES.razorpayLabel` and `CHAT_UNLOCK.razorpayLabel` feed the direct
+checkout payload; KraftAI's `PAIRE_PLANS.razorpayDescription` feeds hosted Checkout.
+Razorpay still receives the stable Paire product IDs and page/callback addresses;
+these display-name settings do not hide or change the underlying product.
+
+Restart local dev servers after changes. For production, redeploy KraftAI and
+`createPlusOrder` / `createChatUnlockOrder`. These are deployment settings, not
+live runtime switches. The Muse browser app and marketing copy keep their own names.
+
+Product IDs (`paire_plus`, `paire_unlimited_chat`), plan IDs, receipt prefixes,
+prices, durations, order/refund processing, URLs and webhook addresses stay the
+same when a name changes. Merchant display settings do not change Razorpay's
+registered merchant or bank-statement identity, or the site's legal ownership text.
+
 ## Turning it on (owner)
 
 1. **Razorpay account.** Ask Razorpay support to add Paire (paire.in, online dating passes) as a product of the KraftAI account. They review the business behind every payment; selling an undisclosed business through an account risks a freeze of the whole account, KraftAI's own sales included. `kraftai.in/paire` is the page to point them at.

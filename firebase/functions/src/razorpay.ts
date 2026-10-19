@@ -136,7 +136,7 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
     amount: pass.amountPaise,
     currency: "INR",
     keyId: process.env.RAZORPAY_KEY_ID,
-    description: pass.label,
+    description: pass.razorpayLabel,
     email: (request.auth?.token.email as string | undefined) ?? null,
     // name, and hostedUrl when Checkout opens on kraftai.in (lib/kraftai.ts).
     ...checkoutHost(order.id)

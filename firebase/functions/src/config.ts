@@ -1,3 +1,5 @@
+import { PAYMENT_NAMES } from "./lib/payment-names";
+
 /**
  * Region for every function. Keep it in the same location as the Firestore
  * database (Firebase console → Firestore → location) and mirror it in the app's
@@ -121,8 +123,10 @@ export const CHAT_UNLOCK = {
   product: "paire_unlimited_chat",
   amountPaise: 4900,
   currency: "INR",
-  /** Shown in Razorpay Checkout and on the receipt. */
-  label: "Paire Unlimited Chat · one-time ₹49 unlock",
+  /** Label for our own UI. */
+  label: PAYMENT_NAMES.labels.chat,
+  /** Description sent to Razorpay Checkout. */
+  razorpayLabel: PAYMENT_NAMES.razorpayLabels.chat,
   /** An open checkout is reused (not replaced) for this long, so two tabs can't take two payments. */
   checkoutReuseMs: 6 * 60 * 60_000,
   /** A checkout being created blocks a second one for this long. */

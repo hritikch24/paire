@@ -308,7 +308,7 @@ const checkoutPayload = (orderId: string, email: string | null): CheckoutPayload
   amount: CHAT_UNLOCK.amountPaise,
   currency: CHAT_UNLOCK.currency,
   keyId: process.env.RAZORPAY_KEY_ID,
-  description: CHAT_UNLOCK.label,
+  description: CHAT_UNLOCK.razorpayLabel,
   email,
   // name, and hostedUrl when Checkout opens on kraftai.in (lib/kraftai.ts).
   ...checkoutHost(orderId)
