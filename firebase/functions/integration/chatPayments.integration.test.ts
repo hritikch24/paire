@@ -27,7 +27,7 @@ const admin = getFirestore();
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const chat = require("../src/chatAccess") as typeof import("../src/chatAccess");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { razorpayWebhook, createPlusOrder } = require("../src/razorpay") as typeof import("../src/razorpay");
+const { razorpayWebhook, createPlusOrder, confirmPlusPayment } = require("../src/razorpay") as typeof import("../src/razorpay");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { syncChatAccess } = require("../src/chatEntitlement") as typeof import("../src/chatEntitlement");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -134,6 +134,82 @@ beforeEach(async () => {
 });
 afterAll(async () => {
   await admin.doc("runtime/trust").set({ requireVerification: false });
+});
+
+describe("Plus validity extensions", () => {
+  const day = 86_400_000;
+  const saved = async (orderId: string) => (await admin.doc(`razorpayOrders/${orderId}`).get()).data()!;
+  const confirm = (uid: string, payment: FakePayment) => call(confirmPlusPayment, uid, {
+    orderId: payment.order_id, paymentId: payment.id, signature: checkoutSignature(payment.order_id, payment.id)
+  });
+
+  test("active members can buy every pass; each adds its full duration and refunds preserve earlier time", async () => {
+    const uid = await buyer();
+    let until = 0;
+    for (const [plan, days] of [["day", 1], ["week", 7], ["month", 60]] as const) {
+      const { orderId } = await call(createPlusOrder, uid, { plan });
+      // Opening checkout alone never changes validity.
+      expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt") ?? 0).toBe(until);
+      const payment = pay(orderId);
+      const status = await confirm(uid, payment);
+      const order = await saved(orderId);
+      expect(order.expiresAt - order.startsAt).toBe(days * day);
+      if (until) expect(order.startsAt).toBe(until);
+      expect(status).toMatchObject({ active: true, pending: false, expiresAt: order.expiresAt });
+      expect(await mirrorOf(uid)).toMatchObject({ premiumUntil: order.expiresAt });
+      // Duplicate callbacks and webhooks never add the same days again.
+      await confirm(uid, payment);
+      expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
+      expect((await saved(orderId)).expiresAt).toBe(order.expiresAt);
+      if (plan === "month") {
+        expect(await webhook("refund.processed", { refund: { entity: { payment_id: payment.id } } })).toBe(200);
+        expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(until);
+      }
+      until = order.expiresAt;
+    }
+  });
+
+  test("complimentary Plus is preserved even without a queue ledger", async () => {
+    const uid = await buyer();
+    const until = Date.now() + 60 * day;
+    await admin.doc(`supportPlusGrants/${uid}`).set({ status: "active", startsAt: Date.now() - day, expiresAt: until, amountReportedPaise: 0 });
+    const { orderId } = await call(createPlusOrder, uid, { plan: "week" });
+    expect(await confirm(uid, pay(orderId))).toMatchObject({ expiresAt: until + 7 * day });
+    expect(await saved(orderId)).toMatchObject({ startsAt: until, expiresAt: until + 7 * day });
+  });
+
+  test("a pass bought through another gateway is preserved without a queue ledger", async () => {
+    const uid = await buyer();
+    const until = Date.now() + 7 * day;
+    await admin.doc(`upiUnlockOrders/earlier_${uid}`).set({ uid, kind: "plus", status: "approved", startsAt: Date.now() - day, expiresAt: until });
+    const { orderId } = await call(createPlusOrder, uid, { plan: "day" });
+    expect(await confirm(uid, pay(orderId))).toMatchObject({ expiresAt: until + day });
+  });
+
+  test("simultaneous captures and repeated deliveries queue every payment exactly once", async () => {
+    const uid = await buyer();
+    const first = await call(createPlusOrder, uid, { plan: "week" });
+    await confirm(uid, pay(first.orderId));
+    const until = (await saved(first.orderId)).expiresAt;
+    const one = await call(createPlusOrder, uid, { plan: "day" });
+    const two = await call(createPlusOrder, uid, { plan: "month" });
+    const p1 = pay(one.orderId), p2 = pay(two.orderId);
+    expect(await Promise.all([p1, p2, p1].map(payment => webhook("payment.captured", paymentEvent(payment))))).toEqual([200, 200, 200]);
+    const queued = [await saved(one.orderId), await saved(two.orderId)].sort((a, b) => a.startsAt - b.startsAt);
+    expect(queued[0].startsAt).toBe(until);
+    expect(queued[1].startsAt).toBe(queued[0].expiresAt);
+    expect(queued[1].expiresAt).toBe(until + 61 * day);
+    expect((await admin.doc(`webPassLedger/${uid}`).get()).get("until")).toBe(until + 61 * day);
+  });
+
+  test("a pending extension leaves an active pass's expiry unchanged", async () => {
+    const uid = await buyer();
+    const until = Date.now() + 7 * day;
+    await admin.doc(`supportPlusGrants/${uid}`).set({ status: "active", startsAt: Date.now() - day, expiresAt: until });
+    const { orderId } = await call(createPlusOrder, uid, { plan: "month" });
+    expect(await confirm(uid, pay(orderId, { status: "authorized" }))).toMatchObject({ active: true, pending: true, expiresAt: until });
+    expect(await saved(orderId)).toMatchObject({ status: "created" });
+  });
 });
 
 describe("Unlimited Chat orders", () => {
@@ -485,7 +561,13 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     expect(order.expiresAt - order.startsAt).toBe(7 * 24 * 60 * 60 * 1000);
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(order.expiresAt);
     expect(await mirrorOf(uid)).toMatchObject({ premiumUntil: order.expiresAt });
-    await expect(call(upi.createUpiUnlockOrder, uid, { plan: "day" })).rejects.toThrow(/already active/);
+    const extension = await call(upi.createUpiUnlockOrder, uid, { plan: "day" });
+    if (extension.status !== "order") throw new Error("expected an extension order");
+    await call(upi.submitUpiPayment, uid, { orderId: extension.order.orderId });
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: extension.order.orderId, decision: "approve" });
+    expect((await admin.doc(`upiUnlockOrders/${extension.order.orderId}`).get()).data()).toMatchObject({ startsAt: order.expiresAt, expiresAt: order.expiresAt + 86_400_000 });
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: extension.order.orderId, decision: "revoke" });
+    expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(order.expiresAt);
     await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "revoke" });
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(0);
   });

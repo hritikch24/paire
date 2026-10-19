@@ -76,7 +76,8 @@ export async function grantWebPass(orderId: string, paymentId: string): Promise<
   await db.runTransaction(async (tx) => {
     const [fresh, ledger] = await tx.getAll(ref, ledgerRef);
     if (fresh.get("status") !== "created") return;
-    const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry);
+    // Include authoritative grants even if an older account has no queue ledger yet.
+    const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry, await webPassExpiry(order.uid, now, tx));
     const { startsAt, expiresAt } = passWindow(now, passDays(order.plan), queuedUntil);
     tx.update(ref, { status: "paid", paymentId, paidAt: now, startsAt, expiresAt, updatedAt: FieldValue.serverTimestamp() });
     tx.set(ledgerRef, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
@@ -109,9 +110,6 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
   if (!(await verifiedUsers([uid])).has(uid)) {
     throw new HttpsError("failed-precondition", "Verify your photos before buying a pass, so you can use it straight away.");
   }
-  const status = await syncPremium(uid);
-  if (status.active) throw new HttpsError("failed-precondition", "Your Plus pass is already active.");
-
   const pass = PLUS_PASSES[plan];
   const order = await razorpay<{ id: string; amount: number; currency: string }>("/orders", {
     method: "POST",

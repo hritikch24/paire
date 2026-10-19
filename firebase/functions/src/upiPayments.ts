@@ -136,7 +136,6 @@ export const createUpiUnlockOrder = onCall({ region: REGION, secrets: ["REVENUEC
   if (kind === "chat" && (await db.collection("matches").where("participants", "array-contains", uid).limit(1).get()).empty) {
     throw new HttpsError("failed-precondition", "Unlimited Chat opens up once you have a mutual match.", { reason: "no-match" });
   }
-  if (kind === "plus" && (await syncPremium(uid)).active) throw new HttpsError("failed-precondition", "Your Plus pass is already active.");
   if (!(await verifiedUsers([uid])).has(uid)) throw new HttpsError("failed-precondition", "Verify your photos first, so you can use it straight away.", { reason: "verification-required" });
 
   const now = Date.now();
@@ -247,7 +246,7 @@ export const reviewUpiPayment = onCall({ region: REGION, secrets: ["REVENUECAT_S
       if (order.get("status") !== "submitted") throw new HttpsError("failed-precondition", "Only payments with a submitted UPI reference can be approved.");
       if (!user.exists) throw new HttpsError("failed-precondition", "This account was deleted. Refund the payment by hand.");
       if (kind === "plus") {
-        const queuedUntil = Math.max(Number(ledger?.get("until")) || 0, storeExpiry);
+        const queuedUntil = Math.max(Number(ledger?.get("until")) || 0, storeExpiry, await webPassExpiry(uid, now, tx));
         const { startsAt, expiresAt } = passWindow(now, passDays(order.get("plan") as PlusPlan), queuedUntil);
         tx.set(ledgerRef, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
         tx.update(ref, { ...audit, status: "approved", startsAt, expiresAt });

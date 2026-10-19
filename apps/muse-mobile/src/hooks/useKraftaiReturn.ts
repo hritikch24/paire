@@ -24,7 +24,7 @@ async function confirm(kind: "plus" | "chat", orderId: string, paymentId: string
   const body = { orderId, paymentId, signature };
   if (kind === "plus") {
     const status = await callFunction<PremiumStatus & { pending?: boolean }>("confirmPlusPayment", body);
-    return status.active ? "paid" : "pending";
+    return status.pending ? "pending" : status.active ? "paid" : "pending";
   }
   const result = await callFunction<{ status: "owned" | "pending" }>("confirmChatUnlock", body);
   return result.status === "owned" ? "paid" : "pending";
@@ -32,7 +32,12 @@ async function confirm(kind: "plus" | "chat", orderId: string, paymentId: string
 
 /** A cancelled or failed return: a UPI payment can still finish after the window closed, so look once. */
 async function recheck(kind: "plus" | "chat"): Promise<Outcome> {
-  if (kind === "plus") return (await fetchPremiumStatus()).active ? "paid" : "not-paid";
+  if (kind === "plus") {
+    // An existing pass doesn't prove this new payment succeeded. Refresh access,
+    // but only the signed, verified confirmation above can report a paid extension.
+    await fetchPremiumStatus();
+    return "not-paid";
+  }
   const access: ChatAccess = await fetchChatAccess(true);
   return access.unlimited ? "paid" : access.unlock.status === "pending" ? "pending" : "not-paid";
 }
@@ -71,6 +76,8 @@ export function useKraftaiReturn() {
           showToast(plus ? "Payment received. Your Paire Plus pass is active." : "Payment received. Unlimited chat is unlocked: your message is still in the chat, ready to send.", "success");
         } else if (outcome === "pending") {
           showToast("Payment received. Your bank is still confirming it, usually within a few minutes. You won't be charged again.");
+        } else if (plus) {
+          showToast("Payment window closed. If you completed a payment, your Plus validity will extend once it is confirmed. Open Paire Plus to check your expiry.");
         } else if (result === "cancelled") {
           showToast("Payment cancelled. You weren't charged.");
         } else {

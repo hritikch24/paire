@@ -49,7 +49,8 @@ export function PremiumScreen() {
   // Paid chat: Plus includes unlimited messaging while it runs (copy follows the server's switch).
   const chat = useChatAccess().data;
   const paidChat = Boolean(chat?.enforced || chat?.enforceFrom);
-  const ready = Boolean(premium.data && !premium.isError && !premium.data.active);
+  const extending = webCheckout && premium.data?.active === true;
+  const ready = Boolean(premium.data && !premium.isError && (webCheckout || !premium.data.active));
   // UPI straight to Paire when it's on (scan or open PhonePe/any UPI app); otherwise Razorpay on the
   // web, or the store's localised product in the app.
   const byUpi = premium.data?.upiPurchaseAvailable === true;
@@ -81,6 +82,7 @@ export function PremiumScreen() {
   };
   const priceLabel = webCheckout || byUpi ? `₹${plan.priceInr}` : (product?.priceString ?? `₹${plan.priceInr}`);
   const offer = webCheckout ? webPlan(plan) : null;
+  const extensionDuration = offer ? `${offer.days} ${offer.days === 1 ? "day" : "days"}` : "";
   // "2 months" says the offer in two words on the buy button.
   const buyLabel = offer && plan.bonusDays ? "2 months" : plan.label;
   const plans = webCheckout ? [...PREMIUM_PLANS].reverse() : PREMIUM_PLANS;
@@ -123,7 +125,7 @@ export function PremiumScreen() {
     <Screen scroll testID="premium-screen" header={<ScreenHeader title="Paire Plus" />} footer={
       <YStack gap="$2">
         <Text textAlign="center" fontSize="$2" color="$textMuted">{priceLabel} for {offer ? `${offer.days} days` : plan.detail.toLowerCase()} · one-time payment · no auto-renewal</Text>
-        <PrimaryButton testID="premium-purchase" loading={busy} disabled={!canPurchase} onPress={() => void act()}>{premium.data?.active ? "Your pass is active" : upiSubmitted ? "Confirming your UPI payment" : canPurchase ? (byUpi ? `Pay ${priceLabel} by UPI · ${buyLabel}` : `Get ${buyLabel} · ${priceLabel}`) : "Plus is coming soon"}</PrimaryButton>
+        <PrimaryButton testID="premium-purchase" loading={busy} disabled={!canPurchase} onPress={() => void act()}>{upiSubmitted ? "Confirming your UPI payment" : canPurchase ? (extending ? `Extend Plus by ${extensionDuration} · ${priceLabel}` : byUpi ? `Pay ${priceLabel} by UPI · ${buyLabel}` : `Get ${buyLabel} · ${priceLabel}`) : premium.data?.active ? "Your pass is active" : "Plus is coming soon"}</PrimaryButton>
         {byCcavenue && !ccavenueOnly && ready ? <SecondaryButton testID="premium-ccavenue" disabled={busy} onPress={() => void payByCcavenue()}>{`Pay ${priceLabel} by card, netbanking or wallet`}</SecondaryButton> : null}
         <Text textAlign="center" fontSize="$1" color="$textMuted">{upiSubmitted ? "Thanks! Your pass starts as soon as we confirm your UPI payment, usually within a few hours." : canPurchase ? (byUpi ? `Pay by UPI straight to Paire: scan the QR code, or open PhonePe, Google Pay, Paytm or any UPI app.${byCcavenue ? " Or pay by card, netbanking or wallet through CCAvenue." : ""}` : ccavenueOnly ? "Pay securely with cards, UPI, netbanking or wallets via CCAvenue. You'll come back here after paying." : webCheckout ? "Pay securely with UPI, cards or netbanking via Razorpay. You'll come back here after paying." : "Pay securely through your app store.") : premium.data?.active ? `Available until ${new Date(premium.data.expiresAt!).toLocaleString("en-IN")}.` : "Purchases aren’t available yet. You won’t be charged."}</Text>
       </YStack>
@@ -137,6 +139,12 @@ export function PremiumScreen() {
           <Text fontSize={34} lineHeight={40} fontWeight="700" accessibilityRole="header">More reach.{"\n"}Never more rules.</Text>
           <Text fontSize="$4" color="$textMuted" lineHeight={24}>{paidChat ? "Matching and safety are free. Plus is a pass for meeting more people, with messaging included while it runs: no subscription, no auto-renewal." : "Everything that matters is free. Plus is a pass for when you want to meet more people: no subscription, no auto-renewal."}</Text>
         </YStack>
+        {extending && premium.data?.expiresAt ? (
+          <YStack testID="premium-extension" padding="$4" borderRadius={20} backgroundColor="$primarySoft" gap="$2">
+            <Text fontWeight="700">{`Your Plus is active until ${new Date(premium.data.expiresAt).toLocaleString("en-IN")}`}</Text>
+            <Text fontSize="$2" lineHeight={21}>{`Add ${extensionDuration} after your current expiry. Your new expiry will be ${new Date(premium.data.expiresAt + offer!.days * 86_400_000).toLocaleString("en-IN")}. You keep all your remaining time.`}</Text>
+          </YStack>
+        ) : null}
         <YStack gap="$2" accessibilityRole="radiogroup" accessibilityLabel="Plus pass duration">
           {plans.map((item) => {
             const active = selected === item.id;
@@ -176,7 +184,7 @@ export function PremiumScreen() {
           </YStack>
         ) : null}
         {message ? <Text accessibilityLiveRegion="polite" color="$textMuted" lineHeight={22}>{message}</Text> : null}
-        {byUpi && openOrder && !upiSubmitted && !premium.data?.active ? (
+        {byUpi && openOrder && !upiSubmitted && (webCheckout || !premium.data?.active) ? (
           <UpiPayPanel order={openOrder} onSubmitted={(next) => { setShownOrder(next); void upiOrder.refetch(); }} />
         ) : null}
         {premium.data?.purchaseBlockReason === "verification-required" ? <YStack gap="$2"><Text color="$textMuted">Verify your photos before buying a pass, so you can use it straight away.</Text><SecondaryButton onPress={() => navigation.navigate("Verification")}>Verify my photos</SecondaryButton></YStack> : null}

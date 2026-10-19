@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
+import type { Transaction } from "firebase-admin/firestore";
 import { db } from "./admin";
 import { REGION } from "./config";
 import { requireReadAuth, isSupportSession } from "./lib/auth";
@@ -71,15 +72,19 @@ export async function storeExpiryIfEnabled(uid: string, now = Date.now()): Promi
 }
 
 /** Latest expiry among the member's paid, unrefunded web passes. 0 when none. */
-export async function webPassExpiry(uid: string, now = Date.now()): Promise<number> {
+export async function webPassExpiry(uid: string, now = Date.now(), tx?: Transaction): Promise<number> {
+  const paidQuery = db.collection("razorpayOrders").where("uid", "==", uid).where("status", "==", "paid");
+  const upiQuery = db.collection("upiUnlockOrders").where("uid", "==", uid).where("status", "==", "approved");
+  const ccavenueQuery = db.collection("ccavenueOrders").where("uid", "==", uid).where("status", "==", "paid");
+  const supportRef = db.doc(`supportPlusGrants/${uid}`);
   const [paid, upi, ccavenue, support] = await Promise.all([
-    db.collection("razorpayOrders").where("uid", "==", uid).where("status", "==", "paid").get(),
+    tx ? tx.get(paidQuery) : paidQuery.get(),
     // Plus passes paid by UPI and approved by a moderator (upiPayments.ts).
-    db.collection("upiUnlockOrders").where("uid", "==", uid).where("status", "==", "approved").get(),
+    tx ? tx.get(upiQuery) : upiQuery.get(),
     // Plus passes paid through CCAvenue (ccavenue.ts).
-    db.collection("ccavenueOrders").where("uid", "==", uid).where("status", "==", "paid").get(),
+    tx ? tx.get(ccavenueQuery) : ccavenueQuery.get(),
     // A separately audited owner-authorized recovery, never a fabricated gateway success.
-    db.doc(`supportPlusGrants/${uid}`).get()
+    tx ? tx.get(supportRef) : supportRef.get()
   ]);
   const supportUntil = support.get("status") === "active" && Number(support.get("startsAt")) <= now &&
     typeof support.get("expiresAt") === "number" ? support.get("expiresAt") as number : 0;

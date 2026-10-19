@@ -237,7 +237,7 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
         return "granted";
       }
       // Passes never overlap: this one starts when any running pass (web or store) ends.
-      const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry);
+      const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry, await webPassExpiry(order.uid, now, tx));
       const { startsAt, expiresAt } = passWindow(now, passDays(order.plan!), queuedUntil);
       tx.set(ledger.ref, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
       tx.update(ref, { ...record, status: "paid", paidAt: now, startsAt, expiresAt, awaiting: false });
@@ -330,7 +330,6 @@ export const createCcavenueOrder = onCall({ region: REGION, secrets: SECRETS, ti
   if (kind === "chat" && (await db.collection("matches").where("participants", "array-contains", uid).limit(1).get()).empty) {
     throw new HttpsError("failed-precondition", "Unlimited Chat opens up once you have a mutual match.", { reason: "no-match" });
   }
-  if (kind === "plus" && (await syncPremium(uid)).active) throw new HttpsError("failed-precondition", "Your Plus pass is already active.");
   if (!(await verifiedUsers([uid])).has(uid)) throw new HttpsError("failed-precondition", "Verify your photos first, so you can use it straight away.", { reason: "verification-required" });
 
   let orderId = newCcavenueOrderId();

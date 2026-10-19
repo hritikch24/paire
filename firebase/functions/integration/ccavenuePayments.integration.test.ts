@@ -307,7 +307,13 @@ describe("Paire Plus through CCAvenue", () => {
     expect(saved).toMatchObject({ kind: "plus", plan: "week", status: "paid" });
     expect(saved.expiresAt - saved.startsAt).toBe(7 * 24 * 60 * 60 * 1000);
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(saved.expiresAt);
-    await expect(call(cc.createCcavenueOrder, uid, { plan: "day" })).rejects.toThrow(/already active/);
+    const extension = await start(uid, { plan: "day" });
+    const extensionPayment = pay(extension.orderId, { order_amt: 20 });
+    await call(cc.confirmCcavenueOrder, uid, { orderId: extension.orderId });
+    expect(await orderOf(extension.orderId)).toMatchObject({ startsAt: saved.expiresAt, expiresAt: saved.expiresAt + 86_400_000 });
+    extensionPayment.order_status = "Refunded";
+    await call(cc.confirmCcavenueOrder, uid, { orderId: extension.orderId });
+    expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(saved.expiresAt);
     order.order_status = "Refunded";
     await call(cc.confirmCcavenueOrder, uid, { orderId });
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(0);
