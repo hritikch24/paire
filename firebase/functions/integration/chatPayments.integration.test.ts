@@ -17,6 +17,7 @@ process.env.MUSE_CHAT_UNLOCK_ENABLED = "true";
 process.env.MUSE_BILLING_SANDBOX = "true";
 process.env.MUSE_BILLING_ENABLED = "true";
 process.env.MUSE_UNCACHED_RUNTIME = "true";
+process.env.KRAFTAI_CHECKOUT_URL = "https://kraftai.in/pay/start";
 process.env.MUSE_UPI_VPA = "paire.in@ybl";
 delete process.env.FUNCTIONS_EMULATOR;
 
@@ -136,13 +137,51 @@ afterAll(async () => {
 });
 
 describe("Unlimited Chat orders", () => {
+  test("Plus orders use KraftAI metadata while ownership stays in Firestore", async () => {
+    for (const plan of ["day", "week", "month"]) {
+      const uid = await buyer();
+      const result = await call(createPlusOrder, uid, { plan });
+      expect(fake.orders.get(result.orderId)?.notes).toEqual({ product: "kraftai_plus", plan });
+      expect(result.description).toMatch(/^KraftAI Plus/);
+      expect(result.hostedUrl).toMatch(/^https:\/\/kraftai\.in\/pay\/start\?order=/);
+      expect((await admin.doc(`razorpayOrders/${result.orderId}`).get()).get("uid")).toBe(uid);
+    }
+  });
+
+  test("unconfigured hosted checkout cannot create an order", async () => {
+    const original = process.env.KRAFTAI_CHECKOUT_URL;
+    const count = fake.orders.size;
+    delete process.env.KRAFTAI_CHECKOUT_URL;
+    try {
+      await expect(call(chat.createChatUnlockOrder, await buyer())).rejects.toThrow(/Secure checkout is unavailable/);
+      await expect(call(createPlusOrder, await buyer(), { plan: "day" })).rejects.toThrow(/Secure checkout is unavailable/);
+      expect(fake.orders.size).toBe(count);
+    } finally {
+      process.env.KRAFTAI_CHECKOUT_URL = original;
+    }
+  });
+
+  test("replaces an unpaid legacy chat order but still settles a captured legacy payment", async () => {
+    const uid = await buyer();
+    const legacy = await checkout(uid);
+    fake.orders.get(legacy)!.notes = { product: "paire_unlimited_chat", uid };
+    const replacement = await checkout(uid);
+    expect(replacement).not.toBe(legacy);
+    expect(fake.orders.get(replacement)?.notes).toEqual({ product: "kraftai_unlimited_chat" });
+    expect((await admin.doc(`chatUnlockOrders/${legacy}`).get()).get("status")).toBe("created");
+    pay(legacy);
+    const payment = [...fake.payments.values()].find(item => item.order_id === legacy)!;
+    expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
+    expect((await unlockOf(uid))?.orderId).toBe(legacy);
+  });
+
   test("the server sets the product and price and binds the order to the caller", async () => {
     const uid = await buyer();
     const result = await call(chat.createChatUnlockOrder, uid, { amount: 1, currency: "USD", uid: "someone-else", product: "plus" });
     expect(result.status).toBe("checkout");
     if (result.status !== "checkout") return;
-    expect(result.checkout).toMatchObject({ amount: 4900, currency: "INR", name: "Paire", description: "Paire Unlimited Chat · one-time ₹49 unlock" });
-    expect(fake.orders.get(result.checkout.orderId)).toMatchObject({ amount: 4900, currency: "INR", notes: { product: "paire_unlimited_chat", uid } });
+    expect(result.checkout).toMatchObject({ amount: 4900, currency: "INR", name: "KraftAI", description: "KraftAI Unlimited Chat · one-time ₹49 unlock" });
+    expect(fake.orders.get(result.checkout.orderId)?.notes).toEqual({ product: "kraftai_unlimited_chat" });
     expect((await admin.doc(`chatUnlockOrders/${result.checkout.orderId}`).get()).data()).toMatchObject({ uid, amountPaise: 4900, currency: "INR", mode: "test", status: "created" });
   });
 

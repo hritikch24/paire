@@ -69,13 +69,21 @@ export class CheckoutCancelled extends Error {
  * usual. Drafts and the chat they were in come back with them.
  */
 export function leaveForHostedCheckout(order: CheckoutOrder, returnToChat?: string) {
+  if (!order.hostedUrl) throw new Error("Secure hosted checkout is unavailable. Please try again later.");
   stashDrafts();
   rememberReturnChat(returnToChat);
-  window.location.assign(order.hostedUrl!);
+  const link = document.createElement("a");
+  link.href = order.hostedUrl;
+  link.rel = "noreferrer noopener";
+  link.referrerPolicy = "no-referrer";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 /** Opens Razorpay Checkout for a server-created order. Resolves with Checkout's signed response, which the server still verifies. */
 export async function openCheckout(order: CheckoutOrder, theme: string): Promise<CheckoutResult> {
+  if (Platform.OS === "web") throw new Error("Please use secure hosted checkout.");
   const Razorpay = await loadCheckout();
   return new Promise<CheckoutResult>((resolve, reject) => {
     const checkout = new Razorpay({
@@ -102,7 +110,7 @@ export async function openCheckout(order: CheckoutOrder, theme: string): Promise
  */
 export async function purchaseWebPass(planId: PremiumPlanId, theme: string): Promise<(PremiumStatus & { pending?: boolean }) | { redirecting: true }> {
   const order = await callFunction<PlusOrder>("createPlusOrder", { plan: planId });
-  if (order.hostedUrl) {
+  if (order.hostedUrl || Platform.OS === "web") {
     leaveForHostedCheckout(order);
     return { redirecting: true };
   }

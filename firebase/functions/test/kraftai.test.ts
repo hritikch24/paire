@@ -9,14 +9,14 @@ describe("Checkout hosted on kraftai.in", () => {
     else process.env.KRAFTAI_CHECKOUT_URL = original;
   });
 
-  it("keeps Checkout on paire.in when no host is configured", () => {
+  it("does not create inline checkout when no host is configured", () => {
     delete process.env.KRAFTAI_CHECKOUT_URL;
-    expect(checkoutHost("order_ABC123def")).toEqual({ name: "Paire", hostedUrl: null });
+    expect(() => checkoutHost("order_ABC123def")).toThrow("Secure checkout is unavailable");
   });
 
   it("sends the order to kraftai.in, named KraftAI, when configured", () => {
-    process.env.KRAFTAI_CHECKOUT_URL = "https://kraftai.in/pay/paire";
-    expect(checkoutHost("order_ABC123def")).toEqual({ name: "KraftAI", hostedUrl: "https://kraftai.in/pay/paire?order=order_ABC123def" });
+    process.env.KRAFTAI_CHECKOUT_URL = "https://kraftai.in/pay/start";
+    expect(checkoutHost("order_ABC123def")).toEqual({ name: "KraftAI", hostedUrl: "https://kraftai.in/pay/start?order=order_ABC123def" });
   });
 
   it("only accepts https, or http on localhost for local testing", () => {
@@ -24,7 +24,9 @@ describe("Checkout hosted on kraftai.in", () => {
     expect(hostedCheckoutBase("javascript:alert(1)")).toBeNull();
     expect(hostedCheckoutBase("not a url")).toBeNull();
     expect(hostedCheckoutBase("")).toBeNull();
-    expect(hostedCheckoutBase("http://localhost:3000/pay/paire")?.toString()).toBe("http://localhost:3000/pay/paire");
+    expect(hostedCheckoutBase("http://localhost:3000/pay/paire")?.toString()).toBe("http://localhost:3000/pay/start");
+    expect(hostedCheckoutBase("https://paire.in/pay/checkout")).toBeNull();
+    expect(hostedCheckoutBase("https://kraftai.in/pay/paire?source=paire#paire")?.toString()).toBe("https://kraftai.in/pay/start");
   });
 
   it("charges exactly what kraftai.in publishes (change both sites together)", () => {

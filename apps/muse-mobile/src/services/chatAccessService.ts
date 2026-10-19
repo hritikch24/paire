@@ -1,5 +1,6 @@
 import { CheckoutOrder, leaveForHostedCheckout, openCheckout } from "./billingService";
 import { callFunction } from "./firebase";
+import { Platform } from "react-native";
 
 /**
  * Who may send messages, as the server sees it (getChatAccess). The app only
@@ -50,7 +51,7 @@ export async function purchaseChatUnlock(theme: string, returnToChat?: string): 
   const created = await callFunction<CreateResult>("createChatUnlockOrder");
   if (created.status !== "checkout") return created.status;
   // Checkout on kraftai.in: the page leaves, and comes back to this chat.
-  if (created.checkout.hostedUrl) {
+  if (created.checkout.hostedUrl || Platform.OS === "web") {
     leaveForHostedCheckout(created.checkout, returnToChat);
     return "redirecting";
   }

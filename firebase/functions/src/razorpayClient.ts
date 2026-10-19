@@ -11,7 +11,9 @@ function authHeader(): string {
 export async function razorpay<T>(path: string, init?: { method: "POST"; body: unknown }): Promise<T> {
   const response = await fetch(`${RAZORPAY_API}${path}`, {
     method: init?.method ?? "GET",
-    headers: { authorization: authHeader(), "content-type": "application/json" },
+    headers: { authorization: authHeader(), "content-type": "application/json", "user-agent": "KraftAI/1.0" },
+    credentials: "omit",
+    referrerPolicy: "no-referrer",
     body: init ? JSON.stringify(init.body) : undefined,
     signal: AbortSignal.timeout(10_000)
   });

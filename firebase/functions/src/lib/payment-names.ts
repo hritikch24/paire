@@ -14,21 +14,20 @@ const labels = {
   month: configured(process.env.PAIRE_PLUS_MONTH_LABEL, `${plus} · 1 month + 1 month free`),
   chat: configured(process.env.PAIRE_CHAT_LABEL, `${chat} · one-time ₹49 unlock`)
 };
-const razorpayPlus = process.env.RAZORPAY_PLUS_NAME?.trim();
-const razorpayChat = process.env.RAZORPAY_CHAT_NAME?.trim();
+const razorpayPlus = configured(process.env.RAZORPAY_PLUS_NAME, "KraftAI Plus");
+const razorpayChat = configured(process.env.RAZORPAY_CHAT_NAME, "KraftAI Unlimited Chat");
 
 export const PAYMENT_NAMES = {
   plus,
   chat,
   labels,
   // Razorpay descriptions can differ from the labels on our own pages.
-  // Without overrides, preserve the UI labels (including full-label customizations).
+  // Public payment descriptions never inherit the app's branding by default.
   razorpayLabels: {
-    day: configured(process.env.RAZORPAY_PLUS_DAY_LABEL, razorpayPlus ? `${razorpayPlus} · 1 day` : labels.day),
-    week: configured(process.env.RAZORPAY_PLUS_WEEK_LABEL, razorpayPlus ? `${razorpayPlus} · 7 days` : labels.week),
-    month: configured(process.env.RAZORPAY_PLUS_MONTH_LABEL, razorpayPlus ? `${razorpayPlus} · 1 month + 1 month free` : labels.month),
-    chat: configured(process.env.RAZORPAY_CHAT_LABEL, razorpayChat ? `${razorpayChat} · one-time ₹49 unlock` : labels.chat)
+    day: configured(process.env.RAZORPAY_PLUS_DAY_LABEL, `${razorpayPlus} · 1 day`),
+    week: configured(process.env.RAZORPAY_PLUS_WEEK_LABEL, `${razorpayPlus} · 7 days`),
+    month: configured(process.env.RAZORPAY_PLUS_MONTH_LABEL, `${razorpayPlus} · 1 month + 1 month free`),
+    chat: configured(process.env.RAZORPAY_CHAT_LABEL, `${razorpayChat} · one-time ₹49 unlock`)
   },
-  directMerchant: configured(process.env.PAIRE_CHECKOUT_NAME, "Paire"),
   hostedMerchant: configured(process.env.KRAFTAI_CHECKOUT_NAME, "KraftAI")
 } as const;

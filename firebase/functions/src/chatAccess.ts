@@ -8,7 +8,8 @@ import { chatPolicy, syncChatAccess } from "./chatEntitlement";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth, requireReadAuth, isSupportSession } from "./lib/auth";
 import { ChatAccessMirror, entitled, paidChatEnforced, razorpayMode, RazorpayMode, unlockPaymentVerdict, UnlockPayment, unlockReceipt } from "./lib/chatAccess";
-import { checkoutHost } from "./lib/kraftai";
+import { checkoutHost, requireHostedCheckout } from "./lib/kraftai";
+import { CHECKOUT_PRODUCTS } from "./lib/checkout-products";
 import { isRazorpayId, validCheckoutSignature } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
 import { razorpay } from "./razorpayClient";
@@ -165,7 +166,7 @@ async function refundPayment(orderId: string, paymentId: string, reason: string)
   try {
     const refund = await razorpay<RefundResult>(`/payments/${paymentId}/refund`, {
       method: "POST",
-      body: { amount: CHAT_UNLOCK.amountPaise, speed: "normal", notes: { reason, product: CHAT_UNLOCK.product } }
+      body: { amount: CHAT_UNLOCK.amountPaise, speed: "normal", notes: { reason, product: CHECKOUT_PRODUCTS.chat } }
     });
     await ref.update(extra
       ? { extraRefunds: FieldValue.arrayUnion({ paymentId, refundId: refund.id ?? null, at: Date.now() }) }
@@ -299,7 +300,7 @@ export async function disputeChatUnlock(paymentId: unknown, orderId: unknown, ev
   return true;
 }
 
-type RazorpayOrder = { id?: string; status?: string; amount?: number; currency?: string };
+type RazorpayOrder = { id?: string; status?: string; amount?: number; currency?: string; notes?: { product?: string } };
 type CheckoutPayload = { orderId: string; amount: number; currency: string; keyId: string | undefined; name: string; description: string; email: string | null; hostedUrl: string | null };
 type CreateResult = { status: "checkout"; checkout: CheckoutPayload } | { status: "owned" } | { status: "pending" };
 
@@ -345,6 +346,8 @@ export async function reconcileCheckout(uid: string): Promise<{ state: "owned" |
     }
   }
   // Nothing settling: the same order can be paid (a stale one is replaced).
+  // Legacy orders still settle above, but new checkouts use the current public identifier.
+  if (remote.notes?.product !== CHECKOUT_PRODUCTS.chat) return { state: "none" };
   if (Date.now() - updatedAt > CHAT_UNLOCK.checkoutReuseMs) return { state: "none" };
   if (checkout.get("state") === "pending") await checkoutRef.set({ state: "open", orderId, updatedAt });
   return { state: "reusable", orderId };
@@ -353,6 +356,7 @@ export async function reconcileCheckout(uid: string): Promise<{ state: "owned" |
 export const createChatUnlockOrder = onCall({ region: REGION, secrets: SECRETS, timeoutSeconds: 30 }, async (request): Promise<CreateResult> => {
   const uid = requireAuth(request);
   if (!(await salesOpen())) throw new HttpsError("failed-precondition", "Unlimited Chat isn't available yet. You haven't been charged.", { reason: "sales-off" });
+  requireHostedCheckout();
   await consumeDailyQuota(uid, "chatUnlockOrders", CHAT_UNLOCK.ordersPerDay);
   const mode = sellingMode()!;
   const [user, moderation, unlock] = await db.getAll(db.doc(`users/${uid}`), db.doc(`moderation/${uid}`), db.doc(`chatUnlocks/${uid}`));
@@ -395,7 +399,7 @@ export const createChatUnlockOrder = onCall({ region: REGION, secrets: SECRETS, 
         amount: CHAT_UNLOCK.amountPaise,
         currency: CHAT_UNLOCK.currency,
         receipt: unlockReceipt(hash(uid), Date.now()),
-        notes: { product: CHAT_UNLOCK.product, uid }
+        notes: { product: CHECKOUT_PRODUCTS.chat }
       }
     });
     if (!isRazorpayId(order.id, "order") || order.amount !== CHAT_UNLOCK.amountPaise || order.currency !== CHAT_UNLOCK.currency) {

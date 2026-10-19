@@ -6,7 +6,8 @@ import { handleChatUnlockWebhook } from "./chatAccess";
 import { razorpayConfigured, razorpayPlusOpen, storeExpiryIfEnabled, syncPremium, webPassExpiry } from "./billing";
 import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
-import { checkoutHost } from "./lib/kraftai";
+import { checkoutHost, requireHostedCheckout } from "./lib/kraftai";
+import { CHECKOUT_PRODUCTS } from "./lib/checkout-products";
 import {
   isPlusPlan,
   isRazorpayId,
@@ -103,6 +104,7 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
   const plan = (request.data as { plan?: unknown } | null)?.plan;
   if (!isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass.");
   if (!(await razorpayPlusOpen())) throw new HttpsError("failed-precondition", "Card payments aren't available right now. You haven't been charged.");
+  requireHostedCheckout();
   await consumeDailyQuota(uid, "plusOrders", 20);
   if (!(await verifiedUsers([uid])).has(uid)) {
     throw new HttpsError("failed-precondition", "Verify your photos before buying a pass, so you can use it straight away.");
@@ -117,7 +119,7 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
       amount: pass.amountPaise,
       currency: "INR",
       receipt: `plus_${plan}_${Date.now()}`,
-      notes: { uid, plan, product: "paire_plus" }
+      notes: { plan, product: CHECKOUT_PRODUCTS.plus }
     }
   });
   if (!isRazorpayId(order.id, "order") || order.amount !== pass.amountPaise) {
