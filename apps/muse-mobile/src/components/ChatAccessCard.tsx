@@ -177,7 +177,7 @@ export function ChatAccessCard({ access, matchId, onGetPlus, onVerify }: Props) 
                 </SecondaryButton>
               ) : null}
               <Text fontSize="$1" color="$textMuted" lineHeight={18}>
-                {`One payment of ${price} covers all your current and future mutual matches. No expiry, no renewal, no per-match charge. Messaging only: it doesn't include Plus's likes or filters.${byUpi ? " Pay by UPI." : ""}${byCcavenue ? ` ${byUpi ? "Or pay" : "Pay"} securely through CCAvenue with a card, UPI, netbanking or a wallet; you'll come back here after paying.` : ""}`}
+                {`One payment of ${price} covers all your current and future mutual matches. No expiry, no renewal, no per-match charge. Messaging only: it doesn't include Plus's likes or filters.${byUpi ? " Pay by UPI." : ""}${byCcavenue ? ` ${byUpi ? "Or pay" : "Pay"} securely through CCAvenue with a card, UPI, netbanking or a wallet; you'll come back here after paying.` : ""}${byRazorpay && !byUpi && !ccavenueOnly ? " Paire is owned by KraftAI, so you'll see KraftAI on the payment page and on your bank statement." : ""}`}
               </Text>
             </>
           ) : unlock?.reason === "verification-required" ? (
