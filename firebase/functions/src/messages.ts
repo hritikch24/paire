@@ -150,7 +150,7 @@ async function recordFlag(
 export const onMessageCreated = onDocumentCreated(
   { document: "matches/{matchId}/messages/{messageId}", region: REGION, secrets: ["ANTHROPIC_API_KEY", ...WEB_PUSH_SECRETS] },
   async (event) => {
-    const message = event.data?.data() as { senderId?: string; text?: string } | undefined;
+    const message = event.data?.data() as { senderId?: string; text?: string; contactShareConfirmed?: boolean } | undefined;
     // "system" notes ("Riya left the chat") are written by the server and need neither.
     if (!message?.senderId || message.senderId === "system" || typeof message.text !== "string") return;
 
@@ -188,7 +188,8 @@ export const onMessageCreated = onDocumentCreated(
         sendPushToUser(recipient, {
           kind: "messages",
           title: group ? `${sender} · Duo chat` : sender,
-          body: flag?.hidden ? "Sent a message. Paire flagged it, so open it with care." : preview(text),
+          body: flag?.hidden ? "Sent a message. Paire flagged it, so open it with care."
+            : message.contactShareConfirmed === true ? "Shared contact details" : preview(text),
           data: { type: "message", matchId },
           tag: `chat-${matchId}`
         })

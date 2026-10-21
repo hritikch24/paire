@@ -77,6 +77,21 @@ describe("sendChatMessage", () => {
     expect(batch.commit).toHaveBeenCalled();
   });
 
+  it("shares only the explicitly confirmed message and keeps contact details out of previews", async () => {
+    const old = Platform.OS;
+    Object.defineProperty(Platform, "OS", { value: "web", configurable: true });
+    const batch = { set: jest.fn(), update: jest.fn(), commit: jest.fn(async () => undefined) };
+    mocked.writeBatch.mockReturnValue(batch);
+    try {
+      await sendChatMessage("a_b", "a", ["b"], "  IG: alex  ", { shareContactDetails: true });
+      expect(batch.set.mock.calls[0][1]).toEqual({ senderId: "a", text: "IG: alex", createdAt: "SERVER_TIME", contactShareConfirmed: true });
+      expect(batch.update.mock.calls[0][1]).toMatchObject({ lastMessage: { text: "Shared contact details" }, "unread.b": { increment: 1 } });
+      expect(batch.commit).toHaveBeenCalledTimes(1);
+      await expect(sendChatMessage("a_b", "a", ["b"], "IG: alex")).rejects.toMatchObject({ code: "chat/contact-details" });
+      expect(batch.commit).toHaveBeenCalledTimes(1);
+    } finally { Object.defineProperty(Platform, "OS", { value: old, configurable: true }); }
+  });
+
   it("bumps everyone else's unread count in a Duo chat", async () => {
     const batch = { set: jest.fn(), update: jest.fn(), commit: jest.fn(async () => undefined) };
     mocked.writeBatch.mockReturnValue(batch);

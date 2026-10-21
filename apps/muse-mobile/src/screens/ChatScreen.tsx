@@ -15,6 +15,7 @@ import { ChatAccessCard } from "../components/ChatAccessCard";
 import { Icon } from "../components/Icon";
 import { IconButton } from "../components/IconButton";
 import { MuseInput } from "../components/MuseInput";
+import { SecondaryButton } from "../components/MuseButton";
 import { LoadingView } from "../components/States";
 import { showToast } from "../components/Toast";
 import { features } from "../config/features";
@@ -116,6 +117,8 @@ export function ChatScreen() {
     [matchId]
   );
   const [sending, setSending] = useState(false);
+  const sendInFlight = useRef(false);
+  const contactDialogOpen = useRef(false);
   const contactIssue = Platform.OS === "web" ? chatContactIssue(text) : null;
   const [menuOpen, setMenuOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
@@ -216,16 +219,17 @@ export function ChatScreen() {
     }
   };
 
-  const handleSend = async (body = text) => {
-    const trimmed = body.trim();
+  const handleSend = async (body = text, shareContactDetails = false) => {
+    const trimmed = body.trim().slice(0, MAX_MESSAGE_LENGTH);
     const recipients = match ? otherParticipants(match, uid) : [otherUid];
-    if (!trimmed || !active || sending || locked || !recipients.length || !recipients[0]) return;
+    if (!trimmed || !active || sendInFlight.current || locked || !recipients.length || !recipients[0]) return;
     const issue = Platform.OS === "web" ? chatContactIssue(trimmed) : null;
-    if (issue) { showToast(issue.message, "error"); return; }
+    if (issue && !shareContactDetails) { showToast(issue.message, "error"); return; }
+    sendInFlight.current = true;
     setSending(true);
     setText("");
     try {
-      await sendChatMessage(matchId, uid, recipients, trimmed);
+      await sendChatMessage(matchId, uid, recipients, trimmed, { shareContactDetails });
     } catch (error) {
       setText(trimmed);
       if (errorCode(error) === "permission-denied") {
@@ -235,8 +239,30 @@ export function ChatScreen() {
       }
       showToast(friendlyError(error, "Message not sent. Please try again."), "error");
     } finally {
+      sendInFlight.current = false;
       setSending(false);
     }
+  };
+
+  const confirmContactShare = () => {
+    if (Platform.OS !== "web" || !contactIssue || locked || sendInFlight.current || contactDialogOpen.current) return;
+    const draft = text;
+    contactDialogOpen.current = true;
+    const dismiss = () => { contactDialogOpen.current = false; };
+    Alert.alert(
+      "Share your contact details?",
+      `This sends your current message to ${group ? "everyone in this chat" : name}. Only share your own details, and only if you feel comfortable. You can keep chatting here instead.`,
+      [
+        { text: "Keep editing", style: "cancel", onPress: dismiss },
+        { text: "Share and send", onPress: () => {
+          dismiss();
+          // Consent is for this exact draft in this chat, never a persistent opt-out.
+          if (!navigation.isFocused() || draftFor(matchId) !== draft) return;
+          void handleSend(draft, true);
+        } }
+      ],
+      { cancelable: true, onDismiss: dismiss }
+    );
   };
 
   const confirmUnmatch = () =>
@@ -751,12 +777,12 @@ export function ChatScreen() {
                 borderRadius={23}
                 paddingTop="$3"
                 textAlignVertical="center"
-                {...(contactIssue ? { borderColor: "$error" as const } : {})}
+                {...(contactIssue ? { borderColor: "$primary" as const } : {})}
               />
               <IconButton
                 testID="chat-send"
                 icon="arrow-up"
-                accessibilityLabel={locked ? "Sending needs Paire Plus or Unlimited Chat" : contactIssue ? "Remove contact details to send" : "Send message"}
+                accessibilityLabel={locked ? "Sending needs Paire Plus or Unlimited Chat" : contactIssue ? "Use Share contact details or remove details to send" : "Send message"}
                 variant="solid"
                 color="primary"
                 size={46}
@@ -765,10 +791,15 @@ export function ChatScreen() {
               />
             </XStack>
             {contactIssue ? (
-              <XStack testID="chat-contact-warning" paddingHorizontal="$4" paddingBottom="$3" gap="$2" alignItems="flex-start" backgroundColor="$backgroundStrong">
-                <Icon name="information-circle-outline" color="error" size={16} />
-                <Text accessibilityLiveRegion="polite" color="$error" fontSize="$2" lineHeight={20} flex={1}>{contactIssue.message}</Text>
-              </XStack>
+              <YStack testID="chat-contact-warning" paddingHorizontal="$4" paddingBottom="$3" gap="$2" backgroundColor="$backgroundStrong">
+                <XStack gap="$2" alignItems="flex-start">
+                  <Icon name="shield-checkmark-outline" color="primary" size={16} />
+                  <Text accessibilityLiveRegion="polite" color="$textMuted" fontSize="$2" lineHeight={20} flex={1}>{contactIssue.message}</Text>
+                </XStack>
+                <SecondaryButton testID="chat-share-contact" disabled={sending || locked} onPress={confirmContactShare}>
+                  Share contact details
+                </SecondaryButton>
+              </YStack>
             ) : null}
           </YStack>
         ) : match !== undefined ? (

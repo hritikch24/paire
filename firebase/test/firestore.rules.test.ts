@@ -328,6 +328,45 @@ describe("matches and messages", () => {
     await seed({ "matches/alexa_jules": matchDoc() });
     await assertSucceeds(dbFor("alexa").collection("matches/alexa_jules/messages").add({ senderId: "alexa", text, createdAt: serverTimestamp() }));
   });
+
+  test.each(contacts.blocked)("allows explicit contact sharing with a private preview: %s", async text => {
+    await seed({ "matches/alexa_jules": matchDoc() });
+    const db = dbFor("alexa");
+    const message = db.collection("matches/alexa_jules/messages").doc();
+    const batch = db.batch();
+    batch.set(message, { senderId: "alexa", text, createdAt: serverTimestamp(), contactShareConfirmed: true });
+    batch.update(db.doc("matches/alexa_jules"), { lastMessage: { text: "Shared contact details", senderId: "alexa", createdAt: serverTimestamp() }, lastActivityAt: serverTimestamp(), "unread.jules": increment(1) });
+    await assertSucceeds(batch.commit());
+    expect((await message.get()).get("text")).toBe(text);
+    expect((await db.doc("matches/alexa_jules").get()).get("unread.jules")).toBe(1);
+    await assertFails(db.doc("matches/alexa_jules").update({ lastMessage: { text, senderId: "alexa", createdAt: serverTimestamp() }, lastActivityAt: serverTimestamp(), "unread.jules": increment(1) }));
+    await assertFails(db.collection("matches/alexa_jules/messages").add({ senderId: "alexa", text, createdAt: serverTimestamp() }));
+    await assertFails(message.update({ contactShareConfirmed: false }));
+  });
+
+  test.each([false, "true", 1, null, {}])("requires a true boolean confirmation for contact details: %s", async contactShareConfirmed => {
+    await seed({ "matches/alexa_jules": matchDoc() });
+    await assertFails(dbFor("alexa").collection("matches/alexa_jules/messages").add({ senderId: "alexa", text: "IG: alex", createdAt: serverTimestamp(), contactShareConfirmed }));
+  });
+
+  test("sharing does not bypass membership, identity, first move, closed chat, verification or paid access", async () => {
+    const send = (uid = "alexa", senderId = uid) => dbFor(uid).collection("matches/alexa_jules/messages").add({ senderId, text: "IG: alex", createdAt: serverTimestamp(), contactShareConfirmed: true });
+    await seed({ "matches/alexa_jules": matchDoc() });
+    await assertFails(send("outsider"));
+    await assertFails(send("alexa", "jules"));
+    await seed({ "matches/alexa_jules": { ...matchDoc(), firstMoveBy: "jules" } });
+    await assertFails(send());
+    await seed({ "matches/alexa_jules": matchDoc(false) });
+    await assertFails(send());
+    await seed({ "matches/alexa_jules": matchDoc(), "runtime/trust": { requireVerification: true } });
+    await assertFails(send());
+    await seed({ "runtime/trust": { requireVerification: false, enforcePaidChat: true }, "moderation/alexa": { status: "ok", emailVerified: true } });
+    await assertFails(send());
+    await seed({ "moderation/alexa": { status: "ok", emailVerified: true, chatAccess: { unlimited: true } } });
+    await assertSucceeds(send());
+    await seed({ "moderation/alexa": { status: "banned", emailVerified: true, chatAccess: { unlimited: true } } });
+    await assertFails(send());
+  });
   test("only participants can read a match", async () => {
     await seed({ "matches/alexa_jules": matchDoc() });
     await assertSucceeds(dbFor("alexa").doc("matches/alexa_jules").get());

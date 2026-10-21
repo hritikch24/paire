@@ -116,19 +116,24 @@ export async function loadOlderMessages(matchId: string, before: QueryDocumentSn
  * Writes the message and the match preview/unread count in one atomic batch,
  * which is exactly what the security rules allow.
  */
-export async function sendChatMessage(matchId: string, senderId: string, recipientIds: string[], text: string) {
+export async function sendChatMessage(
+  matchId: string, senderId: string, recipientIds: string[], text: string,
+  options: { shareContactDetails?: boolean } = {}
+) {
   const trimmed = text.trim().slice(0, MAX_MESSAGE_LENGTH);
   if (!trimmed) return;
   const issue = Platform.OS === "web" ? chatContactIssue(trimmed) : null;
-  if (issue) throw Object.assign(new Error(issue.message), { code: "chat/contact-details" });
+  const contactShareConfirmed = Boolean(issue) && options.shareContactDetails === true;
+  if (issue && !contactShareConfirmed) throw Object.assign(new Error(issue.message), { code: "chat/contact-details" });
   const batch = writeBatch(db);
   batch.set(doc(messagesCollection(matchId)), {
     senderId,
     text: trimmed,
-    createdAt: serverTimestamp()
+    createdAt: serverTimestamp(),
+    ...(contactShareConfirmed ? { contactShareConfirmed: true } : {})
   });
   batch.update(doc(db, "matches", matchId), {
-    lastMessage: { text: trimmed, senderId, createdAt: serverTimestamp() },
+    lastMessage: { text: contactShareConfirmed ? "Shared contact details" : trimmed, senderId, createdAt: serverTimestamp() },
     lastActivityAt: serverTimestamp(),
     // Everyone else in the chat (one person, or three in a Duo chat).
     ...Object.fromEntries(recipientIds.map((uid) => [`unread.${uid}`, increment(1)]))

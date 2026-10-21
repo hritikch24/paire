@@ -427,10 +427,11 @@ service cloud.firestore {
           && parentMatch().active == true
           && mayOpen(parentMatch())
           && verifiedParticipants(parentMatch().participants)
-          && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt', 'contactShareConfirmed'])
           && request.resource.data.senderId == request.auth.uid
           && isStr(request.resource.data.text, 1, 1000)
-          && noContactDetails(request.resource.data.text)
+          && request.resource.data.get('contactShareConfirmed', false) is bool
+          && (request.resource.data.get('contactShareConfirmed', false) == true || noContactDetails(request.resource.data.text))
           && request.resource.data.createdAt == request.time
           && maySend(parentMatch());
         allow update, delete: if false;
