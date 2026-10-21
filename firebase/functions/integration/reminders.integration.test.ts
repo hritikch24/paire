@@ -58,3 +58,14 @@ test("opt-outs, blocks and incognito produce no reminder even with a stale visib
   await remindMember(viewer, now);
   expect(sendWebPushToUser).not.toHaveBeenCalled();
 });
+test("an older eligible profile can prompt a Wednesday visit without claiming a match or new signup", async () => {
+  const wednesday = now + day;
+  await db.doc(`users/${target}`).update({ createdAt: now - 20 * day });
+  await remindMember(viewer, wednesday);
+  expect(sendWebPushToUser).toHaveBeenCalledTimes(1);
+  const message = (sendWebPushToUser as jest.Mock).mock.calls[0][1];
+  expect(message).toMatchObject({ kind: "reminders", data: { type: "reminder", destination: "people" } });
+  expect(`${message.title} ${message.body}`).not.toMatch(/you (?:have|got) a (?:new )?match|someone liked|new people fit/i);
+  await remindMember(viewer, wednesday + day);
+  expect(sendWebPushToUser).toHaveBeenCalledTimes(1);
+});

@@ -58,10 +58,16 @@ export function WebNotifications() {
         {supported && permission !== "denied" ? enabled
           ? <SecondaryButton testID="web-push-toggle" loading={busy} onPress={() => void change()}>Turn off for this browser</SecondaryButton>
           : <PrimaryButton testID="web-push-toggle" loading={busy} onPress={() => void change()}>Enable notifications</PrimaryButton> : null}
+        <Text testID="web-reminder-status" fontSize="$2" color="$textMuted" lineHeight={21} accessibilityLiveRegion="polite">
+          {notifications?.reminders === true
+            ? enabled ? "People & events reminders are ready for this browser. You can turn them off below."
+              : "People & events is selected, but this browser isn't connected. Enable notifications above to receive reminders."
+            : "Want an occasional nudge to find your Paire? Turn on People & events below. It stays optional."}
+        </Text>
       </YStack>
       <ToggleRow testID="web-push-matches" icon="heart-outline" label="New matches" value={notifications?.matches !== false} onValueChange={(value) => void save("matches", value)} />
       <ToggleRow testID="web-push-messages" icon="chatbubble-outline" label="Messages" value={notifications?.messages !== false} onValueChange={(value) => void save("messages", value)} />
-      <ToggleRow testID="web-push-reminders" icon="sparkles-outline" label="People & events" description="Optional reminders about new people and your Garba plans. Up to 2 a week at 6:30 pm India time, only when there's something relevant to open." value={notifications?.reminders === true} onValueChange={(value) => void save("reminders", value)} />
+      <ToggleRow testID="web-push-reminders" icon="sparkles-outline" label="People & events" description="Optional prompts to explore people and your Garba plans. Up to 2 a week at 6:30 pm India time, only when there are profiles or plans to explore. A match alert always means a real mutual like." value={notifications?.reminders === true} onValueChange={(value) => void save("reminders", value)} />
       <ToggleRow testID="web-push-previews" icon="eye-outline" label="Show notification previews" value={notifications?.previews === true} onValueChange={(value) => void save("previews", value)} />
     </SettingsSection>
   );

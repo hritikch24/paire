@@ -17,25 +17,38 @@ test("caps attempts at two in seven days and spaces them by three days, even aft
   expect(reminderDue(settings, { recentAttempts: [now - 4 * DAY_MS, now - 6 * DAY_MS] }, viewer.lastActiveAt, now)).toBe(false);
   expect(reminderDue(settings, { recentAttempts: [now - 4 * DAY_MS, now - 8 * DAY_MS] }, viewer.lastActiveAt, now)).toBe(true);
 });
-test("discovery reminders require a new profile fitting the recipient's search since the last visit/reminder", () => {
+test("only genuinely new profiles receive the new-people claim; discovery eligibility still applies", () => {
   expect(chooseReminder(viewer, settings, [candidate], {}, now)?.type).toBe("people");
   expect(chooseReminder(viewer, settings, [], {}, now)).toBeNull();
   expect(chooseReminder(viewer, settings, [{ ...candidate, visible: false }], {}, now)).toBeNull();
   expect(chooseReminder(viewer, settings, [{ ...candidate, ageMin: 40 }], {}, now)?.type).toBe("people");
   expect(chooseReminder(viewer, settings, [{ ...candidate, age: 40 }], {}, now)).toBeNull();
-  expect(chooseReminder(viewer, settings, [{ ...candidate, createdAt: now + 1 }], {}, now)).toBeNull();
-  expect(chooseReminder(viewer, settings, [{ ...candidate, createdAt: now - 3 * DAY_MS }], {}, now)).toBeNull();
-  expect(chooseReminder(viewer, settings, [candidate], { recentAttempts: [now - DAY_MS / 2] }, now)).toBeNull();
-  expect(chooseReminder(viewer, settings, [candidate], {}, now - DAY_MS)).toBeNull(); // Monday.
+  for (const createdAt of [now + 1, now - 3 * DAY_MS]) {
+    const plan = chooseReminder(viewer, settings, [{ ...candidate, createdAt }], {}, now);
+    expect(plan?.type).toBe("people");
+    expect(plan?.body).not.toContain("New people fit");
+  }
+  expect(chooseReminder(viewer, settings, [candidate], { recentAttempts: [now - DAY_MS / 2] }, now)?.body).not.toContain("New people fit");
+  expect(chooseReminder(viewer, settings, [candidate], {}, now - DAY_MS)?.type).toBe("people"); // Monday is eligible too.
+});
+test("older eligible profiles get varied invitations on any day without invented activity", () => {
+  const copies = new Set<string>();
+  for (let offset = 0; offset < 5; offset++) {
+    const plan = chooseReminder(viewer, settings, [{ ...candidate, createdAt: now - 20 * DAY_MS }], {}, now + offset * DAY_MS);
+    expect(plan?.type).toBe("people");
+    expect(`${plan?.title} ${plan?.body}`).not.toMatch(/you (?:have|got) a (?:new )?match|someone liked|waiting for you|new people fit/i);
+    copies.add(plan!.body);
+  }
+  expect(copies.size).toBe(5);
 });
 test("Garba reminders require shared upcoming nights, a current local position, and one per season", () => {
   const localSettings = { ...settings, garbaNights: ["2026-10-20"] };
   const going = { ...candidate, createdAt: 0, garbaNights: ["2026-10-20"] };
   expect(chooseReminder(viewer, localSettings, [going], {}, now)?.type).toBe("garba");
-  expect(chooseReminder(viewer, localSettings, [going], { garbaSeason: "2026" }, now)).toBeNull();
-  expect(chooseReminder(viewer, localSettings, [{ ...going, garbaNights: ["2026-10-19"] }], {}, now)).toBeNull();
+  expect(chooseReminder(viewer, localSettings, [going], { garbaSeason: "2026" }, now)?.type).toBe("people");
+  expect(chooseReminder(viewer, localSettings, [{ ...going, garbaNights: ["2026-10-19"] }], {}, now)?.type).toBe("people");
   expect(chooseReminder(viewer, localSettings, [{ ...going, lat: 19, lng: 72 }], {}, now)).toBeNull();
-  expect(chooseReminder(viewer, { ...localSettings, location: { ...settings.location!, updatedAt: now - 8 * DAY_MS } }, [going], {}, now)).toBeNull();
-  expect(chooseReminder(viewer, { ...localSettings, locationEnabled: false }, [going], {}, now)).toBeNull();
-  expect(chooseReminder(viewer, localSettings, [going], {}, Date.parse("2026-10-21T13:00:00Z"))).toBeNull();
+  expect(chooseReminder(viewer, { ...localSettings, location: { ...settings.location!, updatedAt: now - 8 * DAY_MS } }, [going], {}, now)?.type).toBe("people");
+  expect(chooseReminder(viewer, { ...localSettings, locationEnabled: false }, [going], {}, now)?.type).toBe("people");
+  expect(chooseReminder(viewer, localSettings, [going], {}, Date.parse("2026-10-21T13:00:00Z"))?.type).toBe("people");
 });

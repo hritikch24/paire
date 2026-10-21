@@ -4,9 +4,9 @@
 
 ## Reminder rules
 
-- Daily scheduler check at **18:30 Asia/Kolkata**. General discovery reminders are eligible on Tuesday/Friday only; seasonal checks run daily while Garba Nights is open.
+- Daily scheduler check at **18:30 Asia/Kolkata**, on every weekday. The per-member inactivity and frequency limits below still apply.
 - At most **two attempts in a rolling seven days**, at least **72 hours apart**. Failed sends also consume an attempt, preventing repeated retries. Members active in the last 24 hours or absent for more than 30 days are skipped.
-- A discovery reminder requires an unswiped new profile fitting the recipient's own search preferences, created since they last visited/were reminded and within the last seven days. The scan is bounded to the first 100 indexed candidates. No eligible result means no message.
+- A discovery reminder requires an unswiped eligible profile fitting the recipient's own search preferences. A genuinely new profile (created since the last visit/reminder and within seven days) gets the factual new-people copy; an older eligible profile gets one of five rotating invitations to explore and send a thoughtful like. No copy invents a like, message, match or guaranteed outcome. The scan is bounded to the first 100 indexed candidates. No eligible result means no message.
 - Garba reminders require chosen nights tonight/tomorrow, approximate location refreshed in the last seven days, and an eligible person within 50 km sharing one of those nights. At most one attempt per season. No dates, names, profile photos or private preference details appear in the push.
 - Current profiles/settings and verification are checked after the discovery index scan. Blocks, previous swipes, test cohorts, incognito and the recipient’s search preferences apply. Hidden, unverified, disabled and staff recipients are skipped. Opt-out is checked again before sending.
 - A transaction reserves each attempt before the network request, preventing overlapping scheduled runs from duplicating it. These reminders use browser subscriptions only; native notification behavior is unchanged.
@@ -18,6 +18,10 @@ The push opens the appropriate People/Garba edition, checks the receiving accoun
 `runtime/notifications.remindersEnabled === true` is required. Missing/false is off. Set this deliberately when the backend and browser app are released; set false to stop scheduled reminders. Existing per-member consent is never backfilled. `notificationReminders/{uid}` stores the opt-in queue, last two recent attempts, latest reminder id/type/open and the last Garba season attempted. Account deletion removes it. The settings trigger mirrors opt-in; browser registration repairs a missed mirror. Both collections remain server-only under existing default-deny rules.
 
 The scheduler binds the existing `WEB_PUSH_VAPID_PRIVATE_KEY`; preserve its existing key pair. Deploy `sendEngagementReminders`, `recordReminderOpen`, `onUserSettingsWritten`, `registerWebPush`, `getMetrics`, `deleteAccount`, `onAuthUserDeleted` and Firestore rules before the browser release. The dashboard adds registered browsers, reminder attempts, member reminders accepted by a push service, and reminder opens over seven India calendar days. Push service acceptance is not proof of device display, reading or increased retention. Compare reminder opens and returning-member activity over time; a causal retention claim needs a controlled experiment.
+
+For an owner-requested run, `node scripts/run-engagement-reminders.mjs --project muse-352ba` prints aggregate browser/opt-in overlap and scheduler status without sending. Add `--confirm` to invoke the existing scheduled job once. The script does not enrol members, bypass checks, enable a disabled job/switch, fabricate activity or change customer matches. With no overlapping audience it sends nothing. Browser notification settings distinguish a saved People & events preference from a connected browser, and explain the missing step.
+
+The 2026-10-21 pre-release snapshot had five registered browsers across five members and three reminder opt-ins, **zero** with both. This is not a failed-delivery count: none was eligible for reminder transport. New match/message pushes continue to use their own event preferences. Random-pair matching and message notification acceptance tests use only fictional demo-muse accounts and a mocked delivery transport; no customers are randomly matched.
 
 ## Location behavior
 

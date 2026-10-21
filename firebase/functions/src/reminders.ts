@@ -8,7 +8,7 @@ import { REGION } from "./config";
 import { hiddenIncognito, loadExclusions } from "./discovery";
 import { requireAuth } from "./lib/auth";
 import { buildDiscoveryEntry } from "./lib/discovery";
-import { activeGarbaSeason, istDate } from "./lib/garba";
+import { istDate } from "./lib/garba";
 import { chooseReminder, DAY_MS, reminderDue, ReminderState } from "./lib/reminders";
 import { verifiedUsers } from "./trust";
 import { DiscoveryEntry, ModerationRecord, PublicProfile, UserSettings } from "./types";
@@ -62,9 +62,6 @@ export async function remindMember(uid: string, now: number): Promise<void> {
 export const sendEngagementReminders = onSchedule({ region: REGION, schedule: "30 18 * * *", timeZone: "Asia/Kolkata", timeoutSeconds: 540, memory: "512MiB", maxInstances: 1, retryCount: 0, secrets: WEB_PUSH_SECRETS }, async () => {
   if ((await db.doc("runtime/notifications").get()).get("remindersEnabled") !== true) return;
   const now = Date.now();
-  // Outside the event season, only Tuesday/Friday can produce a reminder.
-  const weekday = new Date(`${istDate(now)}T00:00:00Z`).getUTCDay();
-  if (!activeGarbaSeason(now) && weekday !== 2 && weekday !== 5) return;
   let cursor: string | undefined;
   for (;;) {
     let query = db.collection("notificationReminders").where("enabled", "==", true).orderBy(FieldPath.documentId()).limit(100);

@@ -115,10 +115,12 @@ const db=backendRequire('firebase-admin/firestore').getFirestore();
  await page.getByTestId('profile-notifications').click();
  await page.getByTestId('web-push-reminders').scrollIntoViewIfNeeded();
  assert.equal(await page.getByTestId('web-push-reminders').getByRole('switch').isChecked(),false);
- await page.getByTestId('web-push-toggle').click();
- await page.getByRole('button',{name:'Turn off for this browser',exact:true}).waitFor();
  await page.getByTestId('web-push-reminders').click();
  await checkDoc('notificationReminders/muse_casey',doc=>doc.get('enabled')===true);
+ await page.getByText("People & events is selected, but this browser isn't connected. Enable notifications above to receive reminders.",{exact:true}).waitFor();
+ await page.getByTestId('web-push-toggle').click();
+ await page.getByRole('button',{name:'Turn off for this browser',exact:true}).waitFor();
+ await page.getByText('People & events reminders are ready for this browser. You can turn them off below.',{exact:true}).waitFor();
  const id='00000000-0000-0000-0000-000000000001';
  await db.doc('notificationReminders/muse_casey').set({latestId:id,latestAttemptAt:Date.now(),openedAt:0},{merge:true});
  const reminder=await worker.evaluate(async ({id})=>{

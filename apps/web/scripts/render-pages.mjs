@@ -17,7 +17,7 @@ const human = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", 
 
 export function renderPage(page, { origin, pages, extraHead = "" }) {
   const url = `${origin}/${page.path}`;
-  const crumbs = [{ name: "Paire", path: "" }, ...(page.parent ? [page.parent] : []), { name: page.crumb ?? page.h1, path: page.path }];
+  const crumbs = [{ name: "Paire", path: "app/" }, ...(page.parent ? [page.parent] : []), { name: page.crumb ?? page.h1, path: page.path }];
   const related = (page.related ?? []).map((path) => pages.find((p) => p.path === path)).filter(Boolean);
   const isArticle = page.type !== "hub";
   const graph = [
