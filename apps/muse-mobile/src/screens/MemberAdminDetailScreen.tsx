@@ -89,7 +89,7 @@ export function MemberAdminDetailScreen() {
                     <Text fontSize="$2" fontWeight="700">{payment.product} · ₹{payment.amountInr}</Text>
                     <Text fontSize="$2" maxWidth="100%" color={payment.status === "paid" || payment.status === "approved" ? "$primary" : "$textMuted"}>{payment.status}</Text>
                   </XStack>
-                  <Text fontSize="$1" color="$textMuted">{payment.source === "upi" ? "UPI" : payment.source === "ccavenue" ? "CCAvenue" : payment.source === "support" ? "Owner recovery" : "Razorpay"} · {when(payment.at)}{payment.utr ? ` · UTR ${payment.utr}` : ""}{payment.expiresAt ? ` · until ${when(payment.expiresAt)}` : ""}</Text>
+                  <Text fontSize="$1" color="$textMuted">{payment.source === "upi" ? "UPI" : payment.source === "ccavenue" ? "CCAvenue" : payment.source === "support" ? "Owner recovery" : payment.source === "gift" ? "Complimentary" : "Razorpay"} · {when(payment.at)}{payment.utr ? ` · UTR ${payment.utr}` : ""}{payment.expiresAt ? ` · until ${when(payment.expiresAt)}` : ""}</Text>
                 </YStack>
               ))
             ) : (

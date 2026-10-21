@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "tamagui";
 import { Icon, IconName } from "../components/Icon";
 import { useUnreadTotal } from "../hooks/useAppServices";
+import { useLikesYou } from "../hooks/useLikesYou";
 import { DiscoverScreen } from "../screens/DiscoverScreen";
 import { MatchesScreen } from "../screens/MatchesScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
@@ -21,6 +22,8 @@ export function MainTabs() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const unread = useUnreadTotal();
+  const pendingLikes = useLikesYou(true).data?.count ?? 0;
+  const attention = unread + pendingLikes;
 
   return (
     <Tab.Navigator
@@ -51,7 +54,8 @@ export function MainTabs() {
         options={{
           tabBarButtonTestID: "tab-matches",
           tabBarIcon: tabIcon("chatbubbles", "chatbubbles-outline"),
-          tabBarBadge: unread > 0 ? (unread > 99 ? "99+" : unread) : undefined,
+          tabBarBadge: attention > 0 ? (attention > 99 ? "99+" : attention) : undefined,
+          tabBarAccessibilityLabel: `Matches, ${pendingLikes} pending likes, ${unread} unread messages`,
           tabBarBadgeStyle: { backgroundColor: theme.primary?.val, fontSize: 11 }
         }}
       />

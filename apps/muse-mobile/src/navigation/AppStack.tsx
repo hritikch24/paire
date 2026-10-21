@@ -1,4 +1,6 @@
 import { useWebLinks } from "../hooks/useWebLinks";
+import { Platform } from "react-native";
+import { AdminPremiumScreen } from "../screens/AdminPremiumScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { features } from "../config/features";
 import { useMatchAlerts, useMatchesSubscription, usePushRegistration } from "../hooks/useAppServices";
@@ -63,6 +65,7 @@ export function AppStack() {
       <Stack.Screen name="Premium" component={PremiumScreen} />
       <Stack.Screen name="UpiReview" component={UpiReviewScreen} />
       <Stack.Screen name="MemberAdmin" component={MemberAdminScreen} />
+      {Platform.OS === "web" ? <Stack.Screen name="AdminPremium" component={AdminPremiumScreen} /> : null}
       <Stack.Screen name="MemberAdminDetail" component={MemberAdminDetailScreen} />
       <Stack.Screen name="VibeGuide" component={VibeGuideScreen} />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />

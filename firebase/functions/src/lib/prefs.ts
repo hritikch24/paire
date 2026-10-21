@@ -42,6 +42,14 @@ export type CompatibilityOptions = {
   sharedVibesOnly: boolean;
 };
 
+/** Visibility and safety remain mandatory even when answering an incoming like. */
+export function isVisibleCandidate(viewer: Viewer, candidate: DiscoveryEntry): boolean {
+  return candidate.visible && candidate.uid !== viewer.uid &&
+    (candidate.cohort ?? "public") === (viewer.cohort ?? "public") &&
+    isGender(candidate.gender) && typeof candidate.age === "number" && Number.isFinite(candidate.age) && candidate.age >= MIN_AGE && candidate.age <= MAX_AGE &&
+    isGender(viewer.gender) && typeof viewer.age === "number" && Number.isFinite(viewer.age) && viewer.age >= MIN_AGE && viewer.age <= MAX_AGE;
+}
+
 /**
  * Search preferences belong to the viewer. A candidate's own search settings
  * never restrict who can discover them; visibility and cohort still apply.
@@ -51,14 +59,11 @@ export function isCandidateForViewer(
   candidate: DiscoveryEntry,
   options: CompatibilityOptions
 ): boolean {
-  if (!candidate.visible || candidate.uid === viewer.uid) return false;
-  if ((candidate.cohort ?? "public") !== (viewer.cohort ?? "public")) return false;
-  if (!isGender(candidate.gender) || typeof candidate.age !== "number") return false;
-  if (!isGender(viewer.gender) || typeof viewer.age !== "number") return false;
+  if (!isVisibleCandidate(viewer, candidate)) return false;
 
-  if (!normalizeShowMe(viewer.showMe).includes(candidate.gender)) return false;
+  if (!normalizeShowMe(viewer.showMe).includes(candidate.gender!)) return false;
 
-  if (candidate.age < viewer.ageMin || candidate.age > viewer.ageMax) return false;
+  if (candidate.age! < viewer.ageMin || candidate.age! > viewer.ageMax) return false;
 
   // Unknown never counts as shared when the viewer requests a shared trait.
   if (viewer.sameIntentOnly && !overlaps(viewer.intentions, candidate.intentions)) {

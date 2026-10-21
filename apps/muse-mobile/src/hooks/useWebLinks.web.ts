@@ -17,7 +17,10 @@ export function useWebLinks() {
       const profile = url.searchParams.get("profile");
       const chat = url.searchParams.get("chat");
       const valid = (value: string | null) => Boolean(value && /^[A-Za-z0-9_-]{1,256}$/.test(value));
-      if (valid(profile)) {
+      if (url.searchParams.get("admin") === "grant-plus") {
+        navigation.navigate("App", { screen: "AdminPremium" });
+        url.searchParams.delete("admin");
+      } else if (valid(profile)) {
         navigation.navigate("App", { screen: "ProfileView", params: { source: profile === uid ? "self" : "shared", uid: profile! } });
         url.searchParams.delete("profile");
       } else if (valid(chat) && url.searchParams.get("for") === uid) {

@@ -14,7 +14,7 @@ export const guidesA = [
       "Women who want to make the first move: Bumble (or Paire with \"I'll message first\").",
       "Prompt-led profiles and comments: Hinge.",
       "Serious, marriage-minded dating without family involvement: Aisle, or Paire with \"same intentions only\".",
-      "Verified people, free \"who likes you\", notes with every like, no caste filters and no auto-renewing subscriptions: Paire.",
+      "Verified people, \"who likes you\" with Plus, notes with every like, no caste filters and no auto-renewing subscriptions: Paire.",
       "Arranged-style matchmaking with family: matrimony sites such as Shaadi.com, BharatMatrimony or Jeevansathi."
     ],
     body: `
@@ -29,7 +29,7 @@ export const guidesA = [
 </ol>
 <h2>The apps</h2>
 <h3>Paire</h3>
-<p>An Indian app where every like can carry a note, women set the rules (notes-only likes, I'll message first, incognito, private photos until match), and seeing who likes you is free. Every member must confirm a real email and pass a live selfie check before they can like or chat. No caste field. Paire Plus is a one-time pass from ₹20 that never auto-renews. It's newer and smaller than the global apps, open across India. <strong>Best for:</strong> people who want fewer, better, verified matches. <a href="/features/">See features</a>.</p>
+<p>An Indian app where every like can carry a note, women set the rules (notes-only likes, I'll message first, incognito, private photos until match), and seeing who likes you comes with Paire Plus. Every member must confirm a real email and pass a live selfie check before they can like or chat. No caste field. Paire Plus is a one-time pass from ₹20 that never auto-renews. It's newer and smaller than the global apps, open across India. <strong>Best for:</strong> people who want fewer, better, verified matches. <a href="/features/">See features</a>.</p>
 <h3>Tinder</h3>
 <p>The biggest global dating app, with a very large user base in Indian cities. Swipe-based, used for everything from casual to serious. Seeing who already likes you is part of its paid tiers. <strong>Best for:</strong> the largest pool and travel. <a href="/compare/tinder/">Paire vs Tinder</a>.</p>
 <h3>Bumble</h3>
@@ -46,9 +46,9 @@ export const guidesA = [
 <p>Try one or two apps for a few weeks, write a real bio, and use your likes on people you'd actually like to meet. Whatever you choose, keep chats on the app until you trust someone, and never send money. Read <a href="/guides/dating-app-safety-tips-india/">dating app safety tips</a> before your first date.</p>
 <p class="article-note">Other apps change their features and prices often; this guide reflects their publicly described features as of October 2026. App names are trademarks of their owners.</p>`,
     faq: [
-      ["Which is the best dating app in India?", "It depends on what you want. Tinder has the biggest pool, Bumble lets women message first, Hinge is prompt-led, Aisle is for serious relationships, and Paire offers mandatory selfie verification, notes with every like, women-first controls and free 'who likes you'."],
+      ["Which is the best dating app in India?", "It depends on what you want. Tinder has the biggest pool, Bumble lets women message first, Hinge is prompt-led, Aisle is for serious relationships, and Paire offers mandatory selfie verification, notes with every like, women-first controls and 'who likes you' with Plus."],
       ["Which dating app is safest in India?", "Look for mandatory verification and strong privacy controls. On Paire, every member must confirm a real email and pass a live selfie check before they can like or chat, and women can hide their profile and photos until they match."],
-      ["Which dating app is free in India?", "Most apps are free to join with paid upgrades. On Paire, likes, matching, seeing who likes you, reading messages and all safety controls are free; sending messages needs Paire Plus or a one-time ₹49 Unlimited Chat unlock, and nothing auto-renews."],
+      ["Which dating app is free in India?", "Most apps are free to join with paid upgrades. On Paire, likes, matching, an anonymous likes count, reading messages and all safety controls are free; sending messages needs Paire Plus or a one-time ₹49 Unlimited Chat unlock, and nothing auto-renews."],
       ["Which dating app is best for serious relationships in India?", "Hinge, Aisle and Paire (with 'same intentions only' turned on) are popular choices for serious relationships."]
     ],
     related: ["guides/dating-app-for-serious-relationships-india/", "guides/dating-apps-for-women-india/", "compare/tinder/", "verification/"]
@@ -189,7 +189,7 @@ export const guidesA = [
 <li><strong>Verified members:</strong> everyone has confirmed their email and passed a live selfie check.</li>
 <li><strong>Scam warnings:</strong> Paire AI flags messages asking for money, OTPs or investments.</li>
 </ul>
-<p>Men get something too: because likes are limited and come with notes, thoughtful men stand out, and seeing who likes you is free for everyone.</p>
+<p>Men get something too: because likes are limited and come with notes, thoughtful men stand out, and Paire Plus reveals who likes you.</p>
 <h2>Tips for women dating in India</h2>
 <ul>
 <li>Use incognito and private photos if you'd rather not be seen by people you know.</li>

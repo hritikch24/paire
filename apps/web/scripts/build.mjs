@@ -73,7 +73,7 @@ writeFileSync(
     .replace(/<title>[^<]*<\/title>/, "<title>Paire — Find your Paire</title>")
     .replace(
       "</head>",
-      '<meta name="description" content="Paire: likes with notes, free \u201cwho likes you\u201d and privacy controls built for India." />' +
+      '<meta name="description" content="Paire: likes with notes, reveal who likes you with Plus, and privacy controls built for India." />' +
         '<meta name="theme-color" content="#9A2C5A" /><link rel="manifest" href="/manifest.webmanifest" />' +
         '<link rel="apple-touch-icon" href="/apple-touch-icon.png" /><meta name="robots" content="noindex" /></head>'
     )

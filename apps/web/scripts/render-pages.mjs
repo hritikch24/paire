@@ -76,7 +76,7 @@ ${page.summary ? `<div class="article-summary"><strong>In short</strong><ul>${pa
 <div class="article-body">${page.body ?? ""}</div>
 ${hubList}
 ${page.faq?.length ? `<section class="article-faq"><h2>Questions people ask</h2>${page.faq.map(([q, a]) => `<details><summary><h3>${esc(q)}</h3></summary><p>${esc(a)}</p></details>`).join("")}</section>` : ""}
-<aside class="article-cta"><div><strong>${esc(page.cta ?? "Find your Paire.")}</strong><span>Free to join. Every like comes with a note, women set the rules, and seeing who likes you is free.</span></div><a class="button" href="/app/">Open Paire <span aria-hidden="true">↗</span></a></aside>
+<aside class="article-cta"><div><strong>${esc(page.cta ?? "Find your Paire.")}</strong><span>Free to join. Every like comes with a note, women set the rules, and Paire Plus reveals who likes you.</span></div><a class="button" href="/app/">Open Paire <span aria-hidden="true">↗</span></a></aside>
 ${related.length ? `<section class="article-related"><h2>Keep reading</h2><div class="hub-grid">${related.map((p) => `<a class="hub-card" href="/${p.path}"><strong>${esc(p.crumb ?? p.h1.replace(/<[^>]+>/g, ""))}</strong><span>${esc(p.description)}</span></a>`).join("")}</div></section>` : ""}
 </main>
 ${FOOTER}

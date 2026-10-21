@@ -78,6 +78,8 @@ Released in `b8ef459` / `b47be2a`: 15 affected Functions deployed successfully, 
 
 ## Revenue from manual confirmations (2026-10-19)
 
+Owner-issued complimentary months use a separate `complimentaryPlusGrants` source and a zero-value `goodwill-grant` audit, never payment-confirmation receipts. They preserve paid recoveries and don't add revenue; see `docs/premium-likes-and-grants.md`.
+
 Metrics includes approved UPI payments and owner-confirmed receipts from the retained `billingSupportAudit` collection. Existing `plus-payment-recovery` audits count their `amountReportedPaise`, not the duration of Premium. Future recovery operations must write the grant and its financial audit together. Complimentary access without confirmed money is not revenue. Amounts are summed in integer paise and displayed without rounding away paise.
 
 For an owner-confirmed payment that needs a financial receipt only, use:

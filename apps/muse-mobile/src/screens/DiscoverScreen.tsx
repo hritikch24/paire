@@ -4,6 +4,9 @@ import { DiscoveryActions } from "../components/DiscoveryActions";
 import { LuckySpin } from "../components/LuckySpin";
 import { VerificationGate } from "../components/VerificationGate";
 import { fetchPremiumStatus } from "../services/billingService";
+import { queryClient } from "../services/queryClient";
+import { LIKES_YOU_KEY } from "../hooks/useLikesYou";
+import { offerPlusForLikeLimit, showLikeLimitOffer } from "../services/likeLimitOffer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
@@ -395,10 +398,13 @@ function DiscoveryExperience() {
     sendSwipe(profile.uid, type, type === "nope" ? null : note)
       .then((result) => {
         void refreshAllowance();
+        void queryClient.invalidateQueries({ queryKey: LIKES_YOU_KEY });
         if (note && type !== "nope") setFlight({ key: Date.now(), name: profile.displayName });
         if (result.matched && result.matchId) {
           suppressMatchAlert(result.matchId);
           setMatch({ matchId: result.matchId, profile });
+        } else if (plusLocked && type !== "nope" && result.remaining[type === "super" ? "supers" : "likes"] === 0) {
+          showLikeLimitOffer(type === "super", () => navigation.navigate("Premium"));
         }
       })
       .catch((err) => {
@@ -407,6 +413,10 @@ function DiscoveryExperience() {
         // Out of likes, or offline: put the card back so nothing is silently lost.
         setDeck((current) => [profile, ...current.filter((item) => item.uid !== profile.uid)]);
         setLastPass(null);
+        if (offerPlusForLikeLimit(err, () => navigation.navigate("Premium"))) {
+          if (note) pendingNoteRef.current = { uid: profile.uid, note };
+          return;
+        }
         if (note && errorCode(err) === "functions/invalid-argument") {
           // The note was refused (too long, or flagged): reopen it so they can edit, not retype.
           setCompose({ profile, kind: type === "super" ? "super" : "like", draft: note });
@@ -416,7 +426,7 @@ function DiscoveryExperience() {
           errorCode(err) === "functions/resource-exhausted" ? "info" : "error"
         );
       });
-  }, [refreshAllowance]);
+  }, [refreshAllowance, plusLocked, navigation]);
 
   const sendFromComposer = (note: string | null) => {
     const current = compose;

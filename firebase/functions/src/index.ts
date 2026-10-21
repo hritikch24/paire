@@ -2,6 +2,7 @@ export { getDiscoverFeed, onModerationWritten, onUserSettingsWritten } from "./d
 export { onUserProfileWritten } from "./profiles";
 export { swipe, undoSwipe } from "./swipes";
 export { getLikesYou } from "./likes";
+export { adminPreviewPlusGrant, adminGrantPlusMonth } from "./adminPremium";
 export { onMessageCreated } from "./messages";
 export { blockUser, onReportCreated } from "./safety";
 export { submitReport, getMyReports, getReportReviewQueue, reviewReport } from "./reports";

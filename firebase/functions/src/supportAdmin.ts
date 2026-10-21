@@ -9,7 +9,7 @@ const SESSION_MS = 15 * 60_000;
 const RETENTION_MS = 365 * 24 * 60 * 60_000;
 const validUid = (uid: unknown): uid is string => typeof uid === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(uid);
 
-async function requireSupportOperator(request: CallableRequest<unknown>): Promise<string> {
+export async function requireSupportOperator(request: CallableRequest<unknown>): Promise<string> {
   const uid = requireAuth(request);
   if (request.auth?.token.moderator !== true || request.auth.token.supportAccess !== true) throw new HttpsError("permission-denied", "Owner support access is required.");
   const [account, operator] = await Promise.all([adminAuth().getUser(uid), db.doc(`supportOperators/${uid}`).get()]);

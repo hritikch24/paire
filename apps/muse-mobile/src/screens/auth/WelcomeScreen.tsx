@@ -13,7 +13,7 @@ import { GoogleButton } from "../../components/GoogleButton";
 const HIGHLIGHTS: Array<{ icon: IconName; title: string; text: string }> = [
   { icon: "mail-unread-outline", title: "Likes that say something", text: "Add a note to any like. It opens your chat if you match." },
   { icon: "lock-closed-outline", title: "Your rules, free", text: "Incognito, private photos, notes only, and “I'll message first”." },
-  { icon: "heart-outline", title: "See who likes you, free", text: "No paywall on the basics. Plus passes from ₹20, never auto-renewed." }
+  { icon: "heart-outline", title: "Someone liked you?", text: "See an anonymous likes count, then reveal their profiles with Plus. Passes never auto-renew." }
 ];
 
 export function WelcomeScreen() {
@@ -29,7 +29,7 @@ export function WelcomeScreen() {
         </XStack>
         <YStack gap="$3">
           <Text fontSize={42} lineHeight={48} fontWeight="700" letterSpacing={-1.5} accessibilityRole="header">Find your <Text color="$primary">Paire.</Text></Text>
-          <Text color="$textMuted" fontSize="$4" lineHeight={25}>Women set the rules. Men get a fair chance. Send a note with your like, and see who likes you for free.</Text>
+          <Text color="$textMuted" fontSize="$4" lineHeight={25}>Women set the rules. Men get a fair chance. Send a note with your like, and reveal who likes you with Plus.</Text>
         </YStack>
         <YStack borderRadius={28} backgroundColor="$primarySoft" padding="$5" gap="$4" overflow="hidden" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <XStack alignItems="center" justifyContent="space-between" gap="$2">

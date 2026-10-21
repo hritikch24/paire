@@ -19,16 +19,17 @@ function requireModerator(request: { auth?: { uid: string; token: Record<string,
 const PAGE = 30;
 const rupees = (paise: unknown) => (Number(paise) || 0) / 100;
 
-type Payment = { source: "razorpay" | "upi" | "ccavenue" | "support"; product: string; amountInr: number; status: string; at: number | null; utr?: string | null; expiresAt?: number | null };
+type Payment = { source: "razorpay" | "upi" | "ccavenue" | "support" | "gift"; product: string; amountInr: number; status: string; at: number | null; utr?: string | null; expiresAt?: number | null };
 
 async function paymentsOf(uid: string): Promise<{ payments: Payment[]; plusUntil: number | null; unlimitedChat: boolean }> {
-  const [razorpay, upi, ccavenue, unlock, billing, support] = await Promise.all([
+  const [razorpay, upi, ccavenue, unlock, billing, support, gift] = await Promise.all([
     db.collection("razorpayOrders").where("uid", "==", uid).get(),
     db.collection("upiUnlockOrders").where("uid", "==", uid).get(),
     db.collection("ccavenueOrders").where("uid", "==", uid).get(),
     db.doc(`chatUnlocks/${uid}`).get(),
     db.doc(`billing/${uid}`).get(),
-    db.doc(`supportPlusGrants/${uid}`).get()
+    db.doc(`supportPlusGrants/${uid}`).get(),
+    db.doc(`complimentaryPlusGrants/${uid}`).get()
   ]);
   const at = (value: unknown) => (typeof value === "number" ? value : value && typeof (value as { toMillis?: () => number }).toMillis === "function" ? (value as { toMillis: () => number }).toMillis() : null);
   const payments: Payment[] = [
@@ -59,6 +60,7 @@ async function paymentsOf(uid: string): Promise<{ payments: Payment[]; plusUntil
       at: at(doc.get("createdAt")),
       expiresAt: (doc.get("expiresAt") as number | undefined) ?? null
     })),
+    ...(gift.exists ? [{ source: "gift" as const, product: "Plus · complimentary", amountInr: 0, status: "owner granted", at: at(gift.get("updatedAt")), expiresAt: at(gift.get("expiresAt")) }] : []),
     ...(support.exists ? [{ source: "support" as const, product: "Plus · owner recovery", amountInr: rupees(support.get("amountReportedPaise")), status: support.get("status") === "active" ? "owner confirmed · gateway unverified" : String(support.get("status")), at: at(support.get("createdAt")), expiresAt: at(support.get("expiresAt")) }] : [])
   ].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
   const expiresAt = billing.get("expiresAt");

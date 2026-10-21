@@ -8,7 +8,7 @@ export function fetchDailyAllowance(): Promise<DailyAllowance> {
   return callFunction<DailyAllowance>("getDailyAllowance");
 }
 
-/** Next page of people who match your preferences (and whose preferences you match). */
+/** Next page of people who match your search preferences. */
 /** One feed filter at a time: an age-gap side (Paire Plus only), or the Garba Nights edition. */
 export type FeedFilter = AgeGapSide | "garba" | null;
 
@@ -27,10 +27,9 @@ export function sendSwipe(targetUid: string, type: SwipeType, note?: string | nu
   return callFunction<SwipeResult>("swipe", note ? { targetUid, type, note } : { targetUid, type });
 }
 
-/** People who liked you and are waiting for your answer. */
-export async function fetchLikesYou(): Promise<DiscoverProfile[]> {
-  return (await callFunction<{ profiles: DiscoverProfile[] }>("getLikesYou", {})).profiles;
-}
+export type LikesYouResult = { profiles: DiscoverProfile[]; count: number; locked: boolean; hasMore: boolean; expiresAt: number | null };
+/** Free members receive only an anonymous count. Identities are checked on the server. */
+export const fetchLikesYou = () => callFunction<LikesYouResult>("getLikesYou", {});
 
 /** Brings back someone you passed on. */
 export function undoPass(targetUid: string): Promise<{ ok: boolean }> {

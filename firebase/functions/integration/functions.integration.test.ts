@@ -265,10 +265,9 @@ describe("discovery, matching and chat", () => {
     expect(await b.call("getSharedProfile", { uid: a.uid })).toMatchObject({ profile: { uid: a.uid } });
     expect(await a.call("getSharedProfile", { uid: b.uid })).toEqual({ profile: null });
     expect(await b.call("swipe", { targetUid: a.uid, type: "like" })).toMatchObject({ matched: false });
-    expect((await a.call<FeedResult>("getLikesYou")).profiles.map((p) => p.uid)).toContain(b.uid);
-    await expect(a.call("swipe", { targetUid: b.uid, type: "like" })).rejects.toThrow(/no longer available/);
+    expect(await a.call("getLikesYou")).toMatchObject({ count: 1, locked: true, profiles: [] });
     expect(await a.call("getDailyAllowance")).toMatchObject({ remaining: { likes: 10 } });
-    // Each action rechecks its sender's current filters, including before index refresh.
+    // A deliberate like back can accept someone outside search filters.
     await updateDoc(doc(a.db, "users", a.uid, "private", "settings"), { maxDistanceKm: 100 });
     await updateDoc(doc(b.db, "users", b.uid, "private", "settings"), { showMe: ["man"], ageMin: 40, ageMax: 50, sameIntentOnly: true, sharedLanguageOnly: true, sharedVibesOnly: true });
     await updateDoc(doc(b.db, "users", b.uid), { intentions: ["casual"], languages: ["tamil"], vibes: ["artsy"] });
@@ -419,14 +418,12 @@ describe("matchmaker, likes and AI suggestions", () => {
     await omar.call("swipe", { targetUid: ria.uid, type: "like" });
     await neil.call("swipe", { targetUid: ria.uid, type: "super" });
     let likes = await ria.call<{ profiles: Card[] }>("getLikesYou", {});
-    expect(card(likes, omar.uid)).toMatchObject({ superLikedYou: false, casualMatch: true });
-    expect(card(likes, neil.uid)).toMatchObject({ superLikedYou: true, casualMatch: false });
+    expect(likes).toMatchObject({ profiles: [], count: 2, locked: true });
 
     const result = await ria.call<{ matched: boolean; matchId: string }>("swipe", { targetUid: omar.uid, type: "like" });
     expect(result.matched).toBe(true);
     likes = await ria.call<{ profiles: Card[] }>("getLikesYou", {});
-    expect(card(likes, omar.uid)).toBeUndefined();
-    expect(card(likes, neil.uid)).toBeDefined();
+    expect(likes).toMatchObject({ profiles: [], count: 1, locked: true });
   });
 
   test("AI suggestions work only in your own chats and always offer three", async () => {
@@ -917,7 +914,8 @@ describe("India v2: sparks and her rules", () => {
     await him.call("swipe", { targetUid: her.uid, type: "like", note: "Your chai ranking is elite" });
 
     const likes = await her.call<FeedResult>("getLikesYou", {});
-    expect(likes.profiles.find((profile) => profile.uid === him.uid)).toMatchObject({ note: "Your chai ranking is elite" });
+    expect(likes).toMatchObject({ profiles: [], count: 1, locked: true });
+    expect(JSON.stringify(likes)).not.toContain("Your chai ranking is elite");
 
     // Liking back needs no note.
     const result = await her.call<{ matched: boolean; matchId: string }>("swipe", { targetUid: him.uid, type: "like" });
@@ -947,7 +945,7 @@ describe("India v2: sparks and her rules", () => {
     await her.call("swipe", { targetUid: him.uid, type: "like" });
 
     const likes = await him.call<FeedResult>("getLikesYou", {});
-    expect(likes.profiles.find((profile) => profile.uid === her.uid)).toMatchObject({ photoUrls: [], photosPrivate: true });
+    expect(likes).toMatchObject({ profiles: [], count: 1, locked: true });
 
     const result = await him.call<{ matched: boolean; matchId: string }>("swipe", { targetUid: her.uid, type: "like" });
     expect(result.matched).toBe(true);
@@ -1033,10 +1031,11 @@ describe("India v2: sparks and her rules", () => {
     await setSettings(her, { sameIntentOnly: true });
     const feed = await him.call<FeedResult>("getDiscoverFeed", {});
     expect(feed.profiles.map((profile) => profile.uid)).toContain(her.uid);
+    await expect(her.call("swipe", { targetUid: him.uid, type: "like" })).rejects.toThrow(/no longer available/);
     await expect(him.call("swipe", { targetUid: her.uid, type: "like", note: "Hello" })).resolves.toMatchObject({ matched: false });
     const hers = await her.call<FeedResult>("getDiscoverFeed", {});
     expect(hers.profiles.map((profile) => profile.uid)).not.toContain(him.uid);
-    await expect(her.call("swipe", { targetUid: him.uid, type: "like" })).rejects.toThrow(/no longer available/);
+    await expect(her.call("swipe", { targetUid: him.uid, type: "like" })).resolves.toMatchObject({ matched: true });
   });
 });
 

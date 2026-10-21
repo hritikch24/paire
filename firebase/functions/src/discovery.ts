@@ -291,7 +291,7 @@ export const getDiscoverFeed = onCall(
               snap.data() as Partial<PublicProfile>,
               picked[index],
               viewerLocation,
-              superLikers.has(picked[index].uid),
+              plus && superLikers.has(picked[index].uid),
               traits,
               now
             )

@@ -5,13 +5,13 @@ export const core = [
   {
     path: "about/", crumb: "About Paire", published: D, updated: D, eyebrow: "ABOUT PAIRE",
     title: "About Paire — An Indian Dating App Where Women Set the Rules",
-    description: "Paire is an Indian dating app for men and women, built in India. Every like comes with a note, women set the rules, every member is email- and selfie-verified, and seeing who likes you is free.",
+    description: "Paire is an Indian dating app for men and women, built in India. Every like comes with a note, women set the rules, every member is email- and selfie-verified, and seeing who likes you comes with Paire Plus.",
     h1: "About <em>Paire</em>",
     lede: "Paire is a dating app made in India for adult men and women: from a first coffee to a long-term partner. We built it because dating here deserved better than endless swiping, fake profiles and paywalls.",
     summary: [
       "Built in India, open across the country, 18+ only, for men and women.",
       "Every like can carry a note, so matches start with a real conversation.",
-      "Women control who can reach them; seeing who likes you is free for everyone.",
+      "Women control who can reach them; Paire Plus reveals who likes you.",
       "Every member confirms a real email and passes a live selfie check before they can like or chat.",
       "No caste field or filter. Paire Plus is optional, from ₹20, and never auto-renews."
     ],
@@ -23,7 +23,7 @@ export const core = [
 <li><strong>A like should mean something.</strong> Every like can carry a short note, and everyone gets a free daily allowance of likes, so each one is considered rather than sprayed.</li>
 <li><strong>Women set the rules.</strong> Women can accept only likes that come with a note, choose to send the first message, browse in incognito, and keep photos private until they match. These controls are free.</li>
 <li><strong>Real people only.</strong> Every member confirms their email and passes a live selfie check that matches them to their profile photos before they can like or chat.</li>
-<li><strong>Fair pricing.</strong> Seeing who likes you is free, forever. Paire Plus is a short pass (from ₹5 a day with the month offer: ₹299 for 2 months; or ₹20 a day, ₹99 a week) that ends on its own. Men and women pay the same.</li>
+<li><strong>Fair pricing.</strong> Your likes count is free. Paire Plus reveals the profiles behind it. Paire Plus is a short pass (from ₹5 a day with the month offer: ₹299 for 2 months; or ₹20 a day, ₹99 a week) that ends on its own. Men and women pay the same.</li>
 <li><strong>Respect.</strong> There is no caste field or filter, religion is never used to rank anyone, and paid arrangements are banned.</li>
 </ul>
 <h2>Who Paire is for</h2>
@@ -36,7 +36,7 @@ export const core = [
 <p>Questions, press or partnerships: see our <a href="/contact/">contact page</a>.</p>`,
     faq: [
       ["Is Paire an Indian app?", "Yes. Paire is built in India, open across the country, and designed for how people date in India: notes with every like, women-first controls, no caste filters and prices in rupees."],
-      ["Is Paire free?", "Joining, 10 likes a day, matching, seeing who likes you, reading messages and every privacy and safety control are free. Sending messages needs Paire Plus (passes from ₹20 that never auto-renew) or a one-time ₹49 Unlimited Chat unlock."],
+      ["Is Paire free?", "Joining, 10 likes a day, matching, an anonymous likes count, reading messages and every privacy and safety control are free. Sending messages needs Paire Plus (passes from ₹20 that never auto-renew) or a one-time ₹49 Unlimited Chat unlock."],
       ["Is Paire only for serious relationships?", "No. Paire covers everything from casual dating to marriage-minded relationships. You set your intention and can choose to see only people who want the same."]
     ],
     related: ["features/", "verification/", "pricing/", "guides/best-dating-apps-india/"]
@@ -44,14 +44,14 @@ export const core = [
   {
     path: "pricing/", crumb: "Pricing", published: D, updated: D, eyebrow: "PRICING",
     title: "Paire Pricing — Free Dating App, Plus Passes from ₹20 (No Auto-Renew)",
-    description: "Paire is free to join and match: 10 likes a day, see who likes you, read your messages. To send messages, get Paire Plus (from ₹5 a day: ₹299 for 60 days with the buy 1 month, get 1 free offer; or ₹20 a day, ₹99 a week) or Unlimited Chat for ₹49 once. Nothing auto-renews, and men and women pay the same.",
+    description: "Paire is free to join and match: 10 likes a day, an anonymous likes count, read your messages. To send messages, get Paire Plus (from ₹5 a day: ₹299 for 60 days with the buy 1 month, get 1 free offer; or ₹20 a day, ₹99 a week) or Unlimited Chat for ₹49 once. Nothing auto-renews, and men and women pay the same.",
     h1: "Free first. <em>Fair always.</em>",
     lede: "Joining, matching and safety on Paire are free. To send messages, choose a short Paire Plus pass or a one-time ₹49 Unlimited Chat unlock. Both end or stay on their own terms: nothing to cancel, no surprise renewals.",
     summary: [
-      "Free forever: 10 likes a day (each with a note), 1 Super Like a day, see everyone who likes you, mutual matching, reading every message you receive, every privacy and safety control.",
+      "Free forever: 10 likes a day (each with a note), 1 Super Like a day, an anonymous likes count, mutual matching, reading every message you receive, every privacy and safety control.",
       "Sending messages: your own Paire Plus pass, or Unlimited Chat for ₹49 once (all current and future matches, no expiry). Each person needs their own access to send.",
       "Paire Plus: ₹299 for 60 days (buy 1 month, get 1 month free: ₹5 a day), ₹99 for 7 days, ₹20 for 24 hours.",
-      "Plus adds unlimited messaging while it runs, 100 likes and 5 Super Likes a day, priority likes and the age-gap filter.",
+      "Plus reveals who likes you and adds unlimited messaging while it runs, 100 likes and 5 Super Likes a day, priority likes and the age-gap filter.",
       "Passes never auto-renew. Men and women pay the same. Pay by UPI, card or netbanking."
     ],
     body: `
@@ -59,7 +59,7 @@ export const core = [
 <table><thead><tr><th>Feature</th><th>Free</th><th>Paire Plus</th></tr></thead><tbody>
 <tr><td>Likes per day (each can carry a note)</td><td>10</td><td>100</td></tr>
 <tr><td>Super Likes per day</td><td>1</td><td>5</td></tr>
-<tr><td>See everyone who likes you</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>See who likes you</td><td>Anonymous preview</td><td>Full profiles</td></tr>
 <tr><td>Read the messages you receive</td><td>Yes</td><td>Yes</td></tr>
 <tr><td>Send messages</td><td>With Unlimited Chat (₹49 once)</td><td>Included</td></tr>
 <tr><td>Women-first controls (notes-only likes, I'll message first, incognito, private photos)</td><td>Yes</td><td>Yes</td></tr>
@@ -78,27 +78,27 @@ export const core = [
 <h2>Unlimited Chat: ₹49 once</h2>
 <p>Only want to chat? Unlimited Chat is a one-time ₹49 payment that lets you send messages in all your current and future mutual matches. It has no expiry, no renewal and no per-match charge, and it stays with your account on every device. It covers messaging only, not Plus's extra likes or filters. Each person needs their own access to send: you can message someone who hasn't paid, and they can read it, but they need Plus or their own unlock to reply. It's offered once you have your first mutual match, and you pay it inside the app through CCAvenue, by UPI, card, netbanking or wallet.</p>
 <h2>Why we price it this way</h2>
-<p>Many dating apps charge a monthly subscription to see who likes you and renew it automatically. We think seeing who likes you is basic, so it is free. Plus adds reach and messaging, Unlimited Chat adds messaging only, and safety is never for sale: reporting, blocking and unmatching are always free. Paying never guarantees a match or a reply. See our <a href="/refunds/">refund and cancellation policy</a> for details.</p>`,
+<p>Many dating apps charge a monthly subscription to see who likes you and renew it automatically. Your anonymous likes preview is free. Plus reveals the profiles behind those likes and adds reach and messaging, Unlimited Chat adds messaging only, and safety is never for sale: reporting, blocking and unmatching are always free. Paying never guarantees a match or a reply. See our <a href="/refunds/">refund and cancellation policy</a> for details.</p>`,
     faq: [
       ["How much does Paire cost?", "Joining and matching are free. To send messages, get a Paire Plus pass (₹299 for 60 days with the buy 1 month, get 1 free offer, ₹99 for 7 days or ₹20 for 24 hours) or Unlimited Chat for ₹49 once."],
       ["Is Unlimited Chat per match?", "No. One ₹49 payment covers all your current and future mutual matches, with no expiry. It belongs to your account only, and the other person needs their own access to reply."],
       ["Does Paire Plus renew automatically?", "No. Every Paire Plus pass is a one-time payment that ends by itself. There is nothing to cancel."],
       ["Do women and men pay differently?", "No. Paire Plus costs the same for everyone, and all safety and privacy features are free for everyone."],
-      ["Can I see who likes me for free on Paire?", "Yes. Seeing everyone who likes you is free on Paire, forever."]
+      ["Can I see who likes me for free on Paire?", "Free members see an anonymous likes count. Paire Plus reveals the profiles and notes, including likes from outside your search filters."]
     ],
     related: ["features/", "compare/tinder/", "compare/bumble/", "about/"]
   },
   {
     path: "features/", crumb: "Features", published: D, updated: D, eyebrow: "FEATURES",
     title: "Paire Features — Notes With Likes, Women-First Controls, Vibe First & Duos",
-    description: "Everything Paire does: likes with notes, free 'who likes you', women-first privacy controls, Vibe First, Duos double dates, blind date mode, Paire AI icebreakers and selfie verification.",
+    description: "Everything Paire does: likes with notes, 'who likes you' with Plus, women-first privacy controls, Vibe First, Duos double dates, blind date mode, Paire AI icebreakers and selfie verification.",
     h1: "Everything <em>Paire</em> does",
     lede: "Paire is built around conversations that start well and people who are who they say they are. Here is every feature, and what it costs (mostly nothing).",
     body: `
 <h2>Likes with notes (Sparks)</h2>
 <p>Every like on Paire can carry a short note, so the other person sees why you liked them. Notes are screened for abuse before they are delivered. Everyone gets 10 likes and 1 Super Like a day for free, which keeps likes considered.</p>
-<h2>See who likes you, free</h2>
-<p>Your "Likes you" list shows everyone who has liked you, with their note. On many apps this is a paid feature; on Paire it is free for everyone.</p>
+<h2>Someone liked you. Reveal who with Plus.</h2>
+<p>Your "Likes you" list shows an anonymous count for free. Paire Plus reveals pending liker profiles and their notes, including people outside your search filters. Blocks and privacy controls still apply.</p>
 <h2>Women-first controls</h2>
 <ul>
 <li><strong>Notes-only likes:</strong> only receive likes that come with a note.</li>

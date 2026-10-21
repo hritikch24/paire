@@ -41,7 +41,7 @@ export function MatchesScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const uid = useAuthStore((state) => state.user?.uid) ?? "";
   const { matches, loaded, failed, retry } = useMatchesStore();
-  const likes = useLikesYou().data ?? [];
+  const likes = useLikesYou().data;
   const openLiker = (profile: DiscoverProfile) => navigation.navigate("ProfileView", { source: "likes", profile });
   const seeAllLikes = () => navigation.navigate("LikesGallery");
   /** One face for a match, two overlapping for a Duo chat. */
@@ -107,9 +107,9 @@ export function MatchesScreen() {
         <Text fontSize="$8" fontWeight="700" testID="matches-title" accessibilityRole="header" paddingHorizontal="$4">
           Matches
         </Text>
-        {likes.length ? (
+        {(likes?.count ?? 0) ? (
           <YStack paddingTop="$4">
-            <LikesYouRow profiles={likes} onOpen={openLiker} onSeeAll={seeAllLikes} />
+            <LikesYouRow profiles={likes?.profiles ?? []} count={likes?.count ?? 0} locked={likes?.locked !== false} hasMore={likes?.hasMore} onUpgrade={() => navigation.navigate("Premium")} onOpen={openLiker} onSeeAll={seeAllLikes} />
           </YStack>
         ) : null}
         <EmptyState
@@ -143,7 +143,7 @@ export function MatchesScreen() {
             >
               Matches
             </Text>
-            <LikesYouRow profiles={likes} onOpen={openLiker} onSeeAll={seeAllLikes} />
+            <LikesYouRow profiles={likes?.profiles ?? []} count={likes?.count ?? 0} locked={likes?.locked !== false} hasMore={likes?.hasMore} onUpgrade={() => navigation.navigate("Premium")} onOpen={openLiker} onSeeAll={seeAllLikes} />
             {fresh.length ? (
               <YStack gap="$2">
                 <Text

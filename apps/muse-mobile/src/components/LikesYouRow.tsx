@@ -4,24 +4,34 @@ import { DiscoverProfile } from "../types/models";
 import { compatibilityLabel } from "../utils/insights";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
+import { LockedLikes } from "./LockedLikes";
 
-/** "Liked you": people waiting for your answer. Free to see, unlike most apps. */
+/** Pending likes show an anonymous preview until the member has Plus. */
 export function LikesYouRow({
   profiles,
+  count,
+  locked,
+  hasMore,
+  onUpgrade,
   onOpen,
   onSeeAll
 }: {
   profiles: DiscoverProfile[];
+  count: number;
+  locked: boolean;
+  hasMore?: boolean;
+  onUpgrade: () => void;
   onOpen: (profile: DiscoverProfile) => void;
   /** Opens the full gallery. */
   onSeeAll?: () => void;
 }) {
-  if (!profiles.length) return null;
+  if (!count) return null;
+  if (locked) return <LockedLikes count={count} hasMore={hasMore} onUpgrade={onUpgrade} />;
   return (
     <YStack gap="$2" testID="likes-you">
       <YStack paddingHorizontal="$4" gap={2}>
         <Text fontSize="$2" fontWeight="700" color="$textMuted" textTransform="uppercase">
-          Liked you · {profiles.length}
+          Liked you · {count}{hasMore ? "+" : ""}
         </Text>
         <Text fontSize="$2" color="$textMuted">
           They're waiting for your answer. Notes come first.

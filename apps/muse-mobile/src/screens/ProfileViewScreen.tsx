@@ -23,6 +23,7 @@ import { useMemberProfile } from "../hooks/useMemberProfile";
 import { sendSwipe } from "../services/discoveryService";
 import { suppressMatchAlert } from "../services/notificationService";
 import { friendlyError } from "../services/errors";
+import { offerPlusForLikeLimit } from "../services/likeLimitOffer";
 import { queryClient } from "../services/queryClient";
 import { blockUser } from "../services/safetyService";
 import { useAuthStore } from "../store/authStore";
@@ -82,8 +83,9 @@ export function ProfileViewScreen() {
         navigation.goBack();
       }
     } catch (error) {
-      showToast(friendlyError(error, "Couldn't save that. Please try again."), "error");
       setAnswering(false);
+      if (offerPlusForLikeLimit(error, () => navigation.navigate("Premium"))) return;
+      showToast(friendlyError(error, "Couldn't save that. Please try again."), "error");
     }
   };
   const showActions = source === "discover" || source === "likes" || source === "shared";

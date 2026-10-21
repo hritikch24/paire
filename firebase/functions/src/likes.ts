@@ -4,85 +4,65 @@ import { REGION } from "./config";
 import { loadExclusions } from "./discovery";
 import { requireVerifiedUsers, verifiedUsers } from "./trust";
 import { requireReadAuth, isSupportSession } from "./lib/auth";
-import { toDiscoverProfile, viewerTraits } from "./lib/discovery";
+import { buildDiscoveryEntry, toDiscoverProfile, viewerTraits } from "./lib/discovery";
 import { isValidLatLng } from "./lib/geo";
-import { isCandidateForViewer } from "./lib/prefs";
+import { isVisibleCandidate } from "./lib/prefs";
 import { compareLikes, IncomingLike } from "./lib/sparks";
-import { DiscoverProfile, DiscoveryEntry, LatLng, PublicProfile, UserSettings } from "./types";
+import { limitsFor } from "./premium";
+import { billingEnabled, syncPremium } from "./billing";
+import { validBillingSnapshot } from "./lib/billing";
+import { consumeDailyQuota } from "./quota";
+import { DiscoverProfile, LatLng, ModerationRecord, PublicProfile, UserSettings } from "./types";
 
-const MAX_LIKERS = 60;
+const SCAN_LIMIT = 300;
+export type LikesYouResult = { profiles: DiscoverProfile[]; count: number; locked: boolean; hasMore: boolean; expiresAt: number | null };
 
-/**
- * People who liked you and are waiting for your answer. Free, unlike most apps:
- * knowing someone is interested is what keeps people coming back.
- * Excludes anyone you already swiped on, blocked or matched, anyone who is
- * hidden, and anyone who no longer fits the viewer's preferences.
- */
-export const getLikesYou = onCall({ region: REGION }, async (request): Promise<{ profiles: DiscoverProfile[] }> => {
+/** Pending likes ignore search filters. Identity is revealed only by the server for active Plus. */
+export const getLikesYou = onCall({ region: REGION, timeoutSeconds: 30, secrets: ["REVENUECAT_SECRET_KEY", "RAZORPAY_KEY_SECRET"] }, async (request): Promise<LikesYouResult> => {
   const uid = await requireReadAuth(request);
   await requireVerifiedUsers([uid], undefined, uid, isSupportSession(request));
-
-  const [likesSnap, viewerEntrySnap, viewerProfileSnap, settingsSnap] = await Promise.all([
-    // Newest likes first, so the cap never hides recent likes (or their notes) from popular members.
-    db.collectionGroup("outgoing")
-      .where("toUid", "==", uid)
-      .where("type", "in", ["like", "super"])
-      .orderBy("createdAt", "desc")
-      .limit(300)
-      .get(),
-    db.doc(`discovery/${uid}`).get(),
-    db.doc(`users/${uid}`).get(),
-    db.doc(`users/${uid}/private/settings`).get()
+  await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "likesChecks", 300);
+  const [likesSnap, myProfile, mySettings, myMod, billing] = await Promise.all([
+    db.collectionGroup("outgoing").where("toUid", "==", uid).where("type", "in", ["like", "super"])
+      .orderBy("createdAt", "desc").limit(SCAN_LIMIT).get(),
+    db.doc(`users/${uid}`).get(), db.doc(`users/${uid}/private/settings`).get(),
+    db.doc(`moderation/${uid}`).get(), db.doc(`billing/${uid}`).get()
   ]);
-  if (!viewerEntrySnap.exists) return { profiles: [] };
-  const viewer = viewerEntrySnap.data() as DiscoveryEntry;
-
-  const likes = likesSnap.docs
-    .map((doc) => doc.data() as IncomingLike)
-    .filter((like) => (like.type === "like" || like.type === "super") && typeof like.fromUid === "string" && like.fromUid !== uid)
-    .sort(compareLikes);
-  const superLikers = new Set(likes.filter((like) => like.type === "super").map((like) => like.fromUid as string));
-  const notes = new Map(
-    likes.filter((like) => typeof like.note === "string" && like.note).map((like) => [like.fromUid as string, like.note as string])
-  );
-  const likers = Array.from(new Set(likes.map((like) => like.fromUid as string))).slice(0, MAX_LIKERS);
-  if (!likers.length) return { profiles: [] };
-
+  let billed = billing.data();
+  if (billingEnabled() && Number(billed?.expiresAt) > Date.now() && !validBillingSnapshot(billed)) {
+    await syncPremium(uid);
+    billed = (await db.doc(`billing/${uid}`).get()).data();
+  }
+  const plus = limitsFor(billed).priority;
+  const result: LikesYouResult = { profiles: [], count: 0, locked: !plus, hasMore: likesSnap.size === SCAN_LIMIT, expiresAt: plus ? Number(billed?.expiresAt) : null };
+  if (!myProfile.exists) return result;
+  const settings = mySettings.data() as UserSettings | undefined;
+  const viewer = buildDiscoveryEntry(uid, myProfile.data() as PublicProfile, settings, myMod.data() as ModerationRecord | undefined);
+  const likes = likesSnap.docs.map((doc) => doc.data() as IncomingLike)
+    .filter((like) => typeof like.fromUid === "string" && like.fromUid !== uid).sort(compareLikes);
+  const likers = [...new Set(likes.map((like) => like.fromUid as string))];
+  if (!likers.length) return result;
   const excluded = await loadExclusions(uid, likers);
   const remaining = likers.filter((liker) => !excluded.has(liker));
-  if (!remaining.length) return { profiles: [] };
-
-  const snaps = await db.getAll(
-    ...remaining.flatMap((liker) => [db.doc(`discovery/${liker}`), db.doc(`users/${liker}`)])
-  );
-  const settings = settingsSnap.data() as UserSettings | undefined;
-  const viewerLocation: LatLng | null =
-    settings?.locationEnabled && isValidLatLng(settings.location)
-      ? { lat: settings.location.lat, lng: settings.location.lng }
-      : null;
-  const traits = viewerTraits(viewer, viewerProfileSnap.data() as Partial<PublicProfile> | undefined);
-  const now = Date.now();
-
-  const verified = await verifiedUsers(remaining);
-  const profiles: DiscoverProfile[] = [];
-  remaining.forEach((liker, index) => {
-    const entrySnap = snaps[index * 2];
-    const profileSnap = snaps[index * 2 + 1];
-    if (!verified.has(liker)) return;
-    if (!entrySnap.exists || !profileSnap.exists) return;
-    const entry = entrySnap.data() as DiscoveryEntry;
-    // Same checks as the feed (visibility, cohort, viewer's preferences), but not distance:
-    // they already chose you.
-    if (!isCandidateForViewer(viewer, entry, { viewerLocation: null, sharedVibesOnly: false })) return;
-    const profile = toDiscoverProfile(
-      profileSnap.data() as Partial<PublicProfile>,
-      entry,
-      viewerLocation,
-      superLikers.has(liker),
-      traits,
-      now
-    );
-    if (profile) profiles.push(notes.has(liker) ? { ...profile, note: notes.get(liker) } : profile);
+  if (!remaining.length) return result;
+  const [snaps, verified] = await Promise.all([
+    db.getAll(...remaining.flatMap((id) => [db.doc(`users/${id}`), db.doc(`users/${id}/private/settings`), db.doc(`moderation/${id}`)])),
+    verifiedUsers(remaining)
+  ]);
+  const location: LatLng | null = settings?.locationEnabled && isValidLatLng(settings.location) ? settings.location! : null;
+  const traits = viewerTraits(viewer, myProfile.data() as PublicProfile);
+  const superLikers = new Set(likes.filter((like) => like.type === "super").map((like) => like.fromUid));
+  const notes = new Map(likes.filter((like) => typeof like.note === "string" && like.note).map((like) => [like.fromUid, like.note as string]));
+  remaining.forEach((id, index) => {
+    const [profile, prefs, mod] = snaps.slice(index * 3, index * 3 + 3);
+    if (!profile.exists || !verified.has(id)) return;
+    const entry = buildDiscoveryEntry(id, profile.data() as PublicProfile, prefs.data() as UserSettings | undefined, mod.data() as ModerationRecord | undefined);
+    if (!isVisibleCandidate(viewer, entry)) return;
+    result.count++;
+    // No uid, name, note, photo, profile field or identifying thumbnail is sent to free members.
+    if (!plus) return;
+    const card = toDiscoverProfile(profile.data() as PublicProfile, entry, location, superLikers.has(id), traits, Date.now());
+    if (card) result.profiles.push(notes.has(id) ? { ...card, note: notes.get(id) } : card);
   });
-  return { profiles };
+  return result;
 });

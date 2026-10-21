@@ -11,11 +11,13 @@ import { Text, XStack, YStack } from "tamagui";
 import { Icon } from "../components/Icon";
 import { IconButton } from "../components/IconButton";
 import { PrimaryButton } from "../components/MuseButton";
+import { LockedLikes } from "../components/LockedLikes";
 import { EmptyState, LoadingView } from "../components/States";
 import { showToast } from "../components/Toast";
 import { LIKES_YOU_KEY, useLikesYou } from "../hooks/useLikesYou";
 import { sendSwipe } from "../services/discoveryService";
 import { friendlyError } from "../services/errors";
+import { offerPlusForLikeLimit } from "../services/likeLimitOffer";
 import { suppressMatchAlert } from "../services/notificationService";
 import { queryClient } from "../services/queryClient";
 import { resolveServerUrl } from "../services/testServer";
@@ -156,7 +158,7 @@ function LikeCard({
   );
 }
 
-/** Everyone waiting for your answer, as a gallery. Free to see, unlike most apps. */
+/** Plus reveals pending likes; free members see only the anonymous preview. */
 export function LikesGalleryScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -164,7 +166,8 @@ export function LikesGalleryScreen() {
   const { gradient, glow } = useThemeColors();
   const likes = useLikesYou();
   const [busy, setBusy] = useState<string | null>(null);
-  const profiles = likes.data ?? [];
+  const profiles = likes.data?.locked === false ? likes.data.profiles : [];
+  const count = likes.data?.count ?? 0;
   const cardWidth = Math.floor((Math.min(width, 640) - 16 * 2 - GAP) / 2);
   const cardHeight = Math.round(cardWidth * 1.42);
 
@@ -187,6 +190,7 @@ export function LikesGalleryScreen() {
         });
       }
     } catch (error) {
+      if (offerPlusForLikeLimit(error, () => navigation.navigate("Premium"))) return;
       showToast(friendlyError(error, "Couldn't send that like. Please try again."), "error");
     } finally {
       setBusy(null);
@@ -220,7 +224,7 @@ export function LikesGalleryScreen() {
         >
           <Icon name="heart" size={14} color={glow} />
           <Text color="white" fontSize="$2" fontWeight="700">
-            {profiles.length}
+            {count}{likes.data?.hasMore ? "+" : ""}
           </Text>
         </XStack>
       </XStack>
@@ -229,7 +233,7 @@ export function LikesGalleryScreen() {
           They like you
         </Text>
         <Text color="rgba(255,255,255,0.88)" fontSize="$3">
-          Notes and Super Likes first. Tap the heart to like back: it's an instant match.
+          {likes.data?.locked !== false ? "Someone made the first move. Get Plus to reveal your likes." : "Notes and Super Likes first. Like someone back to match, even outside your search range."}
         </Text>
       </YStack>
     </LinearGradient>
@@ -253,6 +257,8 @@ export function LikesGalleryScreen() {
             >
               <PrimaryButton onPress={() => void likes.refetch()}>Try again</PrimaryButton>
             </EmptyState>
+          ) : count > 0 && likes.data?.locked !== false ? (
+            <YStack marginTop="$4"><LockedLikes count={count} hasMore={likes.data?.hasMore} onUpgrade={() => navigation.navigate("Premium")} /></YStack>
           ) : profiles.length ? (
             // Two staggered columns, like a mood board.
             <XStack paddingHorizontal={16} gap={GAP} marginTop={16}>

@@ -77,21 +77,24 @@ export async function webPassExpiry(uid: string, now = Date.now(), tx?: Transact
   const upiQuery = db.collection("upiUnlockOrders").where("uid", "==", uid).where("status", "==", "approved");
   const ccavenueQuery = db.collection("ccavenueOrders").where("uid", "==", uid).where("status", "==", "paid");
   const supportRef = db.doc(`supportPlusGrants/${uid}`);
-  const [paid, upi, ccavenue, support] = await Promise.all([
+  const giftRef = db.doc(`complimentaryPlusGrants/${uid}`);
+  const [paid, upi, ccavenue, support, gift] = await Promise.all([
     tx ? tx.get(paidQuery) : paidQuery.get(),
     // Plus passes paid by UPI and approved by a moderator (upiPayments.ts).
     tx ? tx.get(upiQuery) : upiQuery.get(),
     // Plus passes paid through CCAvenue (ccavenue.ts).
     tx ? tx.get(ccavenueQuery) : ccavenueQuery.get(),
     // A separately audited owner-authorized recovery, never a fabricated gateway success.
-    tx ? tx.get(supportRef) : supportRef.get()
+    tx ? tx.get(supportRef) : supportRef.get(),
+    tx ? tx.get(giftRef) : giftRef.get()
   ]);
   const supportUntil = support.get("status") === "active" && Number(support.get("startsAt")) <= now &&
     typeof support.get("expiresAt") === "number" ? support.get("expiresAt") as number : 0;
   return [...paid.docs, ...[...upi.docs, ...ccavenue.docs].filter((doc) => doc.get("kind") === "plus")].reduce((latest, doc) => {
     const expiresAt = doc.get("expiresAt");
     return typeof expiresAt === "number" && expiresAt > now ? Math.max(latest, expiresAt) : latest;
-  }, Number.isFinite(supportUntil) && supportUntil > now ? supportUntil : 0);
+  }, Math.max(Number.isFinite(supportUntil) && supportUntil > now ? supportUntil : 0,
+    gift.get("status") === "active" && typeof gift.get("expiresAt") === "number" && Number.isFinite(gift.get("expiresAt")) && gift.get("expiresAt") > now ? gift.get("expiresAt") as number : 0));
 }
 
 /**

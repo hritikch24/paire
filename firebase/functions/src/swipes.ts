@@ -7,7 +7,7 @@ import { requireAuth } from "./lib/auth";
 import { pairId } from "./lib/ids";
 import { firstMoveOf, sparksOf } from "./lib/sparks";
 import { buildDiscoveryEntry } from "./lib/discovery";
-import { candidateLatLng, isCandidateForViewer } from "./lib/prefs";
+import { candidateLatLng, isCandidateForViewer, isVisibleCandidate } from "./lib/prefs";
 import { parseSwipeInput, parseTargetInput } from "./lib/validate";
 import { snippetOf } from "./profiles";
 import { sendPushToUser } from "./push";
@@ -98,7 +98,8 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
     if (isPositive(type)) {
       const mine = buildDiscoveryEntry(uid, meSnap.data() as Partial<PublicProfile>, mySettings.data() as UserSettings | undefined, myModeration.data() as ModerationRecord | undefined);
       const theirs = buildDiscoveryEntry(targetUid, targetSnap.data() as Partial<PublicProfile>, theirSettings.data() as UserSettings | undefined, theirModeration.data() as ModerationRecord | undefined);
-      if (!mine.visible || !isCandidateForViewer(mine, theirs, { viewerLocation: candidateLatLng(mine), sharedVibesOnly: mySettings.get("sharedVibesOnly") === true })) {
+      const eligible = theyLikedMe ? isVisibleCandidate(mine, theirs) : isCandidateForViewer(mine, theirs, { viewerLocation: candidateLatLng(mine), sharedVibesOnly: mySettings.get("sharedVibesOnly") === true });
+      if (!mine.visible || !eligible) {
         throw new HttpsError("not-found", "That profile is no longer available for matching.");
       }
       // Incognito members can only be liked back, never discovered.
@@ -117,7 +118,8 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
         "resource-exhausted",
         type === "super"
           ? "You're out of Super Likes for today."
-          : "You've reached today's like limit. Come back tomorrow!"
+          : type === "nope" ? "You've reached today's pass limit. Come back tomorrow." : limits.priority ? "You've used today's Plus likes. Your allowance resets tomorrow." : "You've used today's free likes. Get Paire Plus for 100 likes a day.",
+        { reason: "daily-swipe-limit", kind: type, upgradeAvailable: type !== "nope" && !limits.priority }
       );
     }
     used[counter] += 1;

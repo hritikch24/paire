@@ -1,7 +1,7 @@
 {
   "name": "Paire — Dating where women set the rules",
   "short_name": "Paire",
-  "description": "Find your Paire. Likes with notes, free “who likes you”, and privacy controls built for India.",
+  "description": "Find your Paire. Likes with notes, reveal who likes you with Plus, and privacy controls built for India.",
   "start_url": "/app/",
   "scope": "/",
   "display": "standalone",
