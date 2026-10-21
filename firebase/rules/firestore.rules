@@ -356,6 +356,12 @@ service cloud.firestore {
           && chat.createdAt.toMillis() < policy.get('enforceFrom', 0));
     }
 
+    // Mirrors src/config/chatContactPolicy.json; parity and rejection tests prevent drift.
+    function noContactDetails(value) {
+      let text = value.lower().replace('[​‌‍⁠﻿]', '').replace('[   -     　]', ' ');
+      return !text.matches('(?s).*((^|[^a-z0-9])[0-9٠-٩۰-۹०-९０-９]([\\s().+*/_,:;|•‐‑‒–—−-]*[0-9٠-٩۰-۹०-९０-９]){9,14}($|[^0-9٠-٩۰-۹०-९０-９])|\\b(call|phone|mobile|number|whatsapp|wa[.]me|tel)[^0-9\\n]{0,24}[0-9٠-٩۰-۹०-९０-９]([\\s().+*/_,:;|•‐‑‒–—−-]*[0-9٠-٩۰-۹०-९０-９]){6,14}($|[^0-9٠-٩۰-۹०-९０-９])|\\b(zero|oh|one|two|three|four|five|six|seven|eight|nine)([\\s,.-]+(zero|oh|one|two|three|four|five|six|seven|eight|nine)){9,14}\\b|(instagram[\\s]*(\\.|\\[dot\\]|\\(dot\\)|dot)[\\s]*com|instagr[.]am|(^|[^a-z0-9._])[＠@][a-z0-9_ａ-ｚＡ-Ｚ０-９][a-z0-9._ａ-ｚＡ-Ｚ０-９]*|\\b(instagram|insta|ig)[\\s]*[:=@-][\\s]*[a-z0-9_@]|\\b(instagram|insta|ig)[\\s]+(id|handle|username|user name)[\\s]*[:=@-]?[\\s]*(is[\\s]+|hai[\\s]+)?[a-z0-9_@]+|\\b(my|mera|meri)[\\s]+(instagram|insta|ig)[\\s]+(is|hai)[\\s]+[a-z0-9_@]+)).*');
+    }
+
     // Sender's half of the "send message" batch: preview, activity time, and +1 unread for everyone else.
     function isSendUpdate() {
       let others = othersIn(resource.data);
@@ -370,6 +376,7 @@ service cloud.firestore {
         && preview.keys().hasOnly(['text', 'senderId', 'createdAt'])
         && preview.senderId == request.auth.uid
         && isStr(preview.text, 1, 1000)
+        && noContactDetails(preview.text)
         && preview.createdAt == request.time
         && others.size() >= 1 && others.size() <= 3
         && unreadAfter.diff(unreadBefore).affectedKeys().hasOnly(others)
@@ -423,6 +430,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
           && request.resource.data.senderId == request.auth.uid
           && isStr(request.resource.data.text, 1, 1000)
+          && noContactDetails(request.resource.data.text)
           && request.resource.data.createdAt == request.time
           && maySend(parentMatch());
         allow update, delete: if false;

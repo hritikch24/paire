@@ -300,6 +300,34 @@ describe("server-only collections", () => {
 });
 
 describe("matches and messages", () => {
+  const contacts = JSON.parse(fs.readFileSync(path.join(__dirname, "../../apps/muse-mobile/__tests__/fixtures/chatContact.json"), "utf8")) as { blocked: string[]; allowed: string[] };
+
+  test("client contact patterns match the server write policy", () => {
+    const policy = JSON.parse(fs.readFileSync(path.join(__dirname, "../../apps/muse-mobile/src/config/chatContactPolicy.json"), "utf8")) as Record<string, string>;
+    const expression = `(?s).*(${Object.values(policy).join("|")}).*`.replace(/\\/g, "\\\\");
+    expect(fs.readFileSync(path.join(__dirname, "../rules/firestore.rules"), "utf8")).toContain(`text.matches('${expression}')`);
+  });
+
+  test.each(contacts.blocked)("refuses direct SDK messages and preview leaks: %s", async text => {
+    await seed({ "matches/alexa_jules": matchDoc() });
+    const db = dbFor("alexa");
+    const message = db.collection("matches/alexa_jules/messages").doc();
+    await assertFails(message.set({ senderId: "alexa", text, createdAt: serverTimestamp() }));
+    const update = { lastMessage: { text, senderId: "alexa", createdAt: serverTimestamp() }, lastActivityAt: serverTimestamp(), "unread.jules": increment(1) };
+    await assertFails(db.doc("matches/alexa_jules").update(update));
+    const batch = db.batch();
+    batch.set(message, { senderId: "alexa", text, createdAt: serverTimestamp() });
+    // A shortened or forged clean preview must not let contact details through.
+    batch.update(db.doc("matches/alexa_jules"), { ...update, lastMessage: { ...update.lastMessage, text: "Hello" } });
+    await assertFails(batch.commit());
+    expect((await db.doc("matches/alexa_jules").get()).get("lastMessage")).toBeNull();
+    expect((await db.collection("matches/alexa_jules/messages").get()).empty).toBe(true);
+  });
+
+  test.each(contacts.allowed)("keeps ordinary messages working: %s", async text => {
+    await seed({ "matches/alexa_jules": matchDoc() });
+    await assertSucceeds(dbFor("alexa").collection("matches/alexa_jules/messages").add({ senderId: "alexa", text, createdAt: serverTimestamp() }));
+  });
   test("only participants can read a match", async () => {
     await seed({ "matches/alexa_jules": matchDoc() });
     await assertSucceeds(dbFor("alexa").doc("matches/alexa_jules").get());

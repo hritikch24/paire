@@ -1,6 +1,7 @@
 jest.mock("../src/services/firebase", () => ({ db: { name: "db" } }));
 
 import * as firestore from "@firebase/firestore/dist/index.cjs.js";
+import { Platform } from "react-native";
 import { sendChatMessage, toSafety } from "../src/services/chatService";
 import { safetyNotice } from "../src/utils/chatSafety";
 import { chatTitle, normalizeMatch, otherParticipant, otherSide, partnerIn } from "../src/services/matchService";
@@ -41,6 +42,16 @@ describe("normalizeMatch", () => {
 describe("sendChatMessage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("rejects contact details before creating an optimistic message or changing unread counts", async () => {
+    const old = Platform.OS;
+    Object.defineProperty(Platform, "OS", { value: "web", configurable: true });
+    try {
+      await expect(sendChatMessage("a_b", "a", ["b"], "Call 9876543210")).rejects.toMatchObject({ code: "chat/contact-details" });
+      await expect(sendChatMessage("a_b", "a", ["b"], "IG: alex")).rejects.toMatchObject({ code: "chat/contact-details" });
+      expect(mocked.writeBatch).not.toHaveBeenCalled();
+    } finally { Object.defineProperty(Platform, "OS", { value: old, configurable: true }); }
   });
 
   it("writes the message and bumps only the recipient's unread count in one batch", async () => {

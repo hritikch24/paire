@@ -1,11 +1,12 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useMemo } from "react";
-import { FlatList, Pressable, ScrollView } from "react-native";
+import { FlatList, Platform, Pressable, ScrollView } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { AvatarPair } from "../components/Avatar";
 import { Icon } from "../components/Icon";
 import { LikesYouRow } from "../components/LikesYouRow";
+import { MatchPresenceDot, matchPresence } from "../components/MatchPresence";
 import { PrimaryButton } from "../components/MuseButton";
 import { Screen } from "../components/Screen";
 import { EmptyState, LoadingView } from "../components/States";
@@ -56,8 +57,10 @@ export function MatchesScreen() {
     () => matches.filter((match) => match.kind !== "duo").slice(0, 50).map((match) => otherParticipant(match, uid)),
     [matches, uid]
   );
-  const presence = usePresence(pairUids);
+  const presence = usePresence(pairUids, Platform.OS === "web" ? 30_000 : 60_000);
   const isOnline = (match: Match) => match.kind !== "duo" && presence.statusOf(otherParticipant(match, uid))?.online === true;
+  const statusOf = (match: Match) => presence.statusOf(otherParticipant(match, uid));
+  const statusLabel = (match: Match) => match.kind === "duo" ? "" : Platform.OS === "web" ? `, ${matchPresence(statusOf(match)).label.toLowerCase()}` : isOnline(match) ? ", online" : "";
 
   const { fresh, conversations } = useMemo(
     () => ({
@@ -168,17 +171,17 @@ export function MatchesScreen() {
                         key={match.id}
                         testID={`new-match-${match.id}`}
                         accessibilityRole="button"
-                        accessibilityLabel={`New match with ${chatTitle(match, uid)}${isOnline(match) ? ", online" : ""}. Open chat`}
+                        accessibilityLabel={`New match with ${chatTitle(match, uid)}${statusLabel(match)}. Open chat`}
                         onPress={() => openChat(match)}
                       >
                         <YStack alignItems="center" gap="$1" width={78}>
                           <YStack>
                             <AvatarPair people={facesOf(match)} size={72} ring />
-                            {isOnline(match) && !superLiked ? <OnlineDot size={72} /> : null}
+                            {Platform.OS === "web" ? match.kind !== "duo" ? <MatchPresenceDot status={statusOf(match)} size={72} /> : null : isOnline(match) && !superLiked ? <OnlineDot size={72} /> : null}
                             {superLiked ? (
                               <YStack
                                 position="absolute"
-                                right={-2}
+                                {...(Platform.OS === "web" ? { left: -2 } : { right: -2 })}
                                 bottom={-2}
                                 width={24}
                                 height={24}
@@ -196,6 +199,7 @@ export function MatchesScreen() {
                           <Text fontSize="$2" fontWeight="600" numberOfLines={1}>
                             {chatTitle(match, uid)}
                           </Text>
+                          {Platform.OS === "web" && match.kind !== "duo" ? <Text fontSize={11} lineHeight={14} color="$textMuted" numberOfLines={1}>{statusOf(match) ? matchPresence(statusOf(match)).label : "Not shown"}</Text> : null}
                           {match.kind === "duo" ? (
                             <Text fontSize={11} lineHeight={14} fontWeight="700" color="$primary">
                               Duo
@@ -241,14 +245,14 @@ export function MatchesScreen() {
             <Pressable
               testID={`match-row-${item.id}`}
               accessibilityRole="button"
-              accessibilityLabel={`${group ? "Duo chat" : "Chat"} with ${title}${isOnline(item) ? ", online" : ""}${unread ? `, ${unread} unread` : ""}`}
+              accessibilityLabel={`${group ? "Duo chat" : "Chat"} with ${title}${statusLabel(item)}${unread ? `, ${unread} unread` : ""}`}
               onPress={() => openChat(item)}
               style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
               <XStack paddingHorizontal="$4" paddingVertical="$3" gap="$3" alignItems="center">
                 <YStack>
                   <AvatarPair people={facesOf(item)} size={58} />
-                  {isOnline(item) ? <OnlineDot size={58} /> : null}
+                  {Platform.OS === "web" ? !group ? <MatchPresenceDot status={statusOf(item)} size={58} /> : null : isOnline(item) ? <OnlineDot size={58} /> : null}
                 </YStack>
                 <YStack flex={1} gap={2} minWidth={0}>
                   <XStack justifyContent="space-between" gap="$2">
@@ -256,6 +260,7 @@ export function MatchesScreen() {
                       <Text fontSize="$4" fontWeight={unread ? "700" : "600"} numberOfLines={1} flexShrink={1}>
                         {title}
                       </Text>
+                      {Platform.OS === "web" && !group ? <Text fontSize={11} color="$textMuted" numberOfLines={1}>{matchPresence(statusOf(item)).label}</Text> : null}
                       {group ? (
                         <YStack
                           paddingHorizontal={7}
@@ -279,6 +284,7 @@ export function MatchesScreen() {
                     <Text
                       flex={1}
                       numberOfLines={1}
+                      {...(Platform.OS === "web" ? { textAlign: "left" as const } : {})}
                       color={unread ? "$text" : "$textMuted"}
                       fontWeight={unread ? "600" : "400"}
                     >

@@ -4,7 +4,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import type { QueryDocumentSnapshot } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable } from "react-native";
+import { FlatList, Platform, Pressable } from "react-native";
 import { KeyboardAvoidingView, useKeyboardState } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, XStack, YStack } from "tamagui";
@@ -23,6 +23,7 @@ import { rapidQuestionMap } from "../data/rapidQuestions";
 import { useChatAccess } from "../hooks/useChatAccess";
 import { useMemberProfile } from "../hooks/useMemberProfile";
 import { usePresence } from "../hooks/usePresence";
+import { chatContactIssue } from "../utils/chatContact";
 import { fetchOpeners } from "../services/aiService";
 import {
   loadOlderMessages,
@@ -115,6 +116,7 @@ export function ChatScreen() {
     [matchId]
   );
   const [sending, setSending] = useState(false);
+  const contactIssue = Platform.OS === "web" ? chatContactIssue(text) : null;
   const [menuOpen, setMenuOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set());
@@ -218,6 +220,8 @@ export function ChatScreen() {
     const trimmed = body.trim();
     const recipients = match ? otherParticipants(match, uid) : [otherUid];
     if (!trimmed || !active || sending || locked || !recipients.length || !recipients[0]) return;
+    const issue = Platform.OS === "web" ? chatContactIssue(trimmed) : null;
+    if (issue) { showToast(issue.message, "error"); return; }
     setSending(true);
     setText("");
     try {
@@ -747,18 +751,25 @@ export function ChatScreen() {
                 borderRadius={23}
                 paddingTop="$3"
                 textAlignVertical="center"
+                {...(contactIssue ? { borderColor: "$error" as const } : {})}
               />
               <IconButton
                 testID="chat-send"
                 icon="arrow-up"
-                accessibilityLabel={locked ? "Sending needs Paire Plus or Unlimited Chat" : "Send message"}
+                accessibilityLabel={locked ? "Sending needs Paire Plus or Unlimited Chat" : contactIssue ? "Remove contact details to send" : "Send message"}
                 variant="solid"
                 color="primary"
                 size={46}
-                disabled={!text.trim() || sending || locked}
+                disabled={!text.trim() || sending || locked || Boolean(contactIssue)}
                 onPress={() => void handleSend()}
               />
             </XStack>
+            {contactIssue ? (
+              <XStack testID="chat-contact-warning" paddingHorizontal="$4" paddingBottom="$3" gap="$2" alignItems="flex-start" backgroundColor="$backgroundStrong">
+                <Icon name="information-circle-outline" color="error" size={16} />
+                <Text accessibilityLiveRegion="polite" color="$error" fontSize="$2" lineHeight={20} flex={1}>{contactIssue.message}</Text>
+              </XStack>
+            ) : null}
           </YStack>
         ) : match !== undefined ? (
           <YStack

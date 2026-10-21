@@ -17,6 +17,8 @@ import {
 import { ChatMessage, MessageSafety } from "../types/models";
 import { toMillis } from "../utils/time";
 import { db } from "./firebase";
+import { Platform } from "react-native";
+import { chatContactIssue } from "../utils/chatContact";
 
 export const MESSAGE_PAGE_SIZE = 40;
 export const MAX_MESSAGE_LENGTH = 1000;
@@ -117,6 +119,8 @@ export async function loadOlderMessages(matchId: string, before: QueryDocumentSn
 export async function sendChatMessage(matchId: string, senderId: string, recipientIds: string[], text: string) {
   const trimmed = text.trim().slice(0, MAX_MESSAGE_LENGTH);
   if (!trimmed) return;
+  const issue = Platform.OS === "web" ? chatContactIssue(trimmed) : null;
+  if (issue) throw Object.assign(new Error(issue.message), { code: "chat/contact-details" });
   const batch = writeBatch(db);
   batch.set(doc(messagesCollection(matchId)), {
     senderId,

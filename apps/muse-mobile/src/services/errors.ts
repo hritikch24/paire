@@ -31,6 +31,7 @@ const MESSAGES: Record<string, string> = {
 
 /** Our Cloud Functions send user-facing messages with these error codes. */
 const PASSTHROUGH_CODES = new Set([
+  "chat/contact-details",
   "functions/resource-exhausted",
   "functions/failed-precondition",
   "functions/not-found",

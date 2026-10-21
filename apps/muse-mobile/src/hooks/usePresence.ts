@@ -2,7 +2,7 @@ import { isSupportView } from "../services/supportMode";
 import { useIsFocused } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { navigationRef } from "../navigation/navigationRef";
 import { fetchPresence, markPresenceActivity, startPresence, stopPresence } from "../services/presenceService";
 import { useAuthStore } from "../store/authStore";
@@ -50,11 +50,12 @@ export function usePresenceEnabled(): boolean {
  * a new answer, so nobody is shown online after going idle.
  */
 export function usePresence(uids: string[], intervalMs = 60_000): { enabled: boolean; statusOf: (uid: string) => PresenceStatus | null } {
+  const uid = useAuthStore((state) => state.user?.uid);
   const focused = useIsFocused();
   const appActive = useAppActive();
   const key = useMemo(() => [...new Set(uids.filter(Boolean))].sort().slice(0, 50), [uids]);
   const query = useQuery({
-    queryKey: ["presence", key.join(",")],
+    queryKey: Platform.OS === "web" ? ["presence", uid, key.join(",")] : ["presence", key.join(",")],
     queryFn: () => fetchPresence(key),
     enabled: key.length > 0 && focused && appActive,
     refetchInterval: intervalMs,
@@ -74,9 +75,10 @@ export function usePresence(uids: string[], intervalMs = 60_000): { enabled: boo
     return () => clearTimeout(timer);
   }, [data, focused, now, offset]);
   // Stale answers (the app was in the background) say nothing rather than something wrong.
-  const fresh = data && appActive && now - data.receivedAt < Math.max(3 * intervalMs, 3 * 60_000);
+  const displayNow = Platform.OS === "web" ? Math.max(now, Date.now()) : now;
+  const fresh = data && appActive && (Platform.OS !== "web" || (!query.isError && focused)) && displayNow - data.receivedAt < Math.max(3 * intervalMs, 3 * 60_000);
   return {
     enabled: data?.enabled === true,
-    statusOf: (uid: string) => (fresh && data?.enabled ? presenceStatus(data.members[uid], offset, now) : null)
+    statusOf: (uid: string) => (fresh && data?.enabled ? presenceStatus(data.members[uid], offset, displayNow) : null)
   };
 }
