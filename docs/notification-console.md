@@ -36,3 +36,9 @@ Run `./scripts/verify.sh`. Integration covers live owner authorization, preview 
 The scripts require the isolated demo-muse UI workspace and local proxy from `web-preview.md`. All QA accounts are fictional. Real provider/device delivery is not established by a simulated broker; the owner's new test button is available for a deliberate real-device acceptance check after release. No campaign/test to a production account is necessary for release verification.
 
 Validation passed: **556 checks** (117 app, 260 Functions unit, 52 rules, 127 integration), production build, both browser suites and a visual check of the console at 320 px. The first full integration run had one transient emulator transaction failure in the unchanged payment-concurrency test; subsequent full verification passed, including that case and interrupted-run recovery. No production accounts or push services were used for QA.
+
+## Production release
+
+2026-10-21: `ba7dcab` and the interrupted-run recovery `af8faba` pushed to `main`. Initial console deployment `paire-aevo7hi9l` reached Ready; final browser deployment `paire-2oqcx2tmr` (`dpl_EGfJBJQ29EAxCrt97dnaQ9cxsY8u`, source `62f6000`) is Ready and serves www.paire.in. Public reads verified Metrics → Notifications, the console/self-test/combined opt-in/Check previous run UI in the current app bundle, and the focused-test worker behavior. All three new admin endpoints rejected anonymous requests with HTTP 401 / UNAUTHENTICATED.
+
+All four deployed handlers read back ACTIVE: `adminGetNotificationConsole` (`00001-dac`), `adminSendNotificationTest` (`00001-wus`), `sendEngagementReminders` (`00004-yax`), and final `adminSendReminderRun` (`00002-jak`, updated 10:24:01 UTC). The existing VAPID pair, reminder switch/schedule and member preferences were preserved. No Firestore rules/index deployment or native build was needed. No production member login, campaign, test notification, email or payment was performed for this release.
