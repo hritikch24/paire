@@ -7,7 +7,7 @@ import { requireAuth } from "./lib/auth";
 import { pairId } from "./lib/ids";
 import { firstMoveOf, sparksOf } from "./lib/sparks";
 import { buildDiscoveryEntry } from "./lib/discovery";
-import { candidateLatLng, isMutualCandidate } from "./lib/prefs";
+import { candidateLatLng, isCandidateForViewer } from "./lib/prefs";
 import { parseSwipeInput, parseTargetInput } from "./lib/validate";
 import { snippetOf } from "./profiles";
 import { sendPushToUser } from "./push";
@@ -98,8 +98,7 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
     if (isPositive(type)) {
       const mine = buildDiscoveryEntry(uid, meSnap.data() as Partial<PublicProfile>, mySettings.data() as UserSettings | undefined, myModeration.data() as ModerationRecord | undefined);
       const theirs = buildDiscoveryEntry(targetUid, targetSnap.data() as Partial<PublicProfile>, theirSettings.data() as UserSettings | undefined, theirModeration.data() as ModerationRecord | undefined);
-      if (!isMutualCandidate(mine, theirs, { viewerLocation: candidateLatLng(mine), sharedVibesOnly: mySettings.get("sharedVibesOnly") === true }) ||
-        !isMutualCandidate(theirs, mine, { viewerLocation: candidateLatLng(theirs), sharedVibesOnly: theirSettings.get("sharedVibesOnly") === true })) {
+      if (!mine.visible || !isCandidateForViewer(mine, theirs, { viewerLocation: candidateLatLng(mine), sharedVibesOnly: mySettings.get("sharedVibesOnly") === true })) {
         throw new HttpsError("not-found", "That profile is no longer available for matching.");
       }
       // Incognito members can only be liked back, never discovered.

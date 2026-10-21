@@ -196,7 +196,7 @@ export function SettingsScreen() {
             testID="settings-same-intent"
             icon="heart-circle-outline"
             label="Same intentions only"
-            description="Only see, and be seen by, people looking for what you want (marriage, long-term…)."
+            description="Only see people looking for what you want (marriage, long-term…)."
             value={settings.sameIntentOnly === true}
             onValueChange={(value) => void save({ sameIntentOnly: value })}
           />

@@ -4,7 +4,7 @@ Web release, 2026-10-17. Free accounts have 10 likes and 1 Super Like per UTC da
 
 ## Profile links
 
-Profile → Share my profile copies or shares `https://www.paire.in/app/?profile=<uid>`. Every member has a stable uid; the link identifies a profile without authorizing its contents. Sign-in, email confirmation and onboarding happen first, with the link retained. Self links open Preview. Other profiles use `getSharedProfile`, which checks current mutual eligibility, visibility, cohorts, verification, blocks, prior swipes and incognito. Private photos remain hidden. Unavailable profiles show a generic unavailable screen. The app carries noindex and anonymous visitors receive no profile content or personalized social preview.
+Profile → Share my profile copies or shares `https://www.paire.in/app/?profile=<uid>`. Every member has a stable uid; the link identifies a profile without authorizing its contents. Sign-in, email confirmation and onboarding happen first, with the link retained. Self links open Preview. Other profiles use `getSharedProfile`, which checks the viewer’s current search preferences, visibility, cohorts, verification, blocks, prior swipes and incognito. Private photos remain hidden. Unavailable profiles show a generic unavailable screen. The app carries noindex and anonymous visitors receive no profile content or personalized social preview.
 
 ## Returning members
 

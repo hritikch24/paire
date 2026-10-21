@@ -6,7 +6,7 @@ import { requireVerifiedUsers, verifiedUsers } from "./trust";
 import { requireReadAuth, isSupportSession } from "./lib/auth";
 import { toDiscoverProfile, viewerTraits } from "./lib/discovery";
 import { isValidLatLng } from "./lib/geo";
-import { isMutualCandidate } from "./lib/prefs";
+import { isCandidateForViewer } from "./lib/prefs";
 import { compareLikes, IncomingLike } from "./lib/sparks";
 import { DiscoverProfile, DiscoveryEntry, LatLng, PublicProfile, UserSettings } from "./types";
 
@@ -16,7 +16,7 @@ const MAX_LIKERS = 60;
  * People who liked you and are waiting for your answer. Free, unlike most apps:
  * knowing someone is interested is what keeps people coming back.
  * Excludes anyone you already swiped on, blocked or matched, anyone who is
- * hidden, and anyone who no longer fits both people's preferences.
+ * hidden, and anyone who no longer fits the viewer's preferences.
  */
 export const getLikesYou = onCall({ region: REGION }, async (request): Promise<{ profiles: DiscoverProfile[] }> => {
   const uid = await requireReadAuth(request);
@@ -71,9 +71,9 @@ export const getLikesYou = onCall({ region: REGION }, async (request): Promise<{
     if (!verified.has(liker)) return;
     if (!entrySnap.exists || !profileSnap.exists) return;
     const entry = entrySnap.data() as DiscoveryEntry;
-    // Same checks as the feed (visibility, cohort, both people's preferences), but not distance:
+    // Same checks as the feed (visibility, cohort, viewer's preferences), but not distance:
     // they already chose you.
-    if (!isMutualCandidate(viewer, entry, { viewerLocation: null, sharedVibesOnly: false })) return;
+    if (!isCandidateForViewer(viewer, entry, { viewerLocation: null, sharedVibesOnly: false })) return;
     const profile = toDiscoverProfile(
       profileSnap.data() as Partial<PublicProfile>,
       entry,

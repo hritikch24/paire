@@ -12,7 +12,7 @@ const SYSTEM = "Compare dating profile choices for shared activities and compati
   "design=architecture/design, lens=photography, craft=handmade, taste=food, nature=outdoors. " +
   'Return JSON only: {"scores":[{"index":0,"score":70}]}. No explanations or extra fields.';
 
-/** Both people must opt in. Existing mutual-preference/safety filtering happens first. */
+/** Both people must opt in. The viewer's preferences and safety filtering apply first. */
 export async function rerankVibes(uid: string, viewer: Partial<PublicProfile>, settings: UserSettings | undefined, profiles: DiscoverProfile[]) {
   if (settings?.aiVibeMatching !== true || !llmEnabled() || !profiles.length) return profiles;
   const snaps = await db.getAll(...profiles.map((profile) => db.doc(`users/${profile.uid}/private/settings`)));

@@ -10,7 +10,7 @@ import type { AppStackParamList } from "../navigation/types";
 const SIGNALS: Array<{ icon: IconName; title: string; text: string }> = [
   { icon: "heart-outline", title: "What you’re looking for", text: "The dating intentions you both choose to share." },
   { icon: "musical-notes-outline", title: "The little things you love", text: "Shared interests, vibes and answers to profile questions." },
-  { icon: "options-outline", title: "Preferences that go both ways", text: "Both people’s age, gender and distance preferences shape discovery." }
+  { icon: "options-outline", title: "Your search, your preferences", text: "Your age, gender and distance preferences decide who appears in your search." }
 ];
 
 export function VibeGuideScreen() {
@@ -31,7 +31,7 @@ export function VibeGuideScreen() {
         <YStack gap="$2" padding="$4" borderRadius={20} backgroundColor="$primarySoft">
           <Text fontWeight="700">A starting point, never a promise</Text>
           <Text color="$textMuted" fontSize="$2" lineHeight={21}>The score is a ranking out of 100, not a percentage chance of a relationship. It uses shared profile choices, approximate distance and recent activity. It doesn’t measure attractiveness or confirm safety.</Text>
-          <Text color="$textMuted" fontSize="$2" lineHeight={21}>Matching starts with shared profile choices. If you both enable AI vibe matching, Paire AI can refine the order using only selected interests, vibes and dating intentions. AI never overrides mutual preferences. If it’s unavailable, Paire uses its usual ranking.</Text>
+          <Text color="$textMuted" fontSize="$2" lineHeight={21}>Matching starts with shared profile choices. If you both enable AI vibe matching, Paire AI can refine the order using only selected interests, vibes and dating intentions. AI never overrides your search preferences or privacy controls. If it’s unavailable, Paire uses its usual ranking.</Text>
         </YStack>
         <SecondaryButton onPress={() => navigation.navigate("Settings")}>Adjust my preferences</SecondaryButton>
       </YStack>

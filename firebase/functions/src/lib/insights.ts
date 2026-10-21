@@ -19,7 +19,7 @@ export type CandidateTraits = Traits & {
 };
 
 export type MatchInsight = {
-  /** 0–100. Everyone in a feed already fits both people's preferences, so it starts at 62. */
+  /** 0–100. Everyone in a feed already fits the viewer's preferences, so it starts at 62. */
   compatibility: number;
   reasons: MatchReason[];
   /** Both opted in to one-night stands. Never set when only one did. */

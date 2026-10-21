@@ -5,7 +5,7 @@ import { requireReadAuth, isSupportSession } from "./lib/auth";
 import { consumeDailyQuota } from "./quota";
 import { buildDiscoveryEntry, toDiscoverProfile, viewerTraits } from "./lib/discovery";
 import { hiddenIncognito, loadExclusions } from "./discovery";
-import { isMutualCandidate } from "./lib/prefs";
+import { isCandidateForViewer } from "./lib/prefs";
 import { requireVerifiedUsers } from "./trust";
 import { isValidLatLng } from "./lib/geo";
 import type { PublicProfile, UserSettings, ModerationRecord } from "./types";
@@ -28,7 +28,7 @@ export const getSharedProfile = onCall({ region: REGION }, async (request) => {
   const candidate = buildDiscoveryEntry(target, them, theirs, mod.data() as ModerationRecord | undefined);
   const location = mine?.locationEnabled && isValidLatLng(mine.location) ? mine.location! : null;
   // Keep all discovery privacy/eligibility rules, including previously passed profiles.
-  if (!isMutualCandidate(viewer, candidate, { viewerLocation: location, sharedVibesOnly: Boolean(mine?.sharedVibesOnly) })) return { profile: null };
+  if (!isCandidateForViewer(viewer, candidate, { viewerLocation: location, sharedVibesOnly: Boolean(mine?.sharedVibesOnly) })) return { profile: null };
   if ((await loadExclusions(uid, [target])).has(target) || (await hiddenIncognito(uid, [candidate])).has(target)) return { profile: null };
   await requireVerifiedUsers([target], undefined, uid, isSupportSession(request));
   return { profile: toDiscoverProfile(them, candidate, location, false, viewerTraits(viewer, me), Date.now()) };

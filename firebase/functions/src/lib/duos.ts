@@ -1,7 +1,7 @@
 import { randomInt } from "crypto";
 import { DiscoveryEntry, MatchReason } from "../types";
 import { MatchInsight, Traits, matchInsight } from "./insights";
-import { candidateLatLng, isMutualCandidate } from "./prefs";
+import { candidateLatLng, isCandidateForViewer } from "./prefs";
 
 /**
  * Duos: two friends match with another pair. These are the pure rules; the
@@ -34,7 +34,9 @@ export const duoMatchIdOf = (duoA: string, duoB: string) =>
 
 /** Both would want to see each other: gender, age and distance, in both directions. */
 function wantEachOther(a: DiscoveryEntry, b: DiscoveryEntry): boolean {
-  return isMutualCandidate(a, b, { viewerLocation: candidateLatLng(a), sharedVibesOnly: false });
+  // Duo group compatibility continues to account for every friend's preferences.
+  return isCandidateForViewer(a, b, { viewerLocation: candidateLatLng(a), sharedVibesOnly: false }) &&
+    isCandidateForViewer(b, a, { viewerLocation: candidateLatLng(b), sharedVibesOnly: false });
 }
 
 /**

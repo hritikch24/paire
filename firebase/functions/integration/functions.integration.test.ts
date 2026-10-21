@@ -233,7 +233,7 @@ describe("discovery, matching and chat", () => {
     await onboard(casey, { name: "Casey", gender: "woman", showMe: ["woman"], age: 27 });
   });
 
-  test("feeds respect both people's preferences and never leak private data", async () => {
+  test("feeds respect the viewer's preferences and never leak private data", async () => {
     const alexaFeed = await alexa.call<FeedResult>("getDiscoverFeed", {});
     const alexaSees = alexaFeed.profiles.map((profile) => profile.uid);
     expect(alexaSees).toContain(jules.uid);
@@ -247,9 +247,32 @@ describe("discovery, matching and chat", () => {
     expect(julesView).not.toHaveProperty("email");
     expect(julesView).not.toHaveProperty("showMe");
 
-    // Casey wants women, Alexa only wants men: not mutual, so neither sees the other.
+    // Casey wants women, so she sees Alexa regardless of Alexa's own search.
     const caseyFeed = await casey.call<FeedResult>("getDiscoverFeed", {});
-    expect(caseyFeed.profiles.map((profile) => profile.uid)).not.toContain(alexa.uid);
+    expect(caseyFeed.profiles.map((profile) => profile.uid)).toContain(alexa.uid);
+  });
+
+  test("a 100 km search can discover and like someone about 25 km away who searches within 20 km", async () => {
+    const a = await makeClient("radius-a"); const b = await makeClient("radius-b");
+    await onboard(a, { name: "Radius A", gender: "woman", showMe: ["man"], age: 26 });
+    await onboard(b, { name: "Radius B", gender: "man", showMe: ["woman"], age: 30 });
+    await updateDoc(doc(a.db, "users", a.uid, "private", "settings"), { maxDistanceKm: 20, location: { lat: 28.61, lng: 77.21, updatedAt: Date.now() } });
+    await updateDoc(doc(b.db, "users", b.uid, "private", "settings"), { maxDistanceKm: 100, location: { lat: 28.82, lng: 77.30, updatedAt: Date.now() } });
+    await waitFor(async () => (await admin.doc(`discovery/${a.uid}`).get()).get("lat") === 28.61 && (await admin.doc(`discovery/${b.uid}`).get()).get("lat") === 28.82);
+    expect((await a.call<FeedResult>("getDiscoverFeed")).profiles.map((p) => p.uid)).not.toContain(b.uid);
+    const bFeed = await b.call<FeedResult>("getDiscoverFeed");
+    expect(bFeed.profiles.find((p) => p.uid === a.uid)?.distanceKm).toBe(25);
+    expect(await b.call("getSharedProfile", { uid: a.uid })).toMatchObject({ profile: { uid: a.uid } });
+    expect(await a.call("getSharedProfile", { uid: b.uid })).toEqual({ profile: null });
+    expect(await b.call("swipe", { targetUid: a.uid, type: "like" })).toMatchObject({ matched: false });
+    expect((await a.call<FeedResult>("getLikesYou")).profiles.map((p) => p.uid)).toContain(b.uid);
+    await expect(a.call("swipe", { targetUid: b.uid, type: "like" })).rejects.toThrow(/no longer available/);
+    expect(await a.call("getDailyAllowance")).toMatchObject({ remaining: { likes: 10 } });
+    // Each action rechecks its sender's current filters, including before index refresh.
+    await updateDoc(doc(a.db, "users", a.uid, "private", "settings"), { maxDistanceKm: 100 });
+    await updateDoc(doc(b.db, "users", b.uid, "private", "settings"), { showMe: ["man"], ageMin: 40, ageMax: 50, sameIntentOnly: true, sharedLanguageOnly: true, sharedVibesOnly: true });
+    await updateDoc(doc(b.db, "users", b.uid), { intentions: ["casual"], languages: ["tamil"], vibes: ["artsy"] });
+    expect(await a.call("swipe", { targetUid: b.uid, type: "like" })).toMatchObject({ matched: true });
   });
 
   test("a match is created only when the like is mutual", async () => {
@@ -723,25 +746,28 @@ describe("production trust boundaries", () => {
 });
 
 describe("stale discovery cards", () => {
-  it("rechecks current mutual preferences, visibility and cohort before spending a like or matching", async () => {
+  it("rechecks the sender's preferences, visibility and cohort while ignoring the target's search", async () => {
     const a = await makeClient("stale-a"); const b = await makeClient("stale-b");
     await onboard(a, { name: "Stale A", gender: "woman", showMe: ["man"], age: 25 });
     await onboard(b, { name: "Stale B", gender: "man", showMe: ["woman"], age: 26 });
-    await updateDoc(doc(b.db, "users", b.uid, "private", "settings"), { showMe: ["man"] });
+    await updateDoc(doc(a.db, "users", a.uid, "private", "settings"), { showMe: ["woman"] });
     await expect(a.call("swipe", { targetUid: b.uid, type: "like" })).rejects.toThrow(/no longer available/);
-    await updateDoc(doc(b.db, "users", b.uid, "private", "settings"), { showMe: ["woman"] });
+    await updateDoc(doc(a.db, "users", a.uid, "private", "settings"), { showMe: ["man"] });
     await updateDoc(doc(b.db, "users", b.uid), { isDiscoverable: false });
     await expect(a.call("swipe", { targetUid: b.uid, type: "like" })).rejects.toThrow(/no longer available/);
     await updateDoc(doc(b.db, "users", b.uid), { isDiscoverable: true });
     await admin.doc(`moderation/${b.uid}`).set({ emailVerified: true,  cohort: "test" });
     await expect(a.call("swipe", { targetUid: b.uid, type: "like" })).rejects.toThrow(/no longer available/);
+    await admin.doc(`moderation/${b.uid}`).set({ emailVerified: true, cohort: "public" });
+    await updateDoc(doc(a.db, "users", a.uid), { isDiscoverable: false });
+    await expect(a.call("swipe", { targetUid: b.uid, type: "like" })).rejects.toThrow(/no longer available/);
+    await updateDoc(doc(a.db, "users", a.uid), { isDiscoverable: true });
     expect(await a.call("getDailyAllowance")).toMatchObject({ remaining: { likes: 10 } });
-    await admin.doc(`moderation/${b.uid}`).set({ emailVerified: true,  cohort: "public" });
     await a.call("swipe", { targetUid: b.uid, type: "like" });
     await updateDoc(doc(a.db, "users", a.uid, "private", "settings"), { showMe: ["woman"] });
-    await expect(b.call("swipe", { targetUid: a.uid, type: "like" })).rejects.toThrow(/no longer available/);
+    await expect(b.call("swipe", { targetUid: a.uid, type: "like" })).resolves.toMatchObject({ matched: true });
     const matchId = [a.uid, b.uid].sort().join("_");
-    expect((await admin.doc(`matches/${matchId}`).get()).exists).toBe(false);
+    expect((await admin.doc(`matches/${matchId}`).get()).exists).toBe(true);
   });
 });
 
@@ -1001,13 +1027,16 @@ describe("India v2: sparks and her rules", () => {
     await expect(her.call("getDiscoverFeed", { garba: true, ageGap: "older" })).rejects.toThrow(/one filter at a time/);
   });
 
-  it("same intentions only hides people who want something else", async () => {
+  it("same intentions only filters the search and likes of the person who enables it", async () => {
     const { her, him } = await pair("intent");
     await updateDoc(doc(him.db, "users", him.uid), { intentions: ["casual"] });
     await setSettings(her, { sameIntentOnly: true });
     const feed = await him.call<FeedResult>("getDiscoverFeed", {});
-    expect(feed.profiles.map((profile) => profile.uid)).not.toContain(her.uid);
-    await expect(him.call("swipe", { targetUid: her.uid, type: "like", note: "Hello" })).rejects.toThrow(/no longer available/);
+    expect(feed.profiles.map((profile) => profile.uid)).toContain(her.uid);
+    await expect(him.call("swipe", { targetUid: her.uid, type: "like", note: "Hello" })).resolves.toMatchObject({ matched: false });
+    const hers = await her.call<FeedResult>("getDiscoverFeed", {});
+    expect(hers.profiles.map((profile) => profile.uid)).not.toContain(him.uid);
+    await expect(her.call("swipe", { targetUid: him.uid, type: "like" })).rejects.toThrow(/no longer available/);
   });
 });
 
@@ -1047,8 +1076,10 @@ describe("shared profile links and browser push ownership", () => {
     await admin.doc(`users/${target.uid}/private/settings`).set({ incognito: true }, { merge: true });
     expect((await fetch()).profile).toBeNull();
     await admin.doc(`users/${target.uid}/private/settings`).set({ incognito: false, showMe: ["man"] }, { merge: true });
+    expect((await fetch()).profile).toMatchObject({ uid: target.uid });
+    await admin.doc(`users/${viewer.uid}/private/settings`).set({ showMe: ["woman"] }, { merge: true });
     expect((await fetch()).profile).toBeNull();
-    await admin.doc(`users/${target.uid}/private/settings`).set({ showMe: ["woman"] }, { merge: true });
+    await admin.doc(`users/${viewer.uid}/private/settings`).set({ showMe: ["man"] }, { merge: true });
     await admin.doc(`blocks/${target.uid}/blocked/${viewer.uid}`).set({ targetUid: viewer.uid });
     expect((await fetch()).profile).toBeNull();
     await expect(viewer.call("getSharedProfile", { uid: "bad/id" })).rejects.toMatchObject({ code: "functions/invalid-argument" });

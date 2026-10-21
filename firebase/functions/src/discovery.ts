@@ -7,7 +7,7 @@ import { requireReadAuth, isSupportSession } from "./lib/auth";
 import { buildDiscoveryEntry, toDiscoverProfile, viewerTraits } from "./lib/discovery";
 import { isValidLatLng } from "./lib/geo";
 import { rankCandidate } from "./lib/insights";
-import { candidateLatLng, isMutualCandidate, normalizeAgeRange, normalizeShowMe } from "./lib/prefs";
+import { candidateLatLng, isCandidateForViewer, normalizeAgeRange, normalizeShowMe } from "./lib/prefs";
 import { parseFeedInput } from "./lib/validate";
 import { matchesAgeGapFilter } from "./lib/ageGap";
 import { activeGarbaSeason, GARBA_RADIUS_KM, sharedGarbaNights, upcomingGarbaNights } from "./lib/garba";
@@ -176,6 +176,9 @@ export const getDiscoverFeed = onCall(
     const viewer: DiscoveryEntry = {
       ...indexedViewer,
       ...normalizeAgeRange(settings?.ageMin, settings?.ageMax),
+      showMe: normalizeShowMe(settings?.showMe),
+      sameIntentOnly: settings?.sameIntentOnly === true,
+      sharedLanguageOnly: settings?.sharedLanguageOnly === true,
       maxDistanceKm: typeof settings?.maxDistanceKm === "number" && settings.maxDistanceKm > 0 ? settings.maxDistanceKm : null
     };
     // "Into someone older" is for Silver Foxes and Cougars, not for anyone browsing younger members.
@@ -244,7 +247,7 @@ export const getDiscoverFeed = onCall(
       const entries = snap.docs.map((doc) => doc.data() as DiscoveryEntry);
       const compatible = entries.filter(
         (entry) =>
-          isMutualCandidate(viewer, entry, options) &&
+          isCandidateForViewer(viewer, entry, options) &&
           (!ageGap || matchesAgeGapFilter(ageGap, viewer.age as number, entry)) &&
           (!garbaSeason || isGarbaCandidate(entry))
       );

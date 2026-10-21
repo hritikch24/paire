@@ -39,7 +39,7 @@ All free, for everyone, enforced on the server or in the security rules:
 - **I'll message first:** the rules block anyone else's first message.
 - **Incognito:** only people you liked can see you, in solo discovery and in Duos.
 - **Private photos:** photos are left out of the feed, likes and the Duo deck until a match.
-- **Same intentions only / Speaks my language:** two-way filters; an unknown value never counts as shared.
+- **Same intentions only / Speaks my language:** filters for your own search; they do not restrict who can see you. An unknown value never counts as shared.
 - **Close kindly:** a polite goodbye, then unmatch.
 
 Known limits: photo links someone received before private photos was turned on keep working (Storage download tokens), so turn it on before sharing photos widely; folder listing is owner-only. In Duos, an incognito member's pair becomes visible to a pair that their friend liked. "I'll message first" has no expiry, so a match waits until the chosen person writes.

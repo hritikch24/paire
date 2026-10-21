@@ -6,9 +6,9 @@
 
 - Daily scheduler check at **18:30 Asia/Kolkata**. General discovery reminders are eligible on Tuesday/Friday only; seasonal checks run daily while Garba Nights is open.
 - At most **two attempts in a rolling seven days**, at least **72 hours apart**. Failed sends also consume an attempt, preventing repeated retries. Members active in the last 24 hours or absent for more than 30 days are skipped.
-- A discovery reminder requires an unswiped, mutually eligible new profile created since the recipient last visited/was reminded, and within the last seven days. The scan is bounded to the first 100 indexed candidates. No eligible result means no message.
+- A discovery reminder requires an unswiped new profile fitting the recipient's own search preferences, created since they last visited/were reminded and within the last seven days. The scan is bounded to the first 100 indexed candidates. No eligible result means no message.
 - Garba reminders require chosen nights tonight/tomorrow, approximate location refreshed in the last seven days, and an eligible person within 50 km sharing one of those nights. At most one attempt per season. No dates, names, profile photos or private preference details appear in the push.
-- Current profiles/settings and verification are checked after the discovery index scan. Blocks, previous swipes, test cohorts, incognito and mutual preferences apply. Hidden, unverified, disabled and staff recipients are skipped. Opt-out is checked again before sending.
+- Current profiles/settings and verification are checked after the discovery index scan. Blocks, previous swipes, test cohorts, incognito and the recipient’s search preferences apply. Hidden, unverified, disabled and staff recipients are skipped. Opt-out is checked again before sending.
 - A transaction reserves each attempt before the network request, preventing overlapping scheduled runs from duplicating it. These reminders use browser subscriptions only; native notification behavior is unchanged.
 
 The push opens the appropriate People/Garba edition, checks the receiving account, and records one open per latest reminder. A notification is a route back to the app, never a claim that someone liked or messaged the recipient. No emails, fabricated activity, blanket marketing send or new payments are involved.

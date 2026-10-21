@@ -43,11 +43,10 @@ export type CompatibilityOptions = {
 };
 
 /**
- * Both people must want to see each other: gender preferences and age ranges
- * are checked in both directions, and distance limits apply to both sides when
- * both locations are known.
+ * Search preferences belong to the viewer. A candidate's own search settings
+ * never restrict who can discover them; visibility and cohort still apply.
  */
-export function isMutualCandidate(
+export function isCandidateForViewer(
   viewer: Viewer,
   candidate: DiscoveryEntry,
   options: CompatibilityOptions
@@ -58,19 +57,14 @@ export function isMutualCandidate(
   if (!isGender(viewer.gender) || typeof viewer.age !== "number") return false;
 
   if (!normalizeShowMe(viewer.showMe).includes(candidate.gender)) return false;
-  if (!normalizeShowMe(candidate.showMe).includes(viewer.gender)) return false;
 
   if (candidate.age < viewer.ageMin || candidate.age > viewer.ageMax) return false;
-  if (viewer.age < (candidate.ageMin ?? MIN_AGE) || viewer.age > (candidate.ageMax ?? MAX_AGE)) {
-    return false;
-  }
 
-  // "Same intentions only" and "Speaks my language" work both ways: whoever turns
-  // them on neither sees nor is seen by people outside them. Unknown never counts as shared.
-  if ((viewer.sameIntentOnly || candidate.sameIntentOnly) && !overlaps(viewer.intentions, candidate.intentions)) {
+  // Unknown never counts as shared when the viewer requests a shared trait.
+  if (viewer.sameIntentOnly && !overlaps(viewer.intentions, candidate.intentions)) {
     return false;
   }
-  if ((viewer.sharedLanguageOnly || candidate.sharedLanguageOnly) && !overlaps(viewer.languages, candidate.languages)) {
+  if (viewer.sharedLanguageOnly && !overlaps(viewer.languages, candidate.languages)) {
     return false;
   }
 
@@ -83,7 +77,6 @@ export function isMutualCandidate(
   if (options.viewerLocation && candidateLocation) {
     const km = distanceKm(options.viewerLocation, candidateLocation);
     if (viewer.maxDistanceKm && km > viewer.maxDistanceKm) return false;
-    if (candidate.maxDistanceKm && km > candidate.maxDistanceKm) return false;
   }
 
   return true;

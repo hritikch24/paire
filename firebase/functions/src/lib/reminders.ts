@@ -1,7 +1,7 @@
 import { DiscoveryEntry, UserSettings } from "../types";
 import { activeGarbaSeason, GARBA_RADIUS_KM, istDate, sharedGarbaNights, upcomingGarbaNights } from "./garba";
 import { distanceKm, isValidLatLng } from "./geo";
-import { isMutualCandidate } from "./prefs";
+import { isCandidateForViewer } from "./prefs";
 
 export const DAY_MS = 86_400_000;
 export type ReminderState = { enabled?: boolean; recentAttempts?: number[]; garbaSeason?: string; latestId?: string; openedAt?: number };
@@ -19,7 +19,7 @@ export function reminderDue(settings: UserSettings | undefined, state: ReminderS
 /** Candidates supplied here have already passed current visibility, verification and exclusion checks. */
 export function chooseReminder(viewer: DiscoveryEntry, settings: UserSettings, candidates: DiscoveryEntry[], state: ReminderState, now: number): ReminderPlan | null {
   const location = settings.locationEnabled && isValidLatLng(settings.location) ? settings.location : null;
-  const eligible = candidates.filter((candidate) => isMutualCandidate(viewer, candidate, { viewerLocation: location, sharedVibesOnly: settings.sharedVibesOnly === true }));
+  const eligible = candidates.filter((candidate) => isCandidateForViewer(viewer, candidate, { viewerLocation: location, sharedVibesOnly: settings.sharedVibesOnly === true }));
   const season = activeGarbaSeason(now);
   // Event reminders require the recipient to have chosen nights and a recent approximate location.
   const freshLocation = location && typeof location.updatedAt === "number" && now - location.updatedAt >= 0 && now - location.updatedAt <= 7 * DAY_MS;

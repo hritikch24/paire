@@ -2,7 +2,7 @@ import { buildDiscoveryEntry, toDiscoverProfile, viewerTraits } from "../src/lib
 import { coarsen, displayDistanceKm, distanceKm, isValidLatLng } from "../src/lib/geo";
 import { dayKey, pairId } from "../src/lib/ids";
 import { matchInsight, rankCandidate, Traits } from "../src/lib/insights";
-import { isMutualCandidate, normalizeAgeRange, normalizeShowMe } from "../src/lib/prefs";
+import { isCandidateForViewer, normalizeAgeRange, normalizeShowMe } from "../src/lib/prefs";
 import { overlapScore } from "../src/lib/scoring";
 import { templateBios, templateOpeners } from "../src/lib/suggestions";
 import { parseFeedInput, parseSwipeInput } from "../src/lib/validate";
@@ -93,46 +93,46 @@ describe("preferences", () => {
     expect(normalizeAgeRange(40, 30)).toEqual({ ageMin: 30, ageMax: 40 });
   });
 
-  it("requires both people to want each other's gender", () => {
-    expect(isMutualCandidate(viewer, entry({}), noLocation)).toBe(true);
-    expect(isMutualCandidate(viewer, entry({ gender: "man" }), noLocation)).toBe(false);
-    expect(isMutualCandidate(viewer, entry({ showMe: ["woman"] }), noLocation)).toBe(false);
+  it("uses only the viewer's gender preferences", () => {
+    expect(isCandidateForViewer(viewer, entry({}), noLocation)).toBe(true);
+    expect(isCandidateForViewer(viewer, entry({ gender: "man" }), noLocation)).toBe(false);
+    expect(isCandidateForViewer(viewer, entry({ showMe: ["woman"] }), noLocation)).toBe(true);
   });
 
-  it("checks age ranges in both directions", () => {
-    expect(isMutualCandidate(viewer, entry({ age: 35 }), noLocation)).toBe(false);
-    expect(isMutualCandidate(viewer, entry({ ageMax: 28 }), noLocation)).toBe(false);
+  it("uses only the viewer's age range", () => {
+    expect(isCandidateForViewer(viewer, entry({ age: 35 }), noLocation)).toBe(false);
+    expect(isCandidateForViewer(viewer, entry({ ageMax: 28 }), noLocation)).toBe(true);
   });
 
-  it("applies both people's distance limits when both locations are known", () => {
+  it("uses only the viewer's distance limit when both locations are known", () => {
     const withLocation = { viewerLocation: MUMBAI, sharedVibesOnly: false };
     const inPune = entry({ lat: PUNE.lat, lng: PUNE.lng });
-    expect(isMutualCandidate({ ...viewer, maxDistanceKm: 50 }, inPune, withLocation)).toBe(false);
-    expect(isMutualCandidate({ ...viewer, maxDistanceKm: 200 }, inPune, withLocation)).toBe(true);
+    expect(isCandidateForViewer({ ...viewer, maxDistanceKm: 50 }, inPune, withLocation)).toBe(false);
+    expect(isCandidateForViewer({ ...viewer, maxDistanceKm: 200 }, inPune, withLocation)).toBe(true);
     expect(
-      isMutualCandidate({ ...viewer, maxDistanceKm: 200 }, { ...inPune, maxDistanceKm: 10 }, withLocation)
-    ).toBe(false);
+      isCandidateForViewer({ ...viewer, maxDistanceKm: 200 }, { ...inPune, maxDistanceKm: 10 }, withLocation)
+    ).toBe(true);
     // Unknown distance is not a reason to hide someone.
-    expect(isMutualCandidate({ ...viewer, maxDistanceKm: 5 }, entry({}), withLocation)).toBe(true);
+    expect(isCandidateForViewer({ ...viewer, maxDistanceKm: 5 }, entry({}), withLocation)).toBe(true);
   });
 
   it("honours the shared-vibes filter", () => {
     const vibes = { viewerLocation: null, sharedVibesOnly: true };
     const cozyViewer = { ...viewer, vibes: ["cozy"] };
-    expect(isMutualCandidate(cozyViewer, entry({ vibes: ["artsy"] }), vibes)).toBe(false);
-    expect(isMutualCandidate(cozyViewer, entry({ vibes: ["cozy", "artsy"] }), vibes)).toBe(true);
+    expect(isCandidateForViewer(cozyViewer, entry({ vibes: ["artsy"] }), vibes)).toBe(false);
+    expect(isCandidateForViewer(cozyViewer, entry({ vibes: ["cozy", "artsy"] }), vibes)).toBe(true);
   });
 
   it("keeps test accounts and real members apart", () => {
-    expect(isMutualCandidate(viewer, entry({ cohort: "test" }), noLocation)).toBe(false);
-    expect(isMutualCandidate({ ...viewer, cohort: "test" }, entry({ cohort: "test" }), noLocation)).toBe(true);
+    expect(isCandidateForViewer(viewer, entry({ cohort: "test" }), noLocation)).toBe(false);
+    expect(isCandidateForViewer({ ...viewer, cohort: "test" }, entry({ cohort: "test" }), noLocation)).toBe(true);
     expect(buildDiscoveryEntry("u", profile(), undefined, { status: "ok", cohort: "test" }).cohort).toBe("test");
     expect(buildDiscoveryEntry("u", profile(), undefined, undefined).cohort).toBe("public");
   });
 
   it("never returns the viewer or hidden profiles", () => {
-    expect(isMutualCandidate(viewer, entry({ uid: "viewer" }), noLocation)).toBe(false);
-    expect(isMutualCandidate(viewer, entry({ visible: false }), noLocation)).toBe(false);
+    expect(isCandidateForViewer(viewer, entry({ uid: "viewer" }), noLocation)).toBe(false);
+    expect(isCandidateForViewer(viewer, entry({ visible: false }), noLocation)).toBe(false);
   });
 });
 

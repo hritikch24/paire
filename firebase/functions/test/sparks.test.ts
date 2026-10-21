@@ -1,6 +1,6 @@
 import { buildDiscoveryEntry, isNewMember, sanitizeBasics, toDiscoverProfile } from "../src/lib/discovery";
 import { rankCandidate, Traits } from "../src/lib/insights";
-import { isMutualCandidate } from "../src/lib/prefs";
+import { isCandidateForViewer } from "../src/lib/prefs";
 import { compareLikes, firstMoveOf, sparksOf } from "../src/lib/sparks";
 import { parseNote, parseSwipeInput } from "../src/lib/validate";
 import { DiscoveryEntry, PublicProfile } from "../src/types";
@@ -64,20 +64,21 @@ describe("notes on likes", () => {
 });
 
 describe("same intentions and shared languages", () => {
-  test("apply both ways when either person turns them on", () => {
+  test("apply only when the viewer turns them on", () => {
     const longTerm = entry({ intentions: ["long-term"], languages: ["tamil"] });
     const casual = entry({ intentions: ["casual"], languages: ["hindi"] });
-    expect(isMutualCandidate(viewer, longTerm, noLocation)).toBe(true);
-    expect(isMutualCandidate({ ...viewer, sameIntentOnly: true }, casual, noLocation)).toBe(false);
-    expect(isMutualCandidate(viewer, { ...casual, sameIntentOnly: true }, noLocation)).toBe(false);
-    expect(isMutualCandidate({ ...viewer, sameIntentOnly: true }, longTerm, noLocation)).toBe(true);
-    expect(isMutualCandidate({ ...viewer, sharedLanguageOnly: true }, longTerm, noLocation)).toBe(false);
-    expect(isMutualCandidate(viewer, { ...casual, sharedLanguageOnly: true }, noLocation)).toBe(true);
+    expect(isCandidateForViewer(viewer, longTerm, noLocation)).toBe(true);
+    expect(isCandidateForViewer({ ...viewer, sameIntentOnly: true }, casual, noLocation)).toBe(false);
+    expect(isCandidateForViewer(viewer, { ...casual, sameIntentOnly: true }, noLocation)).toBe(true);
+    expect(isCandidateForViewer({ ...viewer, sameIntentOnly: true }, longTerm, noLocation)).toBe(true);
+    expect(isCandidateForViewer({ ...viewer, sharedLanguageOnly: true }, longTerm, noLocation)).toBe(false);
+    expect(isCandidateForViewer(viewer, { ...casual, sharedLanguageOnly: true }, noLocation)).toBe(true);
+    expect(isCandidateForViewer(viewer, { ...longTerm, sharedLanguageOnly: true }, noLocation)).toBe(true);
   });
 
   test("never treat unknown as shared", () => {
-    expect(isMutualCandidate({ ...viewer, sameIntentOnly: true }, entry({}), noLocation)).toBe(false);
-    expect(isMutualCandidate({ ...viewer, sharedLanguageOnly: true }, entry({}), noLocation)).toBe(false);
+    expect(isCandidateForViewer({ ...viewer, sameIntentOnly: true }, entry({}), noLocation)).toBe(false);
+    expect(isCandidateForViewer({ ...viewer, sharedLanguageOnly: true }, entry({}), noLocation)).toBe(false);
   });
 });
 

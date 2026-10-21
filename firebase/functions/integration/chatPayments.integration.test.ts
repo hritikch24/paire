@@ -114,8 +114,11 @@ let counter = 0;
 async function buyer(options: { matched?: boolean; cohort?: string; status?: string } = {}): Promise<string> {
   counter += 1;
   const uid = `buyer${counter}_${Date.now()}`;
-  await admin.doc(`users/${uid}`).set({ uid, displayName: `Buyer ${counter}`, photoUrls: [], onboardingComplete: true });
-  await admin.doc(`moderation/${uid}`).set({ status: options.status ?? "ok", emailVerified: true, cohort: options.cohort ?? "test" });
+  // Profile triggers must see the verified fixture immediately, not recheck a nonexistent Auth user.
+  const batch = admin.batch();
+  batch.set(admin.doc(`moderation/${uid}`), { status: options.status ?? "ok", emailVerified: true, cohort: options.cohort ?? "test" });
+  batch.set(admin.doc(`users/${uid}`), { uid, displayName: `Buyer ${counter}`, photoUrls: [], onboardingComplete: true });
+  await batch.commit();
   if (options.matched !== false) await admin.doc(`matches/${uid}_zz`).set({ participants: [uid, "zz"], active: true, kind: "pair" });
   return uid;
 }

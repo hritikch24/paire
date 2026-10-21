@@ -17,11 +17,12 @@ test("caps attempts at two in seven days and spaces them by three days, even aft
   expect(reminderDue(settings, { recentAttempts: [now - 4 * DAY_MS, now - 6 * DAY_MS] }, viewer.lastActiveAt, now)).toBe(false);
   expect(reminderDue(settings, { recentAttempts: [now - 4 * DAY_MS, now - 8 * DAY_MS] }, viewer.lastActiveAt, now)).toBe(true);
 });
-test("discovery reminders require a new mutually eligible profile since the last visit/reminder", () => {
+test("discovery reminders require a new profile fitting the recipient's search since the last visit/reminder", () => {
   expect(chooseReminder(viewer, settings, [candidate], {}, now)?.type).toBe("people");
   expect(chooseReminder(viewer, settings, [], {}, now)).toBeNull();
   expect(chooseReminder(viewer, settings, [{ ...candidate, visible: false }], {}, now)).toBeNull();
-  expect(chooseReminder(viewer, settings, [{ ...candidate, ageMin: 40 }], {}, now)).toBeNull();
+  expect(chooseReminder(viewer, settings, [{ ...candidate, ageMin: 40 }], {}, now)?.type).toBe("people");
+  expect(chooseReminder(viewer, settings, [{ ...candidate, age: 40 }], {}, now)).toBeNull();
   expect(chooseReminder(viewer, settings, [{ ...candidate, createdAt: now + 1 }], {}, now)).toBeNull();
   expect(chooseReminder(viewer, settings, [{ ...candidate, createdAt: now - 3 * DAY_MS }], {}, now)).toBeNull();
   expect(chooseReminder(viewer, settings, [candidate], { recentAttempts: [now - DAY_MS / 2] }, now)).toBeNull();
