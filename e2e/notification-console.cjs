@@ -40,6 +40,15 @@ async function login(page,uid,destination){await page.getByTestId('welcome-sign-
    const history=await db.collection('notificationCampaigns').where('actorUid','==',owner).get();assert.equal(history.size,1);assert.equal(history.docs[0].get('status'),'complete');assert(history.docs[0].get('summary.attempted')>=1);assert.equal(history.docs[0].get('summary.acceptedPushes'),0);assert.equal((await db.doc(`notificationReminders/${recipient}`).get()).get('recentAttempts').length,1);
    await page.waitForFunction(()=>document.querySelector('[data-testid="notification-send-run"]')?.getAttribute('aria-disabled')==='true');
    console.log('PASS explicit run is audited and respects the cooldown; emulator reports zero actual push acceptance');
+   const staleId=require('node:crypto').randomUUID();
+   await db.doc(`notificationCampaigns/${owner}_${staleId}`).set({actorUid:owner,requestId:staleId,status:'running',createdAt:Date.now()-11*60000,finishedAt:null});
+   await page.evaluate(({owner,staleId})=>sessionStorage.setItem(`paire.reminderRun.${owner}`,staleId),{owner,staleId});
+   await page.goto(`${appUrl}?admin=notifications`);await page.getByTestId('notification-audience').waitFor();
+   await page.getByRole('button',{name:'Check previous run',exact:true}).click();
+   await page.getByTestId('notification-result').filter({hasText:'Run interrupted.'}).waitFor();
+   assert.equal((await db.doc(`notificationCampaigns/${owner}_${staleId}`).get()).get('status'),'interrupted');
+   assert.equal((await db.doc(`notificationReminders/${recipient}`).get()).get('recentAttempts').length,1);
+   console.log('PASS a lost run can be acknowledged after reload without sending again');
    await page.getByTestId('notification-self-test').click();await page.getByTestId('notification-result').filter({hasText:'No browser accepted the test'}).waitFor();
    await page.locator('[data-testid="header-back"]:visible').click();await page.getByTestId('tab-discover').waitFor();assert.equal(new URL(page.url()).pathname,'/app/');
    assert.deepEqual(errors,[]);console.log('PASS owner self-test reports transport outcome truthfully; Back stays in /app/');

@@ -86,3 +86,11 @@ test("an explicit test is clearly labelled and goes only to the owner, ignoring 
   expect(sendWebPushToUser).toHaveBeenCalledTimes(1);
   expect(sendWebPushToUser).toHaveBeenCalledWith(owner, expect.objectContaining({ kind: "test", title: "Paire test notification", data: { type: "test" } }), expect.anything());
 });
+test("an expired running reference is acknowledged as interrupted and never replayed", async () => {
+  const requestId = randomUUID(), ref = db.doc(`notificationCampaigns/${owner}_${requestId}`);
+  await ref.set({ actorUid: owner, requestId, status: "running", createdAt: Date.now() - 11 * 60_000, finishedAt: null });
+  expect((await call(api.adminSendReminderRun, owner, { requestId })).status).toBe("interrupted");
+  expect((await ref.get()).get("status")).toBe("interrupted");
+  expect((await call(api.adminSendReminderRun, owner, { requestId })).status).toBe("interrupted");
+  expect(sendWebPushToUser).not.toHaveBeenCalled();
+});

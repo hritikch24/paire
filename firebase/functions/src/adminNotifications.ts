@@ -37,7 +37,15 @@ export const adminSendReminderRun = onCall({ region: REGION, timeoutSeconds: 540
   const existing = await db.runTransaction(async tx => {
     const [run, operator, runtime] = await tx.getAll(ref, db.doc(`supportOperators/${actorUid}`), db.doc("runtime/notifications"));
     if (operator.get("enabled") !== true) throw new HttpsError("permission-denied", "Owner access is required.");
-    if (run.exists) return { id: ref.id, ...run.data() };
+    if (run.exists) {
+      // Longer than this function's 540-second maximum: acknowledge a lost
+      // execution without replaying it. A new run still shares recipient caps.
+      if (run.get("status") === "running" && Date.now() - Number(run.get("createdAt")) > 10 * 60_000) {
+        tx.update(ref, { status: "interrupted", finishedAt: Date.now() });
+        return { id: ref.id, ...run.data(), status: "interrupted" };
+      }
+      return { id: ref.id, ...run.data() };
+    }
     if (runtime.get("remindersEnabled") !== true) throw new HttpsError("failed-precondition", "Reminders are switched off.");
     tx.create(ref, { actorUid, requestId, status: "running", createdAt: Date.now(), finishedAt: null });
     return null;

@@ -80,7 +80,7 @@ export function AdminNotificationsScreen() {
           {Object.entries(data.preview.skipped).map(([reason, count]) => <Text key={reason} fontSize="$2" color="$textMuted">{reasons[reason] ?? reason}: {count}</Text>)}
           {data.preview.errors ? <Text color="$error">{data.preview.errors} eligibility checks failed. Refresh before sending.</Text> : null}
         </YStack>
-        <PrimaryButton testID="notification-send-run" loading={busy} disabled={!data.automationEnabled || (!data.preview.ready && !pending.current)} onPress={reviewSend}>Send eligible reminders now</PrimaryButton>
+        <PrimaryButton testID="notification-send-run" loading={busy} disabled={!pending.current && (!data.automationEnabled || !data.preview.ready)} onPress={pending.current ? () => void send() : reviewSend}>{pending.current ? "Check previous run" : "Send eligible reminders now"}</PrimaryButton>
         <SecondaryButton testID="notification-refresh" disabled={busy || consoleQuery.isFetching} onPress={() => void consoleQuery.refetch()}>Refresh audience & history</SecondaryButton>
         <XStack gap="$3" flexWrap="wrap"><Stat label="Attempts · 7 days" value={data.week.attempts} /><Stat label="Accepted · 7 days" value={data.week.acceptedMembers} /><Stat label="Opens · 7 days" value={data.week.opens} /></XStack>
         <Text fontSize="$2" color="$textMuted">Push-service acceptance does not confirm display or reading. Opens count clicks on the latest reminder.</Text>
