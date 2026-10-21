@@ -3,7 +3,7 @@ import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { adminAuth, db } from "./admin";
 import { REGION } from "./config";
 import { deviceKey, istDay, isBot, METRICS_SHARDS, pageKey, sourceKey } from "./lib/metrics";
-import { readRevenue } from "./revenue";
+import { readRevenueMetrics } from "./revenue";
 
 /**
  * Page views from www.paire.in (sent through the site's own /v/ address). Counts
@@ -156,7 +156,7 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
       if (now - active < dayMs) returning.active24h++;
     }
   }
-  const revenue = await readRevenue();
+  const revenue = await readRevenueMetrics(now, testUids);
   const [matches, matches24h, messages, swipes] = await Promise.all([
     count(db.collection("matches")),
     count(db.collection("matches").where("createdAt", ">=", Timestamp.fromMillis(since(dayMs)))),

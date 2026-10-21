@@ -4,6 +4,7 @@ export { swipe, undoSwipe } from "./swipes";
 export { getLikesYou } from "./likes";
 export { adminPreviewPlusGrant, adminGrantPlusMonth } from "./adminPremium";
 export { adminGetNotificationConsole, adminSendReminderRun, adminSendNotificationTest } from "./adminNotifications";
+export { adminGetRecentPremiumBuyers } from "./adminPurchases";
 export { onMessageCreated } from "./messages";
 export { blockUser, onReportCreated } from "./safety";
 export { submitReport, getMyReports, getReportReviewQueue, reviewReport } from "./reports";

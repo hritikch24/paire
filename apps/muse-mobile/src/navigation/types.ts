@@ -44,6 +44,7 @@ export type AppStackParamList = {
   MemberAdmin: undefined;
   AdminPremium: undefined;
   AdminNotifications: undefined;
+  RecentPremiumBuyers: undefined;
   MemberAdminDetail: { uid: string; name?: string };
   VibeGuide: undefined;
   Appearance: undefined;
