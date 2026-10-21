@@ -11,7 +11,7 @@ export const stripHtml = (html) => html.replace(/<li>/g, "\n- ").replace(/<(h2|h
 
 const NAV = `<nav aria-label="Main"><a href="/guides/">Guides</a><a href="/dating/">Cities</a><a href="/compare/">Compare</a><a href="/pricing/">Pricing</a><a href="/verification/">Safety &amp; verification</a></nav>`;
 
-export const FOOTER = `<footer class="wrap"><div><a class="wordmark" href="/">paire<span>.</span></a><p>Built for real connection.<br>Made for all of India.</p></div><div class="footer-links"><a href="/about/">About Paire</a><a href="/features/">Features</a><a href="/pricing/">Pricing</a><a href="/verification/">How verification works</a><a href="/guides/">Dating guides</a><a href="/dating/">Dating in your city</a><a href="/compare/">Paire vs other apps</a><a href="/garba-nights/">Garba Nights</a></div><div class="footer-links"><a href="/safety/">Dating safety</a><a href="/community-guidelines/">Community guidelines</a><a href="/privacy/">Privacy policy</a><a href="/terms/">Terms of service</a><a href="/refunds/">Refunds &amp; cancellation</a><a href="/contact/">Contact us</a><a href="/delete-account/">Delete your account</a></div><p class="footer-credit">Built by KraftAI</p></footer>`;
+export const FOOTER = `<footer class="wrap"><div><a class="wordmark" href="/app/">paire<span>.</span></a><p>Built for real connection.<br>Made for all of India.</p></div><div class="footer-links"><a href="/about/">About Paire</a><a href="/features/">Features</a><a href="/pricing/">Pricing</a><a href="/verification/">How verification works</a><a href="/guides/">Dating guides</a><a href="/dating/">Dating in your city</a><a href="/compare/">Paire vs other apps</a><a href="/garba-nights/">Garba Nights</a></div><div class="footer-links"><a href="/safety/">Dating safety</a><a href="/community-guidelines/">Community guidelines</a><a href="/privacy/">Privacy policy</a><a href="/terms/">Terms of service</a><a href="/refunds/">Refunds &amp; cancellation</a><a href="/contact/">Contact us</a><a href="/delete-account/">Delete your account</a></div><p class="footer-credit">Built by KraftAI</p></footer>`;
 
 const human = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -65,7 +65,7 @@ export function renderPage(page, { origin, pages, extraHead = "" }) {
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="nav wrap"><a class="wordmark" href="/" aria-label="Paire home">paire<span>.</span></a>${NAV}<a class="button small" href="/app/">Open Paire <span aria-hidden="true">↗</span></a></header>
+<header class="nav wrap"><a class="wordmark" href="/app/" aria-label="Paire home">paire<span>.</span></a>${NAV}<a class="button small" href="/app/">Open Paire <span aria-hidden="true">↗</span></a></header>
 <main id="main" class="article wrap">
 <nav class="crumbs" aria-label="Breadcrumb">${crumbs.map((c, i) => (i < crumbs.length - 1 ? `<a href="/${c.path}">${esc(c.name)}</a><span aria-hidden="true">/</span>` : `<span aria-current="page">${esc(c.name)}</span>`)).join("")}</nav>
 <p class="eyebrow">${esc(page.eyebrow ?? "PAIRE")}</p>

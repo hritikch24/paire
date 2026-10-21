@@ -1,5 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import type { ReactNode } from "react";
+import { Platform } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { IconButton } from "./IconButton";
 
@@ -15,7 +16,13 @@ type ScreenHeaderProps = {
 
 export function ScreenHeader({ title, subtitle, back = "back", onBack, right, large }: ScreenHeaderProps) {
   const navigation = useNavigation();
-  const handleBack = onBack ?? (() => navigation.goBack());
+  const handleBack = onBack ?? (() => {
+    if (Platform.OS === "web" && !navigation.canGoBack()) {
+      window.location.assign("/app/");
+    } else {
+      navigation.goBack();
+    }
+  });
 
   return (
     <XStack alignItems="center" gap="$2" minHeight={48} marginBottom="$2">

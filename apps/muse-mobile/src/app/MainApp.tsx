@@ -25,6 +25,7 @@ import { useAuthSession } from "../hooks/useAuthSession";
 import { useNotificationRouting } from "../hooks/useNotificationRouting";
 import { useTestServerLinks } from "../hooks/useTestServerLinks";
 import { flushPendingNavigation, navigationRef } from "../navigation/navigationRef";
+import { browserLinking } from "../navigation/browserLinking";
 import { RootNavigator } from "../navigation/RootNavigator";
 import { SplashScreen } from "../screens/SplashScreen";
 import { TestServerScreen } from "../screens/TestServerScreen";
@@ -71,7 +72,7 @@ function AppNavigation() {
   };
 
   return (
-    <NavigationContainer ref={navigationRef} theme={navigationTheme} onReady={flushPendingNavigation}>
+    <NavigationContainer ref={navigationRef} linking={browserLinking} theme={navigationTheme} onReady={flushPendingNavigation}>
       <RootNavigator />
     </NavigationContainer>
   );

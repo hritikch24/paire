@@ -221,7 +221,7 @@ writeFileSync(
 );
 writeFileSync(
   resolve(output, "404.html"),
-  '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found — Paire</title><link rel="stylesheet" href="/site.css"><main class="wrap section"><a class="wordmark" href="/">paire<span>.</span></a><h1>This page wandered off.</h1><p>Head back home or open the dating app.</p><a class="button" href="/">Back home</a> <a class="text-link" href="/app/">Open Paire</a></main></html>'
+  '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found — Paire</title><link rel="stylesheet" href="/site.css"><main class="wrap section"><a class="wordmark" href="/app/">paire<span>.</span></a><h1>This page wandered off.</h1><p>Head back home or open the dating app.</p><a class="button" href="/app/">Back home</a> <a class="text-link" href="/app/">Open Paire</a></main></html>'
 );
 rmSync(exported, { recursive: true, force: true });
 console.log(`Paire web built in ${output}${siteUrl ? ` for ${siteUrl}` : ""}. Emulators and test hooks are off.`);
