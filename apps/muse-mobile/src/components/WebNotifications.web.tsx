@@ -46,6 +46,20 @@ export function WebNotifications() {
     }
     catch (error) { showToast(friendlyError(error, "Couldn't save that setting."), "error"); }
   };
+  const enableReminders = async () => {
+    if (!uid || busy) return;
+    setBusy(true);
+    try {
+      if (!isPushRegistered() && !(await enableBrowserPush(uid))) {
+        showToast("Allow notifications in your browser to receive reminders.");
+        return;
+      }
+      const current = useAuthStore.getState().settings?.notifications;
+      await updateSettings(uid, { notifications: { matches: current?.matches !== false, messages: current?.messages !== false, previews: current?.previews === true, reminders: true } });
+      showToast("People & events reminders are enabled for this browser.", "success");
+    } catch (error) { showToast(friendlyError(error, "Couldn't enable reminders. Try again."), "error"); }
+    finally { setEnabled(isPushRegistered()); setPermission(await getPushPermission()); setBusy(false); }
+  };
   return (
     <SettingsSection title="Browser notifications" footer="Names and message text stay hidden unless you enable previews. Turn off any category whenever you like.">
       <YStack testID="web-notifications" padding="$4" gap="$3">
@@ -55,9 +69,13 @@ export function WebNotifications() {
               : enabled ? "Notifications are on for this browser, including when Paire is closed."
                 : "Get a notification when someone matches with you or sends a message."}
         </Text>
+        {supported && permission !== "denied" && (!enabled || notifications?.reminders !== true) ? <YStack gap="$2">
+          <Text fontSize="$2" color="$textMuted">Enable browser notifications and optional People & events together. Up to 2 reminders a week; your match, message and preview choices stay as selected.</Text>
+          <PrimaryButton testID="web-reminders-enable" loading={busy} onPress={() => void enableReminders()}>Enable reminders</PrimaryButton>
+        </YStack> : null}
         {supported && permission !== "denied" ? enabled
           ? <SecondaryButton testID="web-push-toggle" loading={busy} onPress={() => void change()}>Turn off for this browser</SecondaryButton>
-          : <PrimaryButton testID="web-push-toggle" loading={busy} onPress={() => void change()}>Enable notifications</PrimaryButton> : null}
+          : <SecondaryButton testID="web-push-toggle" loading={busy} onPress={() => void change()}>Enable notifications</SecondaryButton> : null}
         <Text testID="web-reminder-status" fontSize="$2" color="$textMuted" lineHeight={21} accessibilityLiveRegion="polite">
           {notifications?.reminders === true
             ? enabled ? "People & events reminders are ready for this browser. You can turn them off below."

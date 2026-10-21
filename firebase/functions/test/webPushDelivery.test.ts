@@ -50,3 +50,10 @@ test("expired subscriptions are removed without deleting a newly rebound subscri
   await sendWebPushToUser("member", message, settings);
   expect(remove).toHaveBeenCalledTimes(1);
 });
+test("explicit owner tests are labelled as tests and expire in a minute", async () => {
+  const result = await sendWebPushToUser("member", { kind: "test", title: "Paire test notification", body: "This is a test you requested.", data: { type: "test" } }, { notifications: { messages: false, matches: false, reminders: false } });
+  expect(result).toEqual({ accepted: 1, failed: 0 });
+  const [, payload, options] = (webPush.sendNotification as jest.Mock).mock.calls[0];
+  expect(JSON.parse(payload)).toMatchObject({ uid: "member", type: "test", title: "Paire test notification" });
+  expect(options.TTL).toBe(60);
+});

@@ -43,6 +43,7 @@ export type AppStackParamList = {
   UpiReview: undefined;
   MemberAdmin: undefined;
   AdminPremium: undefined;
+  AdminNotifications: undefined;
   MemberAdminDetail: { uid: string; name?: string };
   VibeGuide: undefined;
   Appearance: undefined;

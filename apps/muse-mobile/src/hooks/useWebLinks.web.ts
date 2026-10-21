@@ -18,7 +18,10 @@ export function useWebLinks() {
       const chat = url.searchParams.get("chat");
       const valid = (value: string | null) => Boolean(value && /^[A-Za-z0-9_-]{1,256}$/.test(value));
       let navigate: () => void;
-      if (url.searchParams.get("admin") === "grant-plus") {
+      if (url.searchParams.get("admin") === "notifications") {
+        navigate = () => navigation.navigate("App", { screen: "AdminNotifications" });
+        url.searchParams.delete("admin");
+      } else if (url.searchParams.get("admin") === "grant-plus") {
         navigate = () => navigation.navigate("App", { screen: "AdminPremium" });
         url.searchParams.delete("admin");
       } else if (valid(profile)) {

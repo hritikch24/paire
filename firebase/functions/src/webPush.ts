@@ -14,7 +14,7 @@ import type { UserSettings } from "./types";
 const privateKey = defineSecret("WEB_PUSH_VAPID_PRIVATE_KEY");
 export const WEB_PUSH_SECRETS = [privateKey];
 const publicKey = () => process.env.WEB_PUSH_VAPID_PUBLIC_KEY || "";
-export type BrowserPushMessage = PushMessage | (Omit<PushMessage, "kind"> & { kind: "reminders" });
+export type BrowserPushMessage = PushMessage | (Omit<PushMessage, "kind"> & { kind: "reminders" | "test" });
 
 export const getWebPushConfig = onCall({ region: REGION }, async (request) => {
   requireAuth(request);
@@ -52,14 +52,14 @@ export const unregisterWebPush = onCall({ region: REGION }, async (request) => {
 /** Browser permission and account preferences apply to events and separately opted-in reminders. */
 export async function sendWebPushToUser(uid: string, message: BrowserPushMessage, settings: UserSettings | undefined): Promise<{ accepted: number; failed: number }> {
   const result = { accepted: 0, failed: 0 };
-  const allowed = message.kind === "reminders" ? settings?.notifications?.reminders === true : settings?.notifications?.[message.kind] !== false;
+  const allowed = message.kind === "test" || (message.kind === "reminders" ? settings?.notifications?.reminders === true : settings?.notifications?.[message.kind] !== false);
   if (!allowed || process.env.FUNCTIONS_EMULATOR === "true" || !publicKey()) return result;
   try {
     const key = privateKey.value();
     if (!key) return result;
     const devices = await db.collection("webPushSubscriptions").where("uid", "==", uid).limit(10).get();
     // Reminder copy contains no names, messages, exact nights, or personal profile details.
-    const copy = message.kind === "reminders" ? { title: message.title, body: message.body } : notificationCopy(message.kind, message.title, message.body, settings?.notifications?.previews);
+    const copy = message.kind === "reminders" || message.kind === "test" ? { title: message.title, body: message.body } : notificationCopy(message.kind, message.title, message.body, settings?.notifications?.previews);
     const payload = JSON.stringify({ ...copy, uid, tag: message.tag || message.kind, type: message.data.type, matchId: message.data.matchId || "", destination: message.data.destination || "", reminderId: message.data.reminderId || "" });
     await Promise.all(devices.docs.map(async (doc) => {
       const subscription = parseBrowserSubscription(doc.data());
@@ -67,7 +67,7 @@ export async function sendWebPushToUser(uid: string, message: BrowserPushMessage
       try {
         await webPush.sendNotification(subscription, payload, {
           vapidDetails: { subject: "https://www.paire.in/contact/", publicKey: publicKey(), privateKey: key },
-          TTL: 3600, urgency: "normal", timeout: 10_000,
+          TTL: message.kind === "test" ? 60 : 3600, urgency: "normal", timeout: 10_000,
           topic: subscriptionId(`${message.kind}:${message.tag || "event"}`).slice(0, 32)
         });
         result.accepted++;

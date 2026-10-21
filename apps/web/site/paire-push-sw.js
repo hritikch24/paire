@@ -32,7 +32,7 @@ self.addEventListener('push', event => {
     if (!data?.uid || await binding() !== data.uid) return;
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     // A focused Paire tab already has live messages and match alerts.
-    if (windows.some(client => client.focused && new URL(client.url).pathname.startsWith('/app/') && new URL(client.url).searchParams.get('support') !== '1')) return;
+    if (data.type !== 'test' && windows.some(client => client.focused && new URL(client.url).pathname.startsWith('/app/') && new URL(client.url).searchParams.get('support') !== '1')) return;
     const url = new URL('/app/', self.location.origin);
     if (/^[A-Za-z0-9_-]{1,256}$/.test(data.matchId || '')) url.searchParams.set('chat', data.matchId);
     else if (data.type === 'duo') url.searchParams.set('duo', '1');
