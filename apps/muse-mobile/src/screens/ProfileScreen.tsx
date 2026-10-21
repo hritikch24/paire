@@ -11,6 +11,7 @@ import { Screen } from "../components/Screen";
 import { SettingsRow, SettingsSection } from "../components/SettingsRow";
 import { LoadingView } from "../components/States";
 import { ThemeQuickPicker } from "../components/ThemeQuickPicker";
+import { PREMIUM_PLANS } from "../config/premium";
 import { legal } from "../config/legal";
 import { useAuthStore } from "../store/authStore";
 import { profileCompleteness } from "../utils/profile";
@@ -91,11 +92,11 @@ export function ProfileScreen() {
             <Icon name="chevron-forward" size={18} color="textMuted" />
           </XStack>
         </Pressable>
-        <Pressable testID="profile-premium" accessibilityRole="button" accessibilityLabel="Explore Paire Plus from 20 rupees" onPress={() => navigation.navigate("Premium")}>
+        <Pressable testID="profile-premium" accessibilityRole="button" accessibilityLabel={`Explore Paire Plus from ${PREMIUM_PLANS[0].priceInr} rupees`} onPress={() => navigation.navigate("Premium")}>
           <YStack gap="$3" padding="$5" backgroundColor="$primarySoft" borderRadius={24}>
             <XStack alignItems="center" justifyContent="space-between"><Text color="$primary" fontWeight="700" fontSize="$2" letterSpacing={1}>PAIRE PLUS</Text><Icon name="sparkles-outline" color="primary" /></XStack>
             <Text fontSize={26} lineHeight={32} fontWeight="700">A little more possibility.</Text>
-            <Text color="$textMuted" fontSize="$3">₹20 a day, ₹99 a week or ₹299 a month. No auto-renewal.</Text>
+            <Text color="$textMuted" fontSize="$3">{`₹${PREMIUM_PLANS[0].priceInr} a day, ₹99 a week or ₹299 a month. No auto-renewal.`}</Text>
             <XStack alignItems="center" gap="$1"><Text color="$primary" fontWeight="700">Explore plans</Text><Icon name="arrow-forward" size={17} color="primary" /></XStack>
           </YStack>
         </Pressable>

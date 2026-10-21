@@ -1,6 +1,6 @@
 # CCAvenue payments
 
-Unlimited Chat (₹49 once) and Paire Plus passes (₹20 / ₹99 / ₹299) can be paid through **CCAvenue** on the web: cards, UPI, netbanking and wallets. It sits next to the existing methods (UPI into paire.in@ybl, and the Razorpay code that's switched off) and is **off** until you turn it on.
+Unlimited Chat (₹49 once) and Paire Plus passes (₹29 / ₹99 / ₹299) can be paid through **CCAvenue** on the web: cards, UPI, netbanking and wallets. It sits next to the existing methods (UPI into paire.in@ybl, and the Razorpay code that's switched off) and is **off** until you turn it on.
 
 Web only. The Android/iOS apps are unchanged.
 

@@ -1,6 +1,6 @@
 # Razorpay Checkout on kraftai.in
 
-Paire's web payments (Paire Plus ₹20 / ₹99 / ₹299 and Unlimited Chat ₹49) go through **KraftAI's Razorpay account**, which is registered for kraftai.in. So Razorpay Checkout opens on kraftai.in, not on paire.in. Everything else stays here: Paire's server creates every order and confirms every payment with Razorpay before granting.
+Paire's web payments (Paire Plus ₹29 / ₹99 / ₹299 and Unlimited Chat ₹49) go through **KraftAI's Razorpay account**, which is registered for kraftai.in. So Razorpay Checkout opens on kraftai.in, not on paire.in. Everything else stays here: Paire's server creates every order and confirms every payment with Razorpay before granting.
 
 New Razorpay orders require `KRAFTAI_CHECKOUT_URL=https://kraftai.in`. Missing or invalid settings refuse checkout; the browser app never opens inline Razorpay Checkout on paire.in.
 
@@ -35,7 +35,7 @@ The former `kraftai.in/paire` page is retired and redirects to the homepage. App
 - Paire: `PLUS_PASSES` (`firebase/functions/src/lib/razorpay.ts`), `CHAT_UNLOCK` (`config.ts`), and `KRAFTAI_PUBLISHED_PAISE` (`lib/kraftai.ts`). `test/kraftai.test.ts` fails if they drift apart.
 - KraftAI: `PAIRE_PLANS` in `kanoon-simplified/src/lib/paire.ts`.
 
-Change a price in all of them together and deploy KraftAI first.
+Change a price in all of them together and deploy KraftAI first. From 2026-10-21, new day passes cost ₹29. Previously issued server-created ₹20 day orders remain accepted by hosted Checkout at their original quoted amount; other products and amounts still require the current catalog price. Paire confirms existing orders against their stored amount, so historical orders and revenue are unchanged.
 
 ## Changing payment display names
 
@@ -105,4 +105,4 @@ the two creation functions plus the KraftAI deployment.
 4. **Webhook.** In the Razorpay dashboard, make sure `razorpayWebhook` (Paire's function URL) is a webhook with `payment.captured`, `refund.processed`, `payment.dispute.*` and `RAZORPAY_WEBHOOK_SECRET`.
 5. **Sales switches** (unchanged by this work): Plus needs `MUSE_BILLING_ENABLED` and `runtime/trust.razorpayPlusSales` (on unless set to false); chat needs `MUSE_CHAT_UNLOCK_ENABLED`, `MUSE_CHAT_UNLOCK_LIVE` and `runtime/trust.unlockSales` (`scripts/set-runtime-flags.mjs`; run it without changes to print the current state). Whatever Razorpay checkout is open when step 3 deploys moves to kraftai.in. With CCAvenue also on, the Plus screen uses Razorpay as the main button.
 6. **Legal copy.** Terms, Refunds and Privacy name CCAvenue/Razorpay today. Add that payments are taken by KraftAI and show as KraftAI on bank statements (fewer "unknown merchant" chargebacks).
-7. **One real payment** of ₹20 and a refund from the dashboard, then check the pass appears and ends.
+7. **One real payment** of ₹29 and a refund from the dashboard, then check the pass appears and ends.

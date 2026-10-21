@@ -10,7 +10,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * the offer; passes already bought keep their days). Mirrored in apps/muse-mobile/src/config/premium.ts.
  */
 export const PLUS_PASSES = {
-  day: { days: 1, bonusDays: 0, amountPaise: 2000, label: PAYMENT_NAMES.labels.day, razorpayLabel: PAYMENT_NAMES.razorpayLabels.day },
+  day: { days: 1, bonusDays: 0, amountPaise: 2900, label: PAYMENT_NAMES.labels.day, razorpayLabel: PAYMENT_NAMES.razorpayLabels.day },
   week: { days: 7, bonusDays: 0, amountPaise: 9900, label: PAYMENT_NAMES.labels.week, razorpayLabel: PAYMENT_NAMES.razorpayLabels.week },
   month: { days: 30, bonusDays: 30, amountPaise: 29900, label: PAYMENT_NAMES.labels.month, razorpayLabel: PAYMENT_NAMES.razorpayLabels.month }
 } as const;

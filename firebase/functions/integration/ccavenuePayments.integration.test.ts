@@ -299,6 +299,20 @@ describe("CCAvenue replaces direct UPI", () => {
 });
 
 describe("Paire Plus through CCAvenue", () => {
+  test("previously issued ₹20 day orders still settle at their stored price after the ₹29 price change", async () => {
+    const uid = await buyer();
+    const { orderId, plain } = await start(uid, { plan: "day", amountPaise: 1 });
+    expect(plain.get("amount")).toBe("29.00");
+    expect((await orderOf(orderId))!.amountPaise).toBe(2900);
+    // A pre-change quote retained in the database, with its real old amount.
+    await admin.doc(`ccavenueOrders/${orderId}`).update({ amountPaise: 2000 });
+    pay(orderId, { order_amt: 20 });
+    await call(cc.confirmCcavenueOrder, uid, { orderId });
+    const saved = (await orderOf(orderId))!;
+    expect(saved).toMatchObject({ status: "paid", amountPaise: 2000 });
+    expect(saved.expiresAt - saved.startsAt).toBe(86_400_000);
+  });
+
   test("a paid pass starts once confirmed, at the server's price, and ends with a refund", async () => {
     const uid = await buyer();
     expect(await call(billing.getPremiumStatus, uid)).toMatchObject({ active: false, ccavenuePurchaseAvailable: true });
@@ -311,7 +325,8 @@ describe("Paire Plus through CCAvenue", () => {
     expect(saved.expiresAt - saved.startsAt).toBe(7 * 24 * 60 * 60 * 1000);
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(saved.expiresAt);
     const extension = await start(uid, { plan: "day" });
-    const extensionPayment = pay(extension.orderId, { order_amt: 20 });
+    expect(extension.plain.get("amount")).toBe("29.00");
+    const extensionPayment = pay(extension.orderId, { order_amt: 29 });
     await call(cc.confirmCcavenueOrder, uid, { orderId: extension.orderId });
     expect(await orderOf(extension.orderId)).toMatchObject({ startsAt: saved.expiresAt, expiresAt: saved.expiresAt + 86_400_000 });
     extensionPayment.order_status = "Refunded";
