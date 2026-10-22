@@ -77,5 +77,14 @@ Screenshots and detailed local logs are under `/tmp/muse-pm-*`; they are local Q
 | 2 | Small, opt-in local public-activity circles with honest headcounts and expiry. | Sufficient active members in one area and moderation capacity. Do not create pretend attendance or matches to populate them. |
 | 3 | A private post-conversation/date check-in that improves recommendations without exposing individual ratings. | Establish consent, useful response volume and a clear deletion path; avoid public attractiveness scores. |
 | 4 | Better conversion/retention measurement from landing → genuine conversation. | Design minimal, consent-aware attribution and agree the success definition. Today's anonymous action totals cannot establish acquisition cost or relationship outcomes. |
+| 5 | Faster first use on typical mobile networks. | The exported app's main JavaScript is about 4.33 MB before compression, with another 1.15 MB chunk. Benchmark cold startup on a midrange phone before adding more visual effects; file size alone does not establish load time. |
 
 Before significant paid acquisition, validate current checkout settlement and refund operations through the established owner process and test opt-in push delivery on actual supported devices. Neither live charges nor real notification delivery was exercised here. Measure real conversations and return use alongside purchases, rather than relying on page views or manufactured urgency.
+
+## Production release evidence
+
+- Product source: `79fc3f8`, pushed to GitHub `main`.
+- Vercel: `dpl_BLLjomMhomQaWKumw5Wo7f11gtEp` / `paire-41elmp1ta-team-rockstar.vercel.app`, **READY**, with `www.paire.in` and `paire.in` assigned. Build log confirms source `79fc3f8`.
+- Firebase `muse-352ba`, `us-central1`: `trackVisit` **ACTIVE**, revision `trackvisit-00009-ror`; `getMetrics` **ACTIVE**, revision `getmetrics-00020-pay`. Only those two handlers deployed; no rules, indexes or runtime switches changed.
+- Read-only production smoke passed for 16 public paths, the new exported browser bundle, a real 1200×630 social image, configured legal pages, archived Garba campaign and six Date Duet counters. Existing revenue and recent-premium aggregates remain available. No answer/event was submitted to production as a test.
+- IndexNow returned **200 for 53 URLs**. Acceptance is a crawl notification, not evidence that those pages are indexed or ranked.
