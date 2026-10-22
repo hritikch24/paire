@@ -5,14 +5,14 @@ export const core = [
   {
     path: "about/", crumb: "About Paire", published: D, updated: D, eyebrow: "ABOUT PAIRE",
     title: "About Paire — An Indian Dating App Where Women Set the Rules",
-    description: "Paire is an Indian dating app for men and women, built in India. Every like comes with a note, women set the rules, every member is email- and selfie-verified, and seeing who likes you comes with Paire Plus.",
+    description: "Meet adult singles across India on Paire. Likes can carry notes, women have free privacy controls, and optional Plus passes reveal who likes you.",
     h1: "About <em>Paire</em>",
     lede: "Paire is a dating app made in India for adult men and women: from a first coffee to a long-term partner. We built it because dating here deserved better than endless swiping, fake profiles and paywalls.",
     summary: [
       "Built in India, open across the country, 18+ only, for men and women.",
       "Every like can carry a note, so matches start with a real conversation.",
       "Women control who can reach them; Paire Plus reveals who likes you.",
-      "Every member confirms a real email and passes a live selfie check before they can like or chat.",
+      "Members confirm their email before liking or chatting. Photo-check status is shown separately when available.",
       "No caste field or filter. Paire Plus is optional, from ₹29, and never auto-renews."
     ],
     body: `
@@ -22,14 +22,14 @@ export const core = [
 <ul>
 <li><strong>A like should mean something.</strong> Every like can carry a short note, and everyone gets a free daily allowance of likes, so each one is considered rather than sprayed.</li>
 <li><strong>Women set the rules.</strong> Women can accept only likes that come with a note, choose to send the first message, browse in incognito, and keep photos private until they match. These controls are free.</li>
-<li><strong>Real people only.</strong> Every member confirms their email and passes a live selfie check that matches them to their profile photos before they can like or chat.</li>
+<li><strong>Clearer trust signals.</strong> Confirmed email is required before liking or chatting. A current photo badge indicates a separate completed photo check; it does not verify employment or intentions.</li>
 <li><strong>Fair pricing.</strong> Your likes count is free. Paire Plus reveals the profiles behind it. Paire Plus is a short pass (from ₹5 a day with the month offer: ₹299 for 2 months; or ₹29 a day, ₹99 a week) that ends on its own. Men and women pay the same.</li>
 <li><strong>Respect.</strong> There is no caste field or filter, religion is never used to rank anyone, and paid arrangements are banned.</li>
 </ul>
 <h2>Who Paire is for</h2>
 <p>Paire is for adult men and women in India looking for anything from casual dating to marriage-minded relationships. You say what you are looking for, and you can choose to see only people who want the same thing. Paire is open to members in every city and town across India.</p>
 <h2>How Paire works</h2>
-<p>You sign up with Google or email, confirm your email, add a few photos and some interests, and pass a quick selfie check. Then you can browse people as photo cards, try <a href="/features/">Vibe First</a> to see interests before photos, team up with a best friend for a double date with <a href="/features/">Duos</a>, or join seasonal editions such as <a href="/garba-nights/">Garba Nights</a> during Navratri. Paire runs in any phone or laptop browser at <a href="/app/">paire.in/app</a>; an Android app is on the way.</p>
+<p>You sign up with Google or email, confirm your email, and add a profile and interests. Photo checks are shown separately when available. Then you can browse people as photo cards, try <a href="/features/">Vibe First</a> to see interests before photos, team up with a best friend for a double date with <a href="/features/">Duos</a>, or join seasonal editions such as <a href="/garba-nights/">Garba Nights</a> during Navratri. Paire runs in any phone or laptop browser at <a href="/app/">paire.in/app</a>; an Android app is on the way.</p>
 <h2>Safety and privacy</h2>
 <p>Every chat has report and block. Paire AI warns you about common scam messages, such as requests for money, OTPs or investment tips. Your exact location is never shown, only an approximate distance. Read more in <a href="/verification/">how verification works</a> and our <a href="/safety/">dating safety guide</a>.</p>
 <h2>Contact</h2>
@@ -74,9 +74,9 @@ export const core = [
 <li><strong>₹99 for 7 days</strong>: about ₹14 a day.</li>
 <li><strong>₹29 for 24 hours</strong>: try Plus for a day, for example on a weekend.</li>
 </ul>
-<p>Passes are paid once through CCAvenue, by UPI (PhonePe, Google Pay, Paytm or any UPI app), card, netbanking or wallet. They do not renew: when the time is up, your account simply goes back to free. Buying a new pass before the old one ends adds the time on.</p>
+<p>Passes are paid once using the methods available at checkout. They do not renew: when the time is up, your account simply goes back to free. Buying a new pass before the old one ends adds the time on.</p>
 <h2>Unlimited Chat: ₹49 once</h2>
-<p>Only want to chat? Unlimited Chat is a one-time ₹49 payment that lets you send messages in all your current and future mutual matches. It has no expiry, no renewal and no per-match charge, and it stays with your account on every device. It covers messaging only, not Plus's extra likes or filters. Each person needs their own access to send: you can message someone who hasn't paid, and they can read it, but they need Plus or their own unlock to reply. It's offered once you have your first mutual match, and you pay it inside the app through CCAvenue, by UPI, card, netbanking or wallet.</p>
+<p>Only want to chat? Unlimited Chat is a one-time ₹49 payment that lets you send messages in all your current and future mutual matches. It has no expiry, no renewal and no per-match charge, and it stays with your account on every device. It covers messaging only, not Plus's extra likes or filters. Each person needs their own access to send: you can message someone who hasn't paid, and they can read it, but they need Plus or their own unlock to reply. It's offered once you have your first mutual match, and you start payment inside the app using the methods shown at checkout.</p>
 <h2>Why we price it this way</h2>
 <p>Many dating apps charge a monthly subscription to see who likes you and renew it automatically. Your anonymous likes preview is free. Plus reveals the profiles behind those likes and adds reach and messaging, Unlimited Chat adds messaging only, and safety is never for sale: reporting, blocking and unmatching are always free. Paying never guarantees a match or a reply. See our <a href="/refunds/">refund and cancellation policy</a> for details.</p>`,
     faq: [
@@ -120,7 +120,7 @@ export const core = [
 <h2>Paire AI</h2>
 <p>Paire AI suggests icebreakers based on what you have in common, helps you write a bio, and can rank profiles by shared vibes if you turn on AI matching (opt-in, using only the profile choices you select). It also warns you about scam-style messages in chat.</p>
 <h2>Real people, checked</h2>
-<p>Every member confirms their email (temporary inboxes are not allowed) and passes a live selfie check with a random pose that matches them to every profile photo. Read <a href="/verification/">how verification works</a>.</p>
+<p>Members confirm their email; known disposable inboxes are blocked. Photo verification is a separate check and is not required for every profile. Read <a href="/verification/">how verification works</a>.</p>
 <h2>India-specific details</h2>
 <p>Optional basics include height, languages, education, diet, drinking, smoking and religion. Religion is never used to filter or rank, and there is no caste field. Your exact location is never shown.</p>
 <h2>Paire Plus</h2>
@@ -133,41 +133,14 @@ export const core = [
     related: ["verification/", "pricing/", "guides/dating-apps-for-women-india/", "guides/first-message-examples/"]
   },
   {
-    path: "verification/", crumb: "How verification works", published: D, updated: D, eyebrow: "SAFETY · VERIFICATION",
-    title: "How Paire Verifies Every Member — Email Check and Live Selfie Verification",
-    description: "Every Paire member confirms a real email and passes a live selfie check: a random pose, matched to every profile photo. The selfie is never stored. Here's how it works and what it can't do.",
-    h1: "How Paire keeps <em>fake profiles</em> out",
-    lede: "Fake profiles are the biggest complaint about dating apps in India. On Paire, nobody can like or chat until they have confirmed their email and passed a live selfie check.",
-    summary: [
-      "Step 1: confirm a real email. Temporary inbox services are blocked.",
-      "Step 2: a live selfie doing a random pose, matched to every profile photo.",
-      "Your selfie is never stored; only the result is kept. Badges expire after 90 days or when photos change.",
-      "Verification is free and required before you can like, match or chat."
-    ],
-    body: `
-<h2>1. A real email</h2>
-<p>When you sign up with email, Paire sends a confirmation link. Until you open it you cannot set up a profile. Disposable inbox services (the kind that create a throwaway address in seconds) are not accepted. Signing in with Google counts as confirmed.</p>
-<h2>2. A live selfie check</h2>
-<p>Before you can like or chat, Paire asks for a selfie doing a random pose, such as touching your nose or covering one eye. The pose changes every time and is uncommon, so an old photo can't be reused. Paire then checks:</p>
-<ul>
-<li><strong>It's you in your photos.</strong> A face-matching model compares your selfie with every profile photo. Your first photo must clearly show you, and no photo may show someone else (group photos that include you are fine).</li>
-<li><strong>It's live.</strong> The pose has to be visible, and photos of a screen or a printout are rejected.</li>
-<li><strong>It's real.</strong> Profile photos that are obviously AI-generated or face-swapped are rejected.</li>
-<li><strong>It's an adult.</strong> Paire is 18+ only.</li>
-</ul>
-<p>The check usually takes under ten seconds. If it doesn't pass, Paire tells you why (for example "your first photo doesn't clearly show your face") so you can fix it.</p>
-<h2>What happens to your selfie</h2>
-<p>Your selfie is used only for the check and is discarded as soon as it ends; it is never stored. Paire keeps the result and copies of the checked profile photos. If you change your photos, or after 90 days, you'll be asked to verify again, so a badge always matches the current photos. Details are in our <a href="/privacy/">privacy policy</a>.</p>
-<h2>What verification can't do</h2>
-<p>A verified badge means the person matches their photos. It doesn't tell you anything about their intentions. Keep chats on Paire until you're comfortable, meet in public, and tell a friend where you're going. Read our <a href="/safety/">safety guide</a> and <a href="/guides/dating-scams-india/">common dating scams in India</a>.</p>
-<h2>Reporting</h2>
-<p>Every profile and chat has report and block. Reports are reviewed, and profiles reported by several people are hidden while they are checked.</p>`,
-    faq: [
-      ["Are Paire profiles verified?", "Yes. Every member must confirm a real email and pass a live selfie check, matched to all their profile photos, before they can like, match or chat."],
-      ["Does Paire store my selfie?", "No. The selfie is used only during the check and discarded when it ends. Paire keeps only the result and the checked profile photos."],
-      ["Why does Paire ask for a pose?", "A random, uncommon pose proves the selfie was taken just now by the person holding the phone, so an old or stolen photo can't be used."],
-      ["Is verification free?", "Yes. Verification is free for everyone."]
-    ],
+    path: "verification/", crumb: "How verification works", published: D, updated: "2026-10-23", eyebrow: "SAFETY · TRUST SIGNALS",
+    title: "Paire Verification — Confirmed Email, Photo Checks & Work Badges",
+    description: "Understand Paire's trust signals: confirmed email, separate photo-check badges, and self-declared work sectors. Photo verification is not required for every profile.",
+    h1: "Know what a <em>badge means.</em>",
+    lede: "Clear trust signals are better than assumptions. Email confirmation, photo checks and a work-sector badge each mean different things.",
+    summary: ["Confirmed email is required before members can like or chat; known disposable inboxes are blocked.", "Photo verification is a separate check. It is not currently required for every profile.", "A current photo badge reflects a completed check tied to the profile's photos and can expire or be invalidated when photos change.", "Work-sector badges are optional self-declarations, not employment or qualification checks."],
+    body: `<h2>1. Confirmed email</h2><p>Members confirm an email address before creating their profile and using likes or chat. Google sign-in supplies a confirmed email. This confirms access to an inbox; it does not prove a person's identity, age, intentions or employment.</p><h2>2. Photo checks</h2><p>Where a photo-check flow is available, follow the in-app instructions and consent information. A current photo badge indicates a completed check tied to that profile's photos. Changing photos can invalidate the badge, and results can expire. Check the current status on the profile rather than assuming all members have completed a photo check.</p><p>Photo verification is not currently required for every profile. No automated or human photo check is foolproof, and a badge does not guarantee someone's intentions, age or professional credentials. See our <a href="/privacy/">privacy policy</a> for the data used by the available verification flows.</p><h2>3. Work-sector badges</h2><p>Work Circles badges say “Self-declared”. Members choose their own sector and can change or remove it. Paire does not verify an employer, professional registration or job title through this badge. A healthcare, banking or government badge does not establish any professional qualification or official affiliation.</p><h2>Your controls always matter</h2><p>Use notes-only likes, incognito or private photos if they suit you. Report and block suspicious accounts. Keep chats on Paire until you're comfortable, meet in a public place and tell someone you trust about your plan. Read our <a href="/safety/">safety guide</a>.</p>`,
+    faq: [["Are all Paire profiles photo verified?", "No. Confirmed email is required, but photo verification is not currently required for every profile. Look for a current photo-check badge on the individual profile."], ["Does a work badge verify employment?", "No. Work-sector badges are optional self-declarations. They do not verify an employer, professional qualification or government affiliation."], ["Does verification guarantee a safe date?", "No. No badge guarantees identity, intentions or safety. Use the app's privacy controls, report suspicious behavior and choose a public meeting place."]],
     related: ["guides/how-to-spot-fake-dating-profiles/", "guides/dating-scams-india/", "guides/dating-app-safety-tips-india/", "features/"]
   },
   {

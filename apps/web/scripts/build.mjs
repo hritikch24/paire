@@ -18,6 +18,7 @@ import { workCircles } from "../content/work-circles.mjs";
 import { core } from "../content/core.mjs";
 import { guidesA } from "../content/guides-a.mjs";
 import { guidesB } from "../content/guides-b.mjs";
+import { expireCampaigns } from "./seasonal.mjs";
 import { FOOTER, renderPage, stripHtml } from "./render-pages.mjs";
 
 const web = resolve(import.meta.dirname, "..");
@@ -99,15 +100,15 @@ const origin = siteUrl || "https://www.paire.in";
 const verificationTags = [["google-site-verification", siteVar("GOOGLE_SITE_VERIFICATION")], ["msvalidate.01", siteVar("BING_SITE_VERIFICATION")]]
   .filter(([, value]) => value && /^[\w-]{10,100}$/.test(value))
   .map(([name, value]) => `<meta name="${name}" content="${value}">`).join("");
-for (const page of ["index.html", "garba-nights/index.html", "vibe-quiz/index.html"]) {
+for (const page of ["index.html", "garba-nights/index.html", "vibe-quiz/index.html", "date-duet/index.html"]) {
   const file = resolve(output, page);
   writeFileSync(
     file,
-    readFileSync(file, "utf8")
+    expireCampaigns(readFileSync(file, "utf8"))
       .split("%SITE_URL%").join(origin)
       .replace('content="/og-image.png"', `content="${origin}/og-image.png"`)
       .replace(/<footer class="wrap">[\s\S]*?<\/footer>/, FOOTER)
-      .replace("</head>", `${page === "index.html" ? verificationTags : ""}${pixel}${visitBeacon}</head>`)
+      .replace("</head>", `${page === "index.html" ? verificationTags : ""}${page.startsWith("date-duet/") ? "" : pixel}${visitBeacon}</head>`)
   );
 }
 
@@ -116,7 +117,7 @@ for (const page of ["index.html", "garba-nights/index.html", "vibe-quiz/index.ht
 const contentPages = [...core, ...compare, ...cities, ...guidesA, ...guidesB, ...workCircles];
 const linkable = [
   ...contentPages,
-  { path: "garba-nights/", crumb: "Garba Nights", h1: "Garba Nights", description: "Find a Garba or Dandiya partner this Navratri: pick your nights and meet people near you going on the same nights." },
+  { path: "garba-nights/", crumb: "Garba Nights", h1: "Garba Nights", description: "Archive of Paire’s 2026 Garba Nights season, which ended on 20 October 2026." },
   { path: "vibe-quiz/", crumb: "Dating vibe quiz", h1: "What's your dating vibe?", description: "A free 1-minute quiz: are you a Cozy Romantic, Midnight Philosopher, Adventure Spark or Movie Dreamer, and who do you click with?" },
   { path: "safety/", crumb: "Dating safety guide", h1: "Dating safety", description: "Paire's safety guide: before you meet, on the date, and how reporting works." }
 ];
@@ -153,13 +154,22 @@ const legalDetails = {
 const missing = Object.entries(legalDetails).filter(([, value]) => !value).map(([key]) => key);
 const escapeHtml = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const DRAFT_BANNER = /<div class="card"><strong>Private preview · Legal draft<\/strong>.*?<\/div>/s;
+const legalDescriptions = {
+  privacy: "How Paire handles account data, photos, messages, location, browser notifications and Date Duet links, and the choices available to members.",
+  terms: "Paire's terms for adult members, acceptable use, account access, fixed-duration Plus passes and messaging access.",
+  "community-guidelines": "Paire community guidelines: consent, respectful conversations, authentic profiles, prohibited conduct and reporting.",
+  safety: "Practical safer dating advice from Paire: protect personal details, recognise scams, meet in public and report concerns.",
+  "delete-account": "How to delete a Paire account and what happens to profile data, messages and retained records.",
+  refunds: "Paire's refund policy for Plus passes and messaging purchases, including payment issues and how to contact support.",
+  contact: "Contact Paire for account support, payment concerns, privacy questions, grievance support and partnerships."
+};
 for (const page of ["privacy", "terms", "community-guidelines", "safety", "delete-account", "refunds", "contact"]) {
   let html = readFileSync(resolve(web, "legal", `${page}.html`), "utf8");
   for (const [placeholder, value] of Object.entries(legalDetails)) {
     if (value) html = html.split(placeholder).join(escapeHtml(value));
   }
   if (!missing.length) html = html.replace(DRAFT_BANNER, "");
-  html = html.replace("</head>", `${visitBeacon}</head>`);
+  html = html.replace("</head>", `<link rel="canonical" href="${escapeHtml(origin)}/${page}/"><meta name="description" content="${escapeHtml(legalDescriptions[page])}">${visitBeacon}</head>`);
   mkdirSync(resolve(output, page), { recursive: true });
   writeFileSync(resolve(output, page, "index.html"), html);
 }
@@ -177,7 +187,7 @@ writeFileSync(
   indexable
     ? // Search engines and AI answer engines (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…) are all welcome.
       `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /auth/\n\n${["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "PerplexityBot", "Google-Extended", "Applebot-Extended", "Bingbot"]
-        .map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /app/\n`)
+        .map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /app/\nDisallow: /auth/\n`)
         .join("\n")}\n${siteUrl ? `Sitemap: ${siteUrl}/sitemap.xml\n` : ""}`
     : "User-agent: *\nDisallow: /\n"
 );
@@ -187,6 +197,7 @@ if (indexable && siteUrl) {
     ["", today, "1.0", "daily"],
     ["garba-nights/", today, "0.9", "weekly"],
     ["vibe-quiz/", today, "0.8", "monthly"],
+    ["date-duet/", today, "0.8", "monthly"],
     ...contentPages.map((page) => [page.path, page.updated ?? today, page.type === "hub" ? "0.8" : page.path.startsWith("guides/") || page.path.startsWith("compare/") ? "0.8" : "0.7", "monthly"]),
     ...["safety/", "community-guidelines/", "contact/", "terms/", "privacy/", "refunds/"].map((page) => [page, today, page === "safety/" ? "0.6" : "0.3", "yearly"])
   ];
@@ -205,6 +216,8 @@ writeFileSync(
   resolve(output, "llms.txt"),
   readFileSync(resolve(web, "site/llms.txt"), "utf8").trimEnd() + "\n" +
     section("About Paire", core.filter((page) => page.type !== "hub")) +
+    section("Work Circles", workCircles) +
+    `\n## Interactive experiences\n\n- [Date Duet](${origin}/date-duet/): A free two-person first-date planner, shared by link. Uses mutual activities, time-window preferences, spending caps, pace and setting. No account, automatic match or booking.\n- [Dating vibe quiz](${origin}/vibe-quiz/): A playful personality quiz, not a scientific compatibility score.\n` +
     section("Paire compared with other apps", compare) +
     section("Dating guides for India", [...guidesA, ...guidesB]) +
     section("Dating in Indian cities", cities) +
@@ -212,7 +225,7 @@ writeFileSync(
 );
 writeFileSync(
   resolve(output, "llms-full.txt"),
-  `# Paire: full text\n\n${readFileSync(resolve(web, "site/llms.txt"), "utf8").trim()}\n\n` +
+  `# Paire: full text\n\n${readFileSync(resolve(web, "site/llms.txt"), "utf8").trim()}\n\n## Date Duet\n\nURL: ${origin}/date-duet/\nA free, no-signup two-person first-date planner for adults. Each person chooses activities, broad time-window preferences, a spending cap, maximum duration and setting. The blueprint respects both sets of choices or explains the differences. Share links carry preset choices in the URL fragment, readable and editable by link holders. There are no names, exact locations, real availability, automatic messages, matches or bookings. Answers are not sent to the visit counter; anonymous action counts measure use, not unique people or delivered invitations.\n\n` +
     contentPages.filter((page) => page.type !== "hub").map((page) => [
       `---\n\n# ${stripHtml(page.h1)}\n\nURL: ${origin}/${page.path}\nUpdated: ${page.updated}\n\n${stripHtml(page.lede)}`,
       page.summary ? `\n\nIn short:\n${page.summary.map((line) => `- ${stripHtml(line)}`).join("\n")}` : "",

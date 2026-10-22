@@ -8,7 +8,9 @@ export const METRICS_SHARDS = 10;
 /** India's calendar day, "2026-10-13". */
 export const istDay = (now = Date.now()) => new Date(now + 5.5 * 3_600_000).toISOString().slice(0, 10);
 
-const PAGES = ["/", "/app/", "/garba-nights/", "/privacy/", "/terms/", "/safety/", "/community-guidelines/", "/refunds/", "/contact/", "/delete-account/", "/auth/action/"];
+export const DUET_EVENTS = ["duet_started", "duet_created", "duet_shared", "duet_compared", "duet_downloaded", "duet_app_opened"] as const;
+
+const PAGES = ["/date-duet/", "/circles/", "/vibe-quiz/", "/", "/app/", "/garba-nights/", "/privacy/", "/terms/", "/safety/", "/community-guidelines/", "/refunds/", "/contact/", "/delete-account/", "/auth/action/"];
 
 /** Known pages only (Firestore map keys can't hold "/" or "."). */
 export function pageKey(path: unknown): string {

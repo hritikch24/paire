@@ -9,6 +9,9 @@ FUNCTIONS_DIR="$ROOT_DIR/firebase/functions"
 printf "== App: lint, typecheck, unit tests ==\n"
 (cd "$APP_DIR" && npm run lint && npm run typecheck && npm run test:unit)
 
+printf "== Website: planner constraints, sharing and campaign expiry ==\n"
+node --test "$ROOT_DIR"/apps/web/test/*.test.mjs
+
 printf "== Functions: lint, typecheck, unit tests, build ==\n"
 (cd "$FUNCTIONS_DIR" && npm run lint && npm run typecheck && npm test && npm run build)
 

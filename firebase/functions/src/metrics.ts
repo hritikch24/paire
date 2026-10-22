@@ -2,7 +2,7 @@ import { DocumentSnapshot, FieldValue, Query, Timestamp } from "firebase-admin/f
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { adminAuth, db } from "./admin";
 import { REGION } from "./config";
-import { deviceKey, istDay, isBot, METRICS_SHARDS, pageKey, sourceKey } from "./lib/metrics";
+import { DUET_EVENTS, deviceKey, istDay, isBot, METRICS_SHARDS, pageKey, sourceKey } from "./lib/metrics";
 import { readRevenueMetrics } from "./revenue";
 
 /**
@@ -24,6 +24,11 @@ export const trackVisit = onRequest({ region: REGION, maxInstances: 10, memory: 
   const page = pageKey(body.p);
   const source = sourceKey({ utm: body.s, referrer: body.r, fbclid: body.f, gclid: body.g });
   const shard = Math.floor(Math.random() * METRICS_SHARDS);
+  if (body.e !== undefined) {
+    if (page !== "date-duet" || !(DUET_EVENTS as readonly unknown[]).includes(body.e)) { response.sendStatus(400); return; }
+    await db.doc(`metricsDays/${day}_${shard}`).set({ day, dateDuet: { [String(body.e)]: FieldValue.increment(1) } }, { merge: true });
+    response.sendStatus(204); return;
+  }
   const firstToday = body.n === 1;
   await db.doc(`metricsDays/${day}_${shard}`).set({
     day,
@@ -68,12 +73,13 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
   // Visits
   const visitDocs = await db.collection("metricsDays").where("day", ">=", days[0]).get();
   const daily = Object.fromEntries(days.map((day) => [day, { views: 0, visitors: 0, signups: 0 }]));
-  const pages: Counts = {}, sources: Counts = {}, devices: Counts = {};
+  const pages: Counts = {}, sources: Counts = {}, devices: Counts = {}, dateDuet: Counts = Object.fromEntries(DUET_EVENTS.map(event => [event, 0]));
   for (const doc of visitDocs.docs) {
     const row = daily[doc.get("day")];
     if (!row) continue;
     row.views += doc.get("views") ?? 0;
     row.visitors += doc.get("visitors") ?? 0;
+    if (doc.get("day") >= days[23]) addInto(dateDuet, doc.get("dateDuet"));
     addInto(pages, doc.get("pages")); addInto(sources, doc.get("sources")); addInto(devices, doc.get("devices"));
   }
 
@@ -186,6 +192,7 @@ async function buildMetrics(): Promise<Record<string, unknown>> {
     accounts,
     returning,
     notifications,
+    dateDuet,
     people: { newSignups: newPeople.map(describe), recentLogins: seenPeople.map(describe) },
     profiles: {
       total: profiles - testDocs.length,

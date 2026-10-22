@@ -62,11 +62,11 @@ export function DiscoverEmpty({ onReload, plus, onGetPlus }: Props) {
   if (!plus && !isSupportView) {
     // Free members: the monthly offer leads (with its per-day price); a day pass and widening the search stay in view.
     return (
-      <YStack testID="discover-empty-plus" flex={1} alignItems="center" justifyContent="center" paddingVertical="$5" paddingHorizontal="$3" gap="$3">
+      <YStack testID="discover-empty-plus" flex={1} alignItems="center" justifyContent="center" paddingVertical="$3" paddingHorizontal="$3" gap="$2">
         <Text fontSize="$5" fontWeight="700" textAlign="center">Want to meet more people?</Text>
         <Text testID="discover-month-offer" fontSize="$3" fontWeight="700" color="$primary" textAlign="center">{`🎁 ${MONTH_OFFER}`}</Text>
         <Text fontSize="$2" color="$textMuted" textAlign="center" maxWidth={300} lineHeight={20}>
-          {`Paire Plus for just ₹${monthly.perDay} a day: ₹${month.priceInr} for ${monthly.days} days. 100 likes and 5 Super Likes a day, and your likes are shown first. No auto-renewal. Or try one day for ₹${day.priceInr}.`}
+          {`100 likes daily, 5 Super Likes and priority likes. ₹${month.priceInr} for ${monthly.days} days (₹${monthly.perDay}/day), or ₹${day.priceInr} for one day. No auto-renewal.`}
         </Text>
         <YStack width="100%" maxWidth={280} gap="$2">
           <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>{`Get 2 months · ₹${month.priceInr}`}</PrimaryButton>

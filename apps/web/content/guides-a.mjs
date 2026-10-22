@@ -29,7 +29,7 @@ export const guidesA = [
 </ol>
 <h2>The apps</h2>
 <h3>Paire</h3>
-<p>An Indian app where every like can carry a note, women set the rules (notes-only likes, I'll message first, incognito, private photos until match), and seeing who likes you comes with Paire Plus. Every member must confirm a real email and pass a live selfie check before they can like or chat. No caste field. Paire Plus is a one-time pass from ₹29 that never auto-renews. It's newer and smaller than the global apps, open across India. <strong>Best for:</strong> people who want fewer, better, verified matches. <a href="/features/">See features</a>.</p>
+<p>An Indian app where every like can carry a note, women set the rules (notes-only likes, I'll message first, incognito, private photos until match), and seeing who likes you comes with Paire Plus. Members must confirm their email before liking or chatting. Check each profile’s current photo badge; photo verification is not required for everyone. No caste field. Paire Plus is a one-time pass from ₹29 that never auto-renews. It's newer and smaller than the global apps, open across India. <strong>Best for:</strong> people who value thoughtful notes and free privacy controls. <a href="/features/">See features</a>.</p>
 <h3>Tinder</h3>
 <p>The biggest global dating app, with a very large user base in Indian cities. Swipe-based, used for everything from casual to serious. Seeing who already likes you is part of its paid tiers. <strong>Best for:</strong> the largest pool and travel. <a href="/compare/tinder/">Paire vs Tinder</a>.</p>
 <h3>Bumble</h3>
@@ -46,8 +46,8 @@ export const guidesA = [
 <p>Try one or two apps for a few weeks, write a real bio, and use your likes on people you'd actually like to meet. Whatever you choose, keep chats on the app until you trust someone, and never send money. Read <a href="/guides/dating-app-safety-tips-india/">dating app safety tips</a> before your first date.</p>
 <p class="article-note">Other apps change their features and prices often; this guide reflects their publicly described features as of October 2026. App names are trademarks of their owners.</p>`,
     faq: [
-      ["Which is the best dating app in India?", "It depends on what you want. Tinder has the biggest pool, Bumble lets women message first, Hinge is prompt-led, Aisle is for serious relationships, and Paire offers mandatory selfie verification, notes with every like, women-first controls and 'who likes you' with Plus."],
-      ["Which dating app is safest in India?", "Look for mandatory verification and strong privacy controls. On Paire, every member must confirm a real email and pass a live selfie check before they can like or chat, and women can hide their profile and photos until they match."],
+      ["Which is the best dating app in India?", "It depends on what you want. Tinder has the biggest pool, Bumble lets women message first, Hinge is prompt-led, Aisle is for serious relationships, and Paire offers confirmed email and separate photo checks, notes with every like, women-first controls and 'who likes you' with Plus."],
+      ["Which dating app is safest in India?", "Look for mandatory verification and strong privacy controls. On Paire, members must confirm their email before liking or chatting; photo verification is a separate check, and women can hide their profile and photos until they match."],
       ["Which dating app is free in India?", "Most apps are free to join with paid upgrades. On Paire, likes, matching, an anonymous likes count, reading messages and all safety controls are free; sending messages needs Paire Plus or a one-time ₹49 Unlimited Chat unlock, and nothing auto-renews."],
       ["Which dating app is best for serious relationships in India?", "Hinge, Aisle and Paire (with 'same intentions only' turned on) are popular choices for serious relationships."]
     ],
@@ -62,7 +62,7 @@ export const guidesA = [
     body: `
 <h2>Before you match</h2>
 <ol>
-<li><strong>Use an app that verifies people.</strong> On Paire everyone confirms their email and passes a live selfie check before they can like or chat.</li>
+<li><strong>Use an app that verifies people.</strong> On Paire, members confirm their email before liking or chatting. Photo-check badges are separate and do not guarantee someone’s intentions.</li>
 <li><strong>Keep personal details off your profile:</strong> no surname, workplace, college roll number, phone number or Instagram handle.</li>
 <li><strong>Choose photos that don't reveal where you live or work.</strong> Avoid photos in front of your building, office badge or car number plate.</li>
 <li><strong>Use privacy controls.</strong> Incognito and private-until-match photos keep your profile away from people you don't want to see it.</li>
@@ -118,7 +118,7 @@ export const guidesA = [
 <p>Profiles that quickly bring up money for meeting are against Paire's rules and are often scams. Report them.</p>
 <h2>How Paire helps</h2>
 <ul>
-<li>Every member must pass a live selfie check, which makes stolen-photo profiles much harder.</li>
+<li>Check current photo badges and use report or block if a profile seems suspicious. Photo verification is not required for every profile.</li>
 <li>Paire AI warns you in chat when a message looks like a request for money, an OTP or an investment.</li>
 <li>Reported profiles are reviewed, and repeat offenders are removed.</li>
 </ul>
@@ -132,8 +132,8 @@ export const guidesA = [
   },
   {
     path: "guides/how-to-spot-fake-dating-profiles/", parent, crumb: "Spotting fake profiles", published: D, updated: D, eyebrow: "GUIDE · FAKE PROFILES",
-    title: "How to Spot a Fake Dating Profile: 10 Signs (and How Paire Stops Them)",
-    description: "Ten signs a dating profile is fake or a catfish: model-like photos, no group pictures, refusal to video call, quick moves to WhatsApp, money talk. Plus how mandatory selfie verification keeps fake profiles off Paire.",
+    title: "How to Spot a Fake Dating Profile: 10 Signs and Paire’s Trust Signals",
+    description: "Ten signs a dating profile is fake or a catfish: model-like photos, no group pictures, refusal to video call, quick moves to WhatsApp, money talk. Plus what confirmed email and photo-check badges can and cannot tell you.",
     h1: "How to spot a <em>fake profile</em>",
     lede: "Catfish and bot profiles are the biggest reason people quit dating apps. Most give themselves away if you know what to look for.",
     body: `
@@ -156,11 +156,11 @@ export const guidesA = [
 <li>Ask a specific question about something in their photos.</li>
 <li>Do a reverse image search on a photo if something feels off.</li>
 </ul>
-<h2>How Paire keeps fake profiles out</h2>
-<p>On Paire nobody can like or chat until they've confirmed a real email and passed a live selfie check: a random pose, matched against every profile photo. Photos that are obviously AI-generated or show someone else are rejected, and verification expires if the photos change. Read <a href="/verification/">how verification works</a>.</p>`,
+<h2>What Paire’s trust signals mean</h2>
+<p>On Paire, confirmed email is required before liking or chatting. Photo checks are separate and are not required for every profile. A current photo-check badge describes that check, not someone's intentions or identity. Read <a href="/verification/">how verification works</a>.</p>`,
     faq: [
       ["How can you tell if a dating profile is fake?", "Warning signs include model-like solo photos, an empty or inconsistent bio, refusing to video call, pushing to move to WhatsApp, love-bombing and any mention of money."],
-      ["Does Paire have fake profiles?", "Paire requires every member to pass a live selfie check matched to all their photos before they can like or chat, which keeps stolen-photo and AI profiles out. If you see something suspicious, report it."]
+      ["Does Paire have fake profiles?", "Paire requires confirmed email, but this does not prove identity. A current photo-check badge is a separate signal; no check guarantees a profile is genuine. If you see something suspicious, report it."]
     ],
     related: ["verification/", "guides/dating-scams-india/", "guides/dating-app-safety-tips-india/", "guides/best-dating-apps-india/"]
   },
@@ -186,7 +186,7 @@ export const guidesA = [
 <li><strong>Incognito:</strong> only people you like can see you.</li>
 <li><strong>Private photos:</strong> your photos stay hidden until you match.</li>
 <li><strong>Same intentions only:</strong> see only people who want what you want.</li>
-<li><strong>Verified members:</strong> everyone has confirmed their email and passed a live selfie check.</li>
+<li><strong>Clearer trust signals:</strong> confirmed email is required before liking or chatting; photo badges describe a separate check.</li>
 <li><strong>Scam warnings:</strong> Paire AI flags messages asking for money, OTPs or investments.</li>
 </ul>
 <p>Men get something too: because likes are limited and come with notes, thoughtful men stand out, and Paire Plus reveals who likes you.</p>
@@ -197,7 +197,7 @@ export const guidesA = [
 <li>Meet in a busy place, arrive on your own, and tell a friend. See our <a href="/guides/dating-app-safety-tips-india/">safety tips</a>.</li>
 </ul>`,
     faq: [
-      ["Which dating app is best for women in India?", "Look for verified members and controls that work before a match. Paire offers notes-only likes, an optional 'I'll message first', incognito and private-until-match photos for free, and every member passes a live selfie check."],
+      ["Which dating app is best for women in India?", "Look for verified members and controls that work before a match. Paire offers notes-only likes, an optional 'I'll message first', incognito and private-until-match photos for free, and confirmed email is required before liking or chatting. Photo-check badges are shown separately."],
       ["Can I hide my dating profile from people I know?", "On Paire, incognito means only people you like can see you, and private photos stay hidden until you match."]
     ],
     related: ["compare/bumble/", "verification/", "guides/dating-app-safety-tips-india/", "features/"]

@@ -38,7 +38,7 @@ const db = backendRequire('firebase-admin/firestore').getFirestore();
       const box = await page.getByTestId('discover-expand').boundingBox();
       const filters = await page.getByTestId('discover-filters').boundingBox();
       const tabs = await page.getByTestId('tab-discover').boundingBox();
-      assert(box.height>=44 && box.y>=filters.y+filters.height && box.y+box.height<=tabs.y, 'Empty action overlaps filters or tabs');
+      assert(box.height>=44 && box.y>=filters.y+filters.height && box.y+box.height<=tabs.y, `Empty action overlaps filters or tabs: ${JSON.stringify({width,height,box,filters,tabs})}`);
       assert.equal(await page.getByTestId('discover-footer').count(),0);
       assert.equal(await page.locator('[data-testid^="nudge-"]').count(),0);
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));

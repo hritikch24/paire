@@ -59,7 +59,7 @@ export const guidesB = [
 </ul>
 <h2>Photos</h2>
 <ul>
-<li>First photo: a clear, recent photo of just you, smiling, face visible. On Paire it must clearly show you because the selfie check compares against it.</li>
+<li>First photo: a clear, recent photo of just you, smiling, face visible. Choose a photo that clearly represents you; a photo check, where available, compares against your profile photos.</li>
 <li>Add a full-length photo, one doing something you love, and one with friends (make it clear which one is you).</li>
 <li>Skip sunglasses in every photo, heavy filters and photos from years ago.</li>
 </ul>

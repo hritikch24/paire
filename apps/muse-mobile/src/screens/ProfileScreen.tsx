@@ -101,6 +101,7 @@ export function ProfileScreen() {
           </YStack>
         </Pressable>
         {Platform.OS === "web" ? <SettingsSection><SettingsRow testID="profile-work-circles" icon="briefcase-outline" label="Work Circles" description="Corporate, government, banking, healthcare & more" onPress={() => navigation.navigate("WorkCircles")} showDivider={false} /></SettingsSection> : null}
+        {Platform.OS === "web" ? <SettingsSection><SettingsRow testID="profile-date-duet" icon="planet-outline" label="Date Duet" description="Two people. One first-date blueprint." onPress={() => void Linking.openURL("/date-duet/")} showDivider={false} /></SettingsSection> : null}
         <ThemeQuickPicker onMore={() => navigation.navigate("Appearance")} />
         <SettingsSection>
           <SettingsRow icon="images-outline" label="Photos" value={`${profile.photoUrls.length}/6`} onPress={() => navigation.navigate("EditPhotos")} showDivider={false} />
