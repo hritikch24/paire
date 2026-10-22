@@ -1,3 +1,4 @@
+import type { WorkSector } from "../data/workCircles";
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { ProfileViewData } from "../components/ProfileDetails";
 import type { ReportReason, SwipeType } from "../types/models";
@@ -28,11 +29,13 @@ export type AppStackParamList = {
   Chat: { matchId: string; otherUid?: string; name?: string; photoUrl?: string | null };
   ProfileView: {
     /** `likes`: someone from "Likes you", answered from the profile itself. */
-    source: "discover" | "match" | "self" | "likes" | "shared";
+    source: "discover" | "match" | "self" | "likes" | "shared" | "circle";
     profile?: ProfileViewData;
     uid?: string;
     matchId?: string;
   };
+  WorkCircles: undefined;
+  WorkCircle: { circle: WorkSector };
   EditProfile: undefined;
   EditPhotos: undefined;
   Settings: undefined;

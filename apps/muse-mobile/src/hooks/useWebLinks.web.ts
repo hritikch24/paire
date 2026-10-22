@@ -1,3 +1,4 @@
+import { workCircle } from "../data/workCircles";
 import { useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -17,6 +18,7 @@ export function useWebLinks() {
       const profile = url.searchParams.get("profile");
       const chat = url.searchParams.get("chat");
       const valid = (value: string | null) => Boolean(value && /^[A-Za-z0-9_-]{1,256}$/.test(value));
+      const circle = workCircle(url.searchParams.get("circle"));
       let navigate: () => void;
       if (url.searchParams.get("admin") === "premium-buyers") {
         navigate = () => navigation.navigate("App", { screen: "RecentPremiumBuyers" });
@@ -27,6 +29,12 @@ export function useWebLinks() {
       } else if (url.searchParams.get("admin") === "grant-plus") {
         navigate = () => navigation.navigate("App", { screen: "AdminPremium" });
         url.searchParams.delete("admin");
+      } else if (circle) {
+        navigate = () => navigation.navigate("App", { screen: "WorkCircle", params: { circle: circle.id } });
+        url.searchParams.delete("circle");
+      } else if (url.searchParams.get("circles") === "1") {
+        navigate = () => navigation.navigate("App", { screen: "WorkCircles" });
+        url.searchParams.delete("circles");
       } else if (valid(profile)) {
         navigate = () => navigation.navigate("App", { screen: "ProfileView", params: { source: profile === uid ? "self" : "shared", uid: profile! } });
         url.searchParams.delete("profile");

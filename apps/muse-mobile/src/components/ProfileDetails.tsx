@@ -1,3 +1,4 @@
+import type { WorkSector } from "../data/workCircles";
 import { ageGapLabel } from "../data/ageGap";
 import { garbaBadge } from "../data/garba";
 import type { ReactNode } from "react";
@@ -29,6 +30,7 @@ export type ProfileViewData = {
   quickAnswers?: QuickAnswer[];
   languages?: string[];
   basics?: ProfileBasics;
+  workSector?: WorkSector | null;
   photosPrivate?: boolean;
   isNew?: boolean;
   note?: string;

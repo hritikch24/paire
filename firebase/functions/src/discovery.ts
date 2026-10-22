@@ -150,7 +150,7 @@ export const getDiscoverFeed = onCall(
   async (request): Promise<{ profiles: DiscoverProfile[]; cursor: FeedCursor | null }> => {
     const uid = await requireReadAuth(request);
     await requireVerifiedUsers([uid], undefined, uid, isSupportSession(request));
-    const { cursor: startCursor, ageGap, garba, revisit } = parseFeedInput(request.data);
+    const { cursor: startCursor, ageGap, garba, revisit, circle } = parseFeedInput(request.data);
     await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "feedCalls", LIMITS.feedCallsPerDay);
 
     const [indexSnap, settingsSnap, viewerProfileSnap, billingSnap] = await db.getAll(
@@ -228,6 +228,7 @@ export const getDiscoverFeed = onCall(
         .where("visible", "==", true)
         .where("cohort", "==", viewer.cohort ?? "public")
         .where("gender", "in", showMe);
+      if (circle) query = query.where("workSector", "==", circle);
       if (ageGap) query = query.where("ageGap", "==", ageGap);
       if (garbaSeason) query = query.where("garba", "==", garbaSeason.id);
       query = query
@@ -286,7 +287,7 @@ export const getDiscoverFeed = onCall(
     const verified = await verifiedUsers(picked.map((entry) => entry.uid));
     const profiles = profileSnaps
       .map((snap, index) =>
-        snap.exists && verified.has(snap.id)
+        snap.exists && verified.has(snap.id) && (!circle || snap.get("workSector") === circle)
           ? toDiscoverProfile(
               snap.data() as Partial<PublicProfile>,
               picked[index],

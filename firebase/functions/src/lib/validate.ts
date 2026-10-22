@@ -1,3 +1,4 @@
+import { isWorkSector, WorkSector } from "./workCircles";
 import { HttpsError } from "firebase-functions/v2/https";
 import { SPARKS } from "../config";
 import { AgeGapSide, FeedCursor, SwipeType } from "../types";
@@ -61,9 +62,9 @@ export function parseTargetInput(data: unknown): { targetUid: string } {
 }
 
 /** `revisit` (Paire Plus): also show people you passed on before, once everyone new is seen. */
-export type FeedInput = { cursor: FeedCursor | null; ageGap: AgeGapSide | null; garba: boolean; revisit: boolean };
+export type FeedInput = { cursor: FeedCursor | null; ageGap: AgeGapSide | null; garba: boolean; revisit: boolean; circle?: WorkSector };
 
-/** A feed page request. `garba` (the Garba Nights edition) and `ageGap` are one filter at a time. */
+/** A feed page request: Work Circles, Garba Nights and age-gap editions are one filter at a time. */
 export function parseFeedInput(data: unknown): FeedInput {
   if (data === null || data === undefined) return { cursor: null, ageGap: null, garba: false, revisit: false };
   const body = asRecord(data);
@@ -76,16 +77,18 @@ export function parseFeedInput(data: unknown): FeedInput {
   if (body.revisit !== undefined && typeof body.revisit !== "boolean") {
     throw new HttpsError("invalid-argument", "revisit is invalid.");
   }
+  if (body.circle !== undefined && !isWorkSector(body.circle)) throw new HttpsError("invalid-argument", "circle is invalid.");
+  const circle = isWorkSector(body.circle) ? { circle: body.circle } : {};
   const ageGap = isAgeGapSide(body.ageGap) ? body.ageGap : null;
   const garba = body.garba === true;
   const revisit = body.revisit === true;
-  if (ageGap && garba) throw new HttpsError("invalid-argument", "Choose one filter at a time.");
-  if (body.cursor === null || body.cursor === undefined) return { cursor: null, ageGap, garba, revisit };
+  if ([Boolean(ageGap), garba, Boolean(body.circle)].filter(Boolean).length > 1) throw new HttpsError("invalid-argument", "Choose one filter at a time.");
+  if (body.cursor === null || body.cursor === undefined) return { cursor: null, ageGap, garba, revisit, ...circle };
   const cursor = asRecord(body.cursor);
   if (typeof cursor.lastActiveAt !== "number" || !Number.isFinite(cursor.lastActiveAt)) {
     throw new HttpsError("invalid-argument", "cursor.lastActiveAt is invalid.");
   }
-  return { cursor: { lastActiveAt: cursor.lastActiveAt, uid: parseUid(cursor.uid, "cursor.uid") }, ageGap, garba, revisit };
+  return { cursor: { lastActiveAt: cursor.lastActiveAt, uid: parseUid(cursor.uid, "cursor.uid") }, ageGap, garba, revisit, ...circle };
 }
 
 export function parseDuoSwipeInput(data: unknown): { targetDuoId: string; type: "like" | "nope" } {

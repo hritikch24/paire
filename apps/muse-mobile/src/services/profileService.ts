@@ -24,6 +24,7 @@ export type ProfileEdits = Partial<
     | "vibes"
     | "languages"
     | "basics"
+    | "workSector"
     | "isDiscoverable"
     | "onboardingComplete"
     | "safetyConfirmed"
@@ -65,6 +66,7 @@ export async function saveBasics(
     quickAnswers: existing?.quickAnswers ?? [],
     ...(existing?.languages?.length ? { languages: existing.languages } : {}),
     ...(existing?.basics ? { basics: existing.basics } : {}),
+    ...(existing?.workSector ? { workSector: existing.workSector } : {}),
     isDiscoverable: existing?.isDiscoverable ?? true,
     onboardingComplete: existing?.onboardingComplete ?? false,
     safetyConfirmed: existing?.safetyConfirmed ?? false,

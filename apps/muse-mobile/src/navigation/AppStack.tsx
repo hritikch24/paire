@@ -1,3 +1,4 @@
+import { WorkCirclesScreen, WorkCircleScreen } from "../screens/WorkCirclesScreen";
 import { useWebLinks } from "../hooks/useWebLinks";
 import { Platform } from "react-native";
 import { AdminPremiumScreen } from "../screens/AdminPremiumScreen";
@@ -58,6 +59,8 @@ export function AppStack() {
         component={ProfileViewScreen}
         options={{ presentation: "modal", animation: "slide_from_bottom" }}
       />
+      {Platform.OS === "web" ? <Stack.Screen name="WorkCircles" component={WorkCirclesScreen} /> : null}
+      {Platform.OS === "web" ? <Stack.Screen name="WorkCircle" component={WorkCircleScreen} /> : null}
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="EditPhotos" component={EditPhotosScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />

@@ -1106,3 +1106,60 @@ describe("shared profile links and browser push ownership", () => {
     expect((await ref.get()).exists).toBe(false);
   });
 });
+
+describe("Work Circles", () => {
+  async function circlePair(label: string) {
+    const viewer = await makeClient(`circle-viewer-${label}`), member = await makeClient(`circle-member-${label}`);
+    await onboard(viewer, { name: "Fictional circle viewer", gender: "woman", showMe: ["man"], age: 80 });
+    await onboard(member, { name: "Fictional circle member", gender: "man", showMe: ["woman"], age: 81 });
+    await updateDoc(doc(viewer.db, "users", viewer.uid, "private", "settings"), { ageMin: 80, ageMax: 85 });
+    await updateDoc(doc(member.db, "users", member.uid), { workSector: "corporate" });
+    await waitFor(async () => (await admin.doc(`discovery/${member.uid}`).get()).get("workSector") === "corporate");
+    return { viewer, member };
+  }
+  test("any member can browse a sector using their own preferences, without joining or changing Discover", async () => {
+    const { viewer, member } = await circlePair("own-preferences");
+    await updateDoc(doc(member.db, "users", member.uid, "private", "settings"), { ageMin: 90, ageMax: 100 });
+    const feed = await viewer.call<FeedResult>("getDiscoverFeed", { circle: "corporate" });
+    expect(feed.profiles.map(profile => profile.uid)).toContain(member.uid);
+    expect(feed.profiles.every(profile => profile.workSector === "corporate")).toBe(true);
+    const card = feed.profiles.find(profile => profile.uid === member.uid)!;
+    for (const field of ["email", "location", "employer", "workVerified"]) expect(card).not.toHaveProperty(field);
+    expect((await admin.doc(`users/${viewer.uid}`).get()).get("workSector")).toBeUndefined();
+    await updateDoc(doc(member.db, "users", member.uid), { workSector: "banking" });
+    await waitFor(async () => (await admin.doc(`discovery/${member.uid}`).get()).get("workSector") === "banking");
+    expect((await viewer.call<FeedResult>("getDiscoverFeed", { circle: "corporate" })).profiles.map(profile => profile.uid)).not.toContain(member.uid);
+    expect((await viewer.call<FeedResult>("getDiscoverFeed", { circle: "banking" })).profiles.map(profile => profile.uid)).toContain(member.uid);
+    expect((await viewer.call<FeedResult>("getDiscoverFeed", {})).profiles.map(profile => profile.uid)).toContain(member.uid);
+    await expect(viewer.call("getDiscoverFeed", { circle: "verified-government" })).rejects.toMatchObject({ code: "functions/invalid-argument" });
+  });
+  test("leaving a circle removes the badge and stale index membership cannot expose it", async () => {
+    const { viewer, member } = await circlePair("leave");
+    await updateDoc(doc(member.db, "users", member.uid), { workSector: null });
+    await waitFor(async () => (await admin.doc(`discovery/${member.uid}`).get()).get("workSector") === null);
+    // Simulate a delayed older index write: the live profile still vetoes it.
+    await admin.doc(`discovery/${member.uid}`).update({ workSector: "corporate" });
+    expect((await viewer.call<FeedResult>("getDiscoverFeed", { circle: "corporate" })).profiles.map(profile => profile.uid)).not.toContain(member.uid);
+    await admin.doc(`discovery/${member.uid}`).update({ workSector: null });
+  });
+  test("incognito, private photos, blocks and bans still apply inside circles", async () => {
+    const { viewer, member } = await circlePair("privacy");
+    await updateDoc(doc(member.db, "users", member.uid, "private", "settings"), { incognito: true, privatePhotos: true });
+    await waitFor(async () => (await admin.doc(`discovery/${member.uid}`).get()).get("incognito") === true);
+    expect((await viewer.call<FeedResult>("getDiscoverFeed", { circle: "corporate" })).profiles.map(profile => profile.uid)).not.toContain(member.uid);
+    await admin.doc(`swipes/${member.uid}/outgoing/${viewer.uid}`).set({ type: "like", createdAt: Date.now() });
+    expect((await viewer.call<FeedResult>("getDiscoverFeed", { circle: "corporate" })).profiles.find(profile => profile.uid === member.uid)).toMatchObject({ photosPrivate: true, photoUrls: [] });
+    await viewer.call("blockUser", { targetUid: member.uid });
+    expect((await viewer.call<FeedResult>("getDiscoverFeed", { circle: "corporate" })).profiles.map(profile => profile.uid)).not.toContain(member.uid);
+    await admin.doc(`moderation/${member.uid}`).set({ status: "banned" }, { merge: true });
+    expect((await viewer.call<FeedResult>("getDiscoverFeed", { circle: "corporate" })).profiles.map(profile => profile.uid)).not.toContain(member.uid);
+  });
+  test("circle likes use the ordinary allowance and create only a real mutual match", async () => {
+    const { viewer, member } = await circlePair("likes");
+    const before = await viewer.call<{ remaining: { likes: number } }>("getDailyAllowance");
+    expect(await viewer.call("swipe", { targetUid: member.uid, type: "like", note: "Your profile made me smile. Coffee sometime?" })).toMatchObject({ matched: false });
+    expect((await viewer.call<{ remaining: { likes: number } }>("getDailyAllowance")).remaining.likes).toBe(before.remaining.likes - 1);
+    expect((await viewer.call<FeedResult>("getDiscoverFeed", { circle: "corporate" })).profiles.map(profile => profile.uid)).not.toContain(member.uid);
+    expect(await member.call("swipe", { targetUid: viewer.uid, type: "like" })).toMatchObject({ matched: true });
+  });
+});

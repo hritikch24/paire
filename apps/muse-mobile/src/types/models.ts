@@ -1,3 +1,5 @@
+import type { WorkSector } from "../data/workCircles";
+
 export type MuseCard = {
   id: string;
   title: string;
@@ -31,6 +33,8 @@ export type UserProfile = {
   /** Language ids from data/basics. */
   languages?: string[];
   basics?: ProfileBasics;
+  /** Optional public work sector, self-declared. */
+  workSector?: WorkSector | null;
   isDiscoverable: boolean;
   onboardingComplete: boolean;
   safetyConfirmed?: boolean;
@@ -113,6 +117,8 @@ export type DiscoverProfile = {
   quickAnswers: QuickAnswer[];
   languages?: string[];
   basics?: ProfileBasics;
+  /** Optional public work sector, self-declared. */
+  workSector?: WorkSector | null;
   lastActiveAt: number;
   distanceKm: number | null;
   superLikedYou: boolean;

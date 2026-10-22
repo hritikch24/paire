@@ -100,6 +100,7 @@ export function ProfileScreen() {
             <XStack alignItems="center" gap="$1"><Text color="$primary" fontWeight="700">Explore plans</Text><Icon name="arrow-forward" size={17} color="primary" /></XStack>
           </YStack>
         </Pressable>
+        {Platform.OS === "web" ? <SettingsSection><SettingsRow testID="profile-work-circles" icon="briefcase-outline" label="Work Circles" description="Corporate, government, banking, healthcare & more" onPress={() => navigation.navigate("WorkCircles")} showDivider={false} /></SettingsSection> : null}
         <ThemeQuickPicker onMore={() => navigation.navigate("Appearance")} />
         <SettingsSection>
           <SettingsRow icon="images-outline" label="Photos" value={`${profile.photoUrls.length}/6`} onPress={() => navigation.navigate("EditPhotos")} showDivider={false} />

@@ -1,3 +1,4 @@
+import { WorkCircleBadge } from "../components/WorkCircleBadge";
 import { useQuery } from "@tanstack/react-query";
 import { callFunction } from "../services/firebase";
 import { DiscoverProfile } from "../types/models";
@@ -52,8 +53,8 @@ export function ProfileViewScreen() {
 
   const swipe = (type: SwipeType) => {
     if (!profile) return;
-    if (source === "shared" && type !== "nope") { setComposeShared(true); return; }
-    if (source === "likes" || source === "shared") {
+    if ((source === "shared" || source === "circle") && type !== "nope") { setComposeShared(true); return; }
+    if (source === "likes" || source === "shared" || source === "circle") {
       void answerLike(type);
       return;
     }
@@ -70,6 +71,7 @@ export function ProfileViewScreen() {
     try {
       const result = await sendSwipe(profile.uid, type, note);
       void queryClient.invalidateQueries({ queryKey: LIKES_YOU_KEY });
+      if (source === "circle") void queryClient.invalidateQueries({ queryKey: ["work-circle-feed"] });
       if (result.matched && result.matchId) {
         suppressMatchAlert(result.matchId);
         showToast(`It's a match! You and ${profile.displayName} liked each other.`, "success");
@@ -88,7 +90,7 @@ export function ProfileViewScreen() {
       showToast(friendlyError(error, "Couldn't save that. Please try again."), "error");
     }
   };
-  const showActions = source === "discover" || source === "likes" || source === "shared";
+  const showActions = source === "discover" || source === "likes" || source === "shared" || source === "circle";
 
   const confirmBlock = () => {
     if (!profile) return;
@@ -138,6 +140,7 @@ export function ProfileViewScreen() {
         <PhotoCarousel photos={profile.photoUrls} width={width} height={Math.round(width * 1.25)} />
         <YStack padding="$4" gap="$4">
           <ProfileHeadline profile={profile} />
+          {source === "circle" ? <WorkCircleBadge sector={passed?.workSector} /> : null}
           <ProfileDetails profile={profile} />
           {source === "self" ? (
             <PrimaryButton onPress={() => navigation.navigate("EditProfile")}>Edit profile</PrimaryButton>
@@ -176,8 +179,8 @@ export function ProfileViewScreen() {
         </XStack>
       ) : null}
 
-      {source === "shared" && composeShared && shared.data?.profile ? (
-        <SparkComposer profile={shared.data.profile} kind="like" onClose={() => setComposeShared(false)} onSend={(note) => { setComposeShared(false); void answerLike("like", note); }} />
+      {(source === "shared" || source === "circle") && composeShared && (source === "circle" ? passed : shared.data?.profile) ? (
+        <SparkComposer profile={(source === "circle" ? passed : shared.data?.profile) as DiscoverProfile} kind="like" onClose={() => setComposeShared(false)} onSend={(note) => { setComposeShared(false); void answerLike("like", note); }} />
       ) : null}
       <ActionSheet
         visible={menuOpen}

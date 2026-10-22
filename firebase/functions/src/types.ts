@@ -1,3 +1,5 @@
+import type { WorkSector } from "./lib/workCircles";
+
 /** Paire is for men and women. */
 export const GENDERS = ["woman", "man"] as const;
 export type Gender = (typeof GENDERS)[number];
@@ -31,6 +33,8 @@ export type PublicProfile = {
   languages?: string[];
   /** Optional Indian "basics": height, education, work, religion, diet, drinking, smoking. */
   basics?: ProfileBasics;
+  /** Optional public work sector, self-declared. */
+  workSector?: WorkSector | null;
   isDiscoverable: boolean;
   onboardingComplete: boolean;
   safetyConfirmed?: boolean;
@@ -97,6 +101,7 @@ export type ModerationRecord = { status?: string; cohort?: string; emailVerified
 
 /** discovery/{uid}: server-only index used to build feeds. Location is coarsened. */
 export type DiscoveryEntry = {
+  workSector?: WorkSector | null;
   uid: string;
   visible: boolean;
   cohort: Cohort;
@@ -160,6 +165,7 @@ export type DiscoverProfile = {
   quickAnswers: QuickAnswer[];
   languages: string[];
   basics: ProfileBasics;
+  workSector?: WorkSector | null;
   lastActiveAt: number;
   distanceKm: number | null;
   superLikedYou: boolean;

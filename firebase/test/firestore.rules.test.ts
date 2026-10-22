@@ -193,6 +193,14 @@ describe("profiles", () => {
     await assertFails(dbFor("jules").doc("users/alexa/private/settings").set({ incognito: true }));
   });
 
+  test("work sectors are optional owner-declared enum values, never a verified badge", async () => {
+    const mine = dbFor("alexa").doc("users/alexa");
+    for (const workSector of ["corporate", "government", "banking", "healthcare", "education", "business", "creative", "legal", "hospitality", "engineering", "other", null]) await assertSucceeds(mine.set(validProfile("alexa", { workSector })));
+    for (const workSector of ["verified-government", "", ["banking"], { sector: "banking", verified: true }, 1]) await assertFails(mine.set(validProfile("alexa", { workSector })));
+    await assertFails(mine.set(validProfile("alexa", { workSector: "government", workVerified: true })));
+    await assertFails(dbFor("outsider").doc("users/alexa").update({ workSector: "banking" }));
+  });
+
   test("nobody can write someone else's profile", async () => {
     await assertFails(dbFor("jules").doc("users/alexa").set(validProfile("alexa")));
   });

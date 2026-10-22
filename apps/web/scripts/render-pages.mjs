@@ -17,6 +17,7 @@ const human = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", 
 
 export function renderPage(page, { origin, pages, extraHead = "" }) {
   const url = `${origin}/${page.path}`;
+  const appHref = `/${esc(page.appPath ?? "app/")}`;
   const crumbs = [{ name: "Paire", path: "app/" }, ...(page.parent ? [page.parent] : []), { name: page.crumb ?? page.h1, path: page.path }];
   const related = (page.related ?? []).map((path) => pages.find((p) => p.path === path)).filter(Boolean);
   const isArticle = page.type !== "hub";
@@ -65,7 +66,7 @@ export function renderPage(page, { origin, pages, extraHead = "" }) {
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="nav wrap"><a class="wordmark" href="/app/" aria-label="Paire home">paire<span>.</span></a>${NAV}<a class="button small" href="/app/">Open Paire <span aria-hidden="true">↗</span></a></header>
+<header class="nav wrap"><a class="wordmark" href="/app/" aria-label="Paire home">paire<span>.</span></a>${NAV}<a class="button small" href="${appHref}">Open Paire <span aria-hidden="true">↗</span></a></header>
 <main id="main" class="article wrap">
 <nav class="crumbs" aria-label="Breadcrumb">${crumbs.map((c, i) => (i < crumbs.length - 1 ? `<a href="/${c.path}">${esc(c.name)}</a><span aria-hidden="true">/</span>` : `<span aria-current="page">${esc(c.name)}</span>`)).join("")}</nav>
 <p class="eyebrow">${esc(page.eyebrow ?? "PAIRE")}</p>
@@ -76,7 +77,7 @@ ${page.summary ? `<div class="article-summary"><strong>In short</strong><ul>${pa
 <div class="article-body">${page.body ?? ""}</div>
 ${hubList}
 ${page.faq?.length ? `<section class="article-faq"><h2>Questions people ask</h2>${page.faq.map(([q, a]) => `<details><summary><h3>${esc(q)}</h3></summary><p>${esc(a)}</p></details>`).join("")}</section>` : ""}
-<aside class="article-cta"><div><strong>${esc(page.cta ?? "Find your Paire.")}</strong><span>Free to join. Every like comes with a note, women set the rules, and Paire Plus reveals who likes you.</span></div><a class="button" href="/app/">Open Paire <span aria-hidden="true">↗</span></a></aside>
+<aside class="article-cta"><div><strong>${esc(page.cta ?? "Find your Paire.")}</strong><span>Free to join. Every like comes with a note, women set the rules, and Paire Plus reveals who likes you.</span></div><a class="button" href="${appHref}">Open Paire <span aria-hidden="true">↗</span></a></aside>
 ${related.length ? `<section class="article-related"><h2>Keep reading</h2><div class="hub-grid">${related.map((p) => `<a class="hub-card" href="/${p.path}"><strong>${esc(p.crumb ?? p.h1.replace(/<[^>]+>/g, ""))}</strong><span>${esc(p.description)}</span></a>`).join("")}</div></section>` : ""}
 </main>
 ${FOOTER}

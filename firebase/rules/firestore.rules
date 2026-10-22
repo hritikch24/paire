@@ -165,7 +165,7 @@ service cloud.firestore {
     function validProfile(d, uid) {
       return d.keys().hasOnly([
           'uid', 'displayName', 'age', 'gender', 'pronouns', 'city', 'bio', 'photoUrls',
-          'interests', 'intentions', 'vibes', 'quickAnswers', 'languages', 'basics', 'isDiscoverable',
+          'interests', 'intentions', 'vibes', 'quickAnswers', 'languages', 'basics', 'workSector', 'isDiscoverable',
           'onboardingComplete', 'safetyConfirmed', 'createdAt', 'updatedAt', 'lastActiveAt'
         ])
         && d.keys().hasAll([
@@ -186,6 +186,7 @@ service cloud.firestore {
         && optList(d, 'quickAnswers', 6)
         && optList(d, 'languages', 6)
         && (!('basics' in d) || validBasics(d.basics))
+        && (!('workSector' in d) || d.workSector == null || d.workSector in ['corporate', 'government', 'banking', 'healthcare', 'education', 'business', 'creative', 'legal', 'hospitality', 'engineering', 'other'])
         && d.isDiscoverable is bool
         && d.onboardingComplete is bool
         && (!('safetyConfirmed' in d) || d.safetyConfirmed is bool)

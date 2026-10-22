@@ -14,6 +14,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { resolve } from "node:path";
 import { cities } from "../content/cities.mjs";
 import { compare } from "../content/compare.mjs";
+import { workCircles } from "../content/work-circles.mjs";
 import { core } from "../content/core.mjs";
 import { guidesA } from "../content/guides-a.mjs";
 import { guidesB } from "../content/guides-b.mjs";
@@ -112,7 +113,7 @@ for (const page of ["index.html", "garba-nights/index.html", "vibe-quiz/index.ht
 
 // Guides, city pages, comparisons, about, pricing… (apps/web/content). Existing pages are listed
 // too so content can link to them in "Keep reading".
-const contentPages = [...core, ...compare, ...cities, ...guidesA, ...guidesB];
+const contentPages = [...core, ...compare, ...cities, ...guidesA, ...guidesB, ...workCircles];
 const linkable = [
   ...contentPages,
   { path: "garba-nights/", crumb: "Garba Nights", h1: "Garba Nights", description: "Find a Garba or Dandiya partner this Navratri: pick your nights and meet people near you going on the same nights." },

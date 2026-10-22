@@ -1,3 +1,4 @@
+import { isWorkSector } from "./workCircles";
 import { SPARKS } from "../config";
 import {
   DiscoverProfile,
@@ -87,6 +88,7 @@ export function buildDiscoveryEntry(
 
   return {
     uid,
+    workSector: isWorkSector(profile?.workSector) ? profile.workSector : null,
     // Photos are optional: profiles without one are shown, just ranked lower.
     visible: Boolean(
       profile &&
@@ -187,6 +189,7 @@ export function toDiscoverProfile(
     quickAnswers: answers,
     languages: stringList(profile.languages, 6),
     basics: sanitizeBasics(profile.basics),
+    ...(isWorkSector(profile.workSector) ? { workSector: profile.workSector } : {}),
     // Rounded to the hour: enough for "Active today" without exposing exact habits.
     lastActiveAt: Math.floor(lastActive / HOUR_MS) * HOUR_MS,
     distanceKm: km,
