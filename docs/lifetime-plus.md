@@ -57,7 +57,15 @@ The script uses the logged-in Firebase CLI credentials and requires an enabled m
 
 1. Deploy KraftAI checkout catalog first: counterpart commit `9ffd3f7`.
 2. Deploy all handlers that recompute or consume shared premium/chat caches, so an old handler cannot erase a lifetime grant: `getPremiumStatus`, `revenueCatWebhook`, `createPlusOrder`, `confirmPlusPayment`, `razorpayWebhook`, `createChatUnlockOrder`, `confirmChatUnlock`, `getChatAccess`, `ccavenueResponse`, `confirmCcavenueOrder`, `createCcavenueOrder`, `createUpiUnlockOrder`, `getUpiReviewQueue`, `getUpiUnlockOrder`, `reviewUpiPayment`, `submitUpiPayment`, `deleteAccount`, `onAuthUserDeleted`, `getDailyAllowance`, `getDiscoverFeed`, `swipe`, `getLikesYou`, `adminGetMember`, `adminListMembers`, `adminPreviewPlusGrant`, `adminGrantPlusMonth`.
-3. Apply the authorized owner gift and verify its source/cache/mirror.
-4. Push the website/browser app; verify Vercel and live public pricing/bundle. Submit IndexNow and record the release in [web-changes.md](web-changes.md).
+3. Push the website/browser app; verify Vercel and live public pricing/bundle.
+4. Apply the authorized owner gift and verify its source/cache/mirror. Submit IndexNow and record the release in [web-changes.md](web-changes.md).
 
 No rules/index migration or runtime flag change is needed. Real payment-provider acceptance and a real-phone purchase remain outside emulator QA; the existing checkout and signed-confirmation machinery are reused.
+
+## Production release evidence
+
+- Paire product source `1a4962a`, pushed to GitHub `main`. Vercel deployment `paire-iypn66i9f` (`dpl_HP1Hkgc2HTXBBFvLhK1Xozva52tD`) is Ready with `www.paire.in` assigned.
+- KraftAI counterpart `9ffd3f7bdb28d576995ab18e31252c4f382c1346` is pushed to its `main`. The existing GitHub/Vercel integration reports “Deployment has completed” for `hritikchaudhary016-4858s-projects/myaiproductss/BPM4SUEFhyN3frajg9D84tgpx2tj`. The public KraftAI domain returns 200.
+- All 26 named Firebase handlers were read back **ACTIVE**, updated on 23 October 2026. Google's build queue expired the first discovery build before it ran; retrying only `getDiscoverFeed` succeeded. Its new revision is `getdiscoverfeed-00016-taz`; account deletion is `deleteaccount-00016-zat`. No runtime flags, rules or indexes were changed.
+- The explicitly requested owner lifetime gift was committed and read back: lifetime access, unlimited regular likes, permanent messaging, `expiresAt: null`, ₹0 charged and ₹0 revenue. The private audit and existing paid records remain separate. No user email is embedded in application entitlement logic.
+- Read-only live checks passed for eight public paths, all advertised prices and lifetime terms, JSON-LD's ₹1,499 offer, monthly unlimited-like copy and the exported browser bundle (`index-3c33cdebb9c71188ad7a4eb4009f2ed1.js`). IndexNow accepted all 53 URLs with HTTP 200.
