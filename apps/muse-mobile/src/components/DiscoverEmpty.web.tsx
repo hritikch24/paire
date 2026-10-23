@@ -21,7 +21,7 @@ type Props = {
 
 /**
  * Everyone who fits has been seen. Without Plus: a simple Paire Plus offer
- * (from ₹29 a day), with Expand search as the second choice. With Plus: all caught up.
+ * (from ₹20 a day), with Expand search as the second choice. With Plus: all caught up.
  */
 export function DiscoverEmpty({ onReload, plus, onGetPlus }: Props) {
   const uid = useAuthStore((state) => state.user?.uid);

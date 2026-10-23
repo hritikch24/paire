@@ -24,6 +24,7 @@ function checkoutError(error: unknown, fallback: string): string {
 }
 
 type Props = {
+  variant?: "composer" | "offer";
   access: ChatAccess | undefined;
   /** The chat this card is in: after paying through CCAvenue the member comes back to it. */
   matchId?: string;
@@ -36,7 +37,7 @@ type Props = {
  * nothing opens by itself, and the composed message stays in the box. After
  * paying, sending still takes a tap on Send.
  */
-export function ChatAccessCard({ access, matchId, onGetPlus, onVerify }: Props) {
+export function ChatAccessCard({ variant = "composer", access, matchId, onGetPlus, onVerify }: Props) {
   const queryClient = useQueryClient();
   const uid = useAuthStore((state) => state.user?.uid);
   const { gradient } = useThemeColors();
@@ -140,10 +141,10 @@ export function ChatAccessCard({ access, matchId, onGetPlus, onVerify }: Props) 
     <YStack testID="chat-access-card" marginHorizontal="$3" marginBottom="$2" padding="$3" gap="$2" borderRadius="$5" borderWidth={1} borderColor="$border" backgroundColor="$backgroundSoft" accessibilityLiveRegion="polite">
       <XStack gap="$2" alignItems="center">
         <Icon name="lock-closed-outline" size={18} color="primary" />
-        <Text fontWeight="700" flex={1}>Sending messages needs access</Text>
+        <Text fontWeight="700" flex={1}>{variant === "offer" ? `Only want to chat? ${price} once` : "Sending messages needs access"}</Text>
       </XStack>
       <Text fontSize="$2" color="$textMuted" lineHeight={20}>
-        Reading and receiving messages is always free. To send, choose one. Your message stays here either way.
+        {variant === "offer" ? "Messaging only, with no expiry. Covers all current and future mutual matches. Your discovery allowance stays the same; liker reveals and other Plus features are not included." : "Reading and receiving messages is always free. To send, choose one. Your message stays here either way."}
       </Text>
 
       {upiPending ? (
@@ -164,8 +165,8 @@ export function ChatAccessCard({ access, matchId, onGetPlus, onVerify }: Props) 
         </YStack>
       ) : (
         <YStack gap="$2">
-          <PrimaryButton testID="chat-access-plus" disabled={phase === "loading"} onPress={onGetPlus}>Get Paire Plus</PrimaryButton>
-          <Text fontSize="$1" color="$textMuted" lineHeight={18}>{webCheckout ? `From ₹${webPlan(PREMIUM_PLANS[2]).perDay} a day (${MONTH_OFFER.toLowerCase()}), and it never auto-renews.` : "Passes from ₹20 that never auto-renew."} Messaging is included while your pass runs, plus more likes and Super Likes.</Text>
+          {variant === "composer" ? <><PrimaryButton testID="chat-access-plus" disabled={phase === "loading"} onPress={onGetPlus}>Get Paire Plus</PrimaryButton>
+          <Text fontSize="$1" color="$textMuted" lineHeight={18}>{webCheckout ? `₹${PREMIUM_PLANS[2].priceInr} for 60 days (₹${webPlan(PREMIUM_PLANS[2]).perDay}/day; ${MONTH_OFFER.toLowerCase()}), with no auto-renewal.` : "Passes from ₹20 that never auto-renew."} Messaging is included while your pass runs, plus more likes and Super Likes.</Text></> : null}
           {canBuy ? (
             <>
               <SecondaryButton testID="chat-access-unlock" loading={phase === "loading"} onPress={() => void (byUpi ? payByUpi() : ccavenueOnly ? payByCcavenue() : unlockChat())}>
@@ -182,6 +183,8 @@ export function ChatAccessCard({ access, matchId, onGetPlus, onVerify }: Props) 
             </>
           ) : unlock?.reason === "verification-required" ? (
             <SecondaryButton onPress={onVerify}>Verify my photos to unlock chat</SecondaryButton>
+          ) : variant === "offer" ? (
+            <Text testID="chat-offer-unavailable" fontSize="$2" color="$textMuted">{unlock?.reason === "no-match" ? "Available after your first mutual match. You can keep discovering for free." : "Messaging-only purchases are currently unavailable. Existing access stays on your account."}</Text>
           ) : !webCheckout ? (
             <Text fontSize="$1" color="$textMuted" lineHeight={18}>Already unlocked chat on another device? It's tied to your account and shows up here automatically.</Text>
           ) : null}

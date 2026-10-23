@@ -12,6 +12,7 @@ const labels = {
   day: configured(process.env.PAIRE_PLUS_DAY_LABEL, `${plus} · 1 day`),
   week: configured(process.env.PAIRE_PLUS_WEEK_LABEL, `${plus} · 7 days`),
   month: configured(process.env.PAIRE_PLUS_MONTH_LABEL, `${plus} · 1 month + 1 month free`),
+  halfyear: configured(process.env.PAIRE_PLUS_HALFYEAR_LABEL, `${plus} · 6 months`),
   lifetime: configured(process.env.PAIRE_PLUS_LIFETIME_LABEL, `${plus} · Lifetime`),
   chat: configured(process.env.PAIRE_CHAT_LABEL, `${chat} · one-time ₹49 unlock`)
 };
@@ -28,6 +29,7 @@ export const PAYMENT_NAMES = {
     day: configured(process.env.RAZORPAY_PLUS_DAY_LABEL, `${razorpayPlus} · 1 day`),
     week: configured(process.env.RAZORPAY_PLUS_WEEK_LABEL, `${razorpayPlus} · 7 days`),
     month: configured(process.env.RAZORPAY_PLUS_MONTH_LABEL, `${razorpayPlus} · 1 month + 1 month free`),
+    halfyear: configured(process.env.RAZORPAY_PLUS_HALFYEAR_LABEL, `${razorpayPlus} · 6 months`),
     lifetime: configured(process.env.RAZORPAY_PLUS_LIFETIME_LABEL, `${razorpayPlus} · Lifetime`),
     chat: configured(process.env.RAZORPAY_CHAT_LABEL, `${razorpayChat} · one-time ₹49 unlock`)
   },

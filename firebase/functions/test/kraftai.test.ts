@@ -34,6 +34,7 @@ describe("Checkout hosted on kraftai.in", () => {
       day: PLUS_PASSES.day.amountPaise,
       week: PLUS_PASSES.week.amountPaise,
       month: PLUS_PASSES.month.amountPaise,
+      halfyear: PLUS_PASSES.halfyear.amountPaise,
       lifetime: PLUS_PASSES.lifetime.amountPaise,
       chat: CHAT_UNLOCK.amountPaise
     }).toEqual(KRAFTAI_PUBLISHED_PAISE);

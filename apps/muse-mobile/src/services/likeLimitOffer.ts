@@ -13,7 +13,7 @@ export function offerPlusForLikeLimit(error: unknown, onUpgrade: () => void): bo
 
 export function showLikeLimitOffer(superLike: boolean, onUpgrade: () => void) {
   if (Platform.OS !== "web") return;
-  Alert.alert(superLike ? "Your free Super Like is used" : "You've used today's free likes", "Keep connecting with Paire Plus. Monthly and lifetime plans include unlimited regular likes; day and week passes include 100 daily. Every Plus plan includes 5 Super Likes daily and reveals who likes you.", [
+  Alert.alert(superLike ? "Your free Super Like is used" : "You've used today's free likes", "Keep connecting with Paire Plus. Monthly, six-month and lifetime plans include unlimited regular likes; day and week passes include 100 daily. Every Plus plan includes 5 Super Likes daily and reveals who likes you.", [
     { text: "Maybe later", style: "cancel" }, { text: "Get Paire Plus", onPress: onUpgrade }
   ]);
 }

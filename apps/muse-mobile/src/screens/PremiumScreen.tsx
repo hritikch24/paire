@@ -6,6 +6,7 @@ import type { AppStackParamList } from "../navigation/types";
 import { Linking, Pressable } from "react-native";
 import { legal } from "../config/legal";
 import { Text, XStack, YStack } from "tamagui";
+import { ChatAccessCard } from "../components/ChatAccessCard";
 import { Icon } from "../components/Icon";
 import { PrimaryButton, SecondaryButton } from "../components/MuseButton";
 import { Screen } from "../components/Screen";
@@ -35,6 +36,7 @@ export function PremiumScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   // On the web the month pass (with a free month) leads and is chosen by default.
   const [selected, setSelected] = useState<PremiumPlanId>(webCheckout ? "month" : "week");
+  const [moreOptions, setMoreOptions] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const uid = useAuthStore((state) => state.user?.uid);
@@ -89,8 +91,10 @@ export function PremiumScreen() {
   const extensionDuration = offer?.days ? `${offer.days} ${offer.days === 1 ? "day" : "days"}` : "";
   // "2 months" says the offer in two words on the buy button.
   const buyLabel = offer && plan.bonusDays ? "2 months" : plan.label;
-  const plans = webCheckout ? [WEB_PREMIUM_PLANS[2], WEB_PREMIUM_PLANS[3], WEB_PREMIUM_PLANS[1], WEB_PREMIUM_PLANS[0]] : PREMIUM_PLANS;
-  const fromPerDay = webCheckout ? Math.min(...PREMIUM_PLANS.map((item) => Number(webPlan(item).perDay))) : 10;
+  const primaryPlans = ["month", "day", "lifetime"].map(id => WEB_PREMIUM_PLANS.find(item => item.id === id)!);
+  const secondaryPlans = ["week", "halfyear"].map(id => WEB_PREMIUM_PLANS.find(item => item.id === id)!);
+  const plans = webCheckout ? [...primaryPlans, ...(moreOptions ? secondaryPlans : [])] : PREMIUM_PLANS;
+  const fromPerDay = webCheckout ? webPlan(WEB_PREMIUM_PLANS.find(item => item.id === "month")!).perDay : 10;
   const payByUpi = async () => {
     setBusy(true); setMessage(null);
     try {
@@ -139,9 +143,9 @@ export function PremiumScreen() {
           <Icon name="sparkles" size={28} color="primary" />
         </YStack>
         <YStack gap="$2">
-          <Text color="$primary" fontSize="$2" fontWeight="700" letterSpacing={2}>{lifetimeOwned ? "PAIRE PLUS · LIFETIME" : `PAIRE PLUS · FROM ₹${fromPerDay} A DAY`}</Text>
+          <Text color="$primary" fontSize="$2" fontWeight="700" letterSpacing={2}>{lifetimeOwned ? "PAIRE PLUS · LIFETIME" : webCheckout ? "PAIRE PLUS · YOUR PACE, YOUR PASS" : `PAIRE PLUS · FROM ₹${fromPerDay} A DAY`}</Text>
           <Text fontSize={34} lineHeight={40} fontWeight="700" accessibilityRole="header">{lifetimeOwned ? <>All Plus.{"\n"}No expiry.</> : <>More reach.{"\n"}Never more rules.</>}</Text>
-          <Text fontSize="$4" color="$textMuted" lineHeight={24}>{lifetimeOwned ? "All Plus benefits are included on your account, with unlimited regular likes and messaging. No further purchase is needed." : paidChat ? "Matching and safety are free. Plus is a pass for meeting more people, with messaging included while it runs: no subscription, no auto-renewal." : "Everything that matters is free. Plus is a pass for when you want to meet more people: no subscription, no auto-renewal."}</Text>
+          <Text fontSize="$4" color="$textMuted" lineHeight={24}>{lifetimeOwned ? "All Plus benefits are included on your account, with unlimited regular likes and messaging. No further purchase is needed." : paidChat ? "Matching and safety are free. Plus is a pass for meeting more people, with messaging included while it runs: no subscription, no auto-renewal." : webCheckout ? "Joining and safety are free. Choose a Plus pass for more ways to connect: one payment, no auto-renewal." : "Everything that matters is free. Plus is a pass for when you want to meet more people: no subscription, no auto-renewal."}</Text>
         </YStack>
         {lifetimeOwned ? <YStack testID="premium-lifetime-active" padding="$4" borderRadius={20} backgroundColor="$primarySoft" gap="$2"><Text fontWeight="700">Lifetime Plus is yours</Text><Text>No expiry. Unlimited regular likes, messaging and all Plus benefits on this account.</Text></YStack> : null}
         {extending && premium.data?.expiresAt ? (
@@ -151,11 +155,11 @@ export function PremiumScreen() {
           </YStack>
         ) : null}
         {!lifetimeOwned ? <YStack gap="$2" accessibilityRole="radiogroup" accessibilityLabel="Plus pass duration">
-          {plans.map((item) => {
+          {plans.map((item, index) => {
             const active = selected === item.id;
             const view = webCheckout ? webPlan(item) : null;
             const deal = Boolean(view && item.bonusDays);
-            return (
+            const card = (
               <Pressable key={item.id} testID={`premium-plan-${item.id}`} accessibilityRole="radio" accessibilityState={{ checked: active }} accessibilityLabel={`${view?.label ?? item.label}, ${item.priceInr} rupees, ${view?.days === null ? "no expiry, pay once" : view ? `${view.days} days, ${view.perDay} rupees a day` : item.detail}, no auto-renewal`} onPress={() => setSelected(item.id)}>
                 <YStack borderWidth={active || deal ? 2 : 1} borderColor={active ? "$primary" : deal ? "$primary" : "$border"} borderRadius={20} backgroundColor={active ? "$primarySoft" : "$backgroundStrong"} overflow="hidden">
                   {deal ? (
@@ -167,20 +171,26 @@ export function PremiumScreen() {
                   ) : null}
                   <XStack padding="$4" alignItems="center" gap="$3">
                     <Icon name={active ? "radio-button-on" : "radio-button-off"} color={active ? "primary" : "textMuted"} />
-                    <YStack flex={1} gap={3}>
-                      <Text fontSize="$5" fontWeight="700">{view?.label ?? item.label}</Text>
-                      <Text fontSize="$2" color="$textMuted">{view ? `${view.detail}${item.id === "month" || item.id === "lifetime" ? " · Unlimited likes" : ""}` : nativeBillingAvailable ? item.detail : `₹${dailyPrice(item.priceInr, item.days ?? 1)}/day · ${item.detail}`}</Text>
+                    <YStack flex={1} flexShrink={webCheckout ? 1 : undefined} gap={3}>
+                      <Text fontSize="$5" fontWeight="700">{webCheckout && item.id === "month" ? "Monthly Plus" : view?.label ?? item.label}</Text>
+                      <Text fontSize="$2" color="$textMuted">{view ? view.detail : nativeBillingAvailable ? item.detail : `₹${dailyPrice(item.priceInr, item.days ?? 1)}/day · ${item.detail}`}</Text>
                     </YStack>
                     <YStack alignItems="flex-end" gap={2}>
-                      {view ? <Text fontSize={deal ? "$7" : "$6"} fontWeight="700" color={deal ? "$primary" : "$text"}>{view.days === null ? `₹${item.priceInr.toLocaleString("en-IN")}` : `₹${view.perDay}/day`}</Text> : null}
-                      <Text fontSize={view ? "$2" : "$6"} fontWeight={view ? "400" : "700"} color={view ? "$textMuted" : "$text"}>{products.data?.find((product) => product.identifier === item.productId)?.priceString ?? (view?.days === null ? "One-time payment" : `₹${item.priceInr}${view ? " total" : ""}`)}</Text>
+                      {view ? <Text fontSize="$6" fontWeight="700" color={deal ? "$primary" : "$text"}>{`₹${item.priceInr.toLocaleString("en-IN")}`}</Text> : null}
+                      <Text fontSize={view ? "$1" : "$6"} fontWeight={view ? "400" : "700"} color={view ? "$textMuted" : "$text"}>{view ? view.days === null ? "Pay once" : `total · ₹${view.perDay}/day` : products.data?.find((product) => product.identifier === item.productId)?.priceString ?? `₹${item.priceInr}`}</Text>
                       {!view ? <Text fontSize="$1" fontWeight="700" color="$primary">{products.data?.length ? item.detail : item.badge}</Text> : null}
                     </YStack>
                   </XStack>
+                  {view ? <YStack paddingHorizontal="$4" paddingBottom="$3" gap={3}>
+                    <Text fontSize="$2" fontWeight="600">{["month", "halfyear", "lifetime"].includes(item.id) ? "Unlimited regular likes" : "100 regular likes daily"} · 5 Super Likes daily</Text>
+                    <Text fontSize="$1" color="$textMuted" lineHeight={18}>{item.id === "month" ? "Time to build a connection. Messaging and liker reveals for 60 days." : item.id === "day" ? "Try all Plus features for 24 hours, with the smallest upfront payment." : item.id === "lifetime" ? "Pay once for all Plus benefits and messaging. No expiry on this account." : item.id === "halfyear" ? "180 days of Plus. A lower daily cost than the monthly offer." : "7 days of messaging, liker reveals and all other Plus features."}</Text>
+                  </YStack> : null}
                 </YStack>
               </Pressable>
             );
+            return webCheckout ? <YStack key={item.id} gap="$2">{index === 3 ? <Text fontSize="$3" fontWeight="700">Other durations</Text> : null}{card}</YStack> : card;
           })}
+          {webCheckout ? <SecondaryButton testID="premium-more-options" disabled={busy} onPress={() => { if (moreOptions && ["week", "halfyear"].includes(selected)) setSelected("month"); setMoreOptions(value => !value); }}>{moreOptions ? "Hide other durations" : "More options · ₹99 week / ₹799 six months"}</SecondaryButton> : null}
         </YStack> : null}
         {lifetimePlan && !lifetimeOwned ? <Text testID="premium-lifetime-terms" fontSize="$2" color="$textMuted" lineHeight={21}>₹1,499 once. Lifetime Plus starts after payment confirmation and has no expiry while Paire’s Plus service operates on this account. Includes unlimited regular likes and 5 Super Likes daily. Your existing pass stays recorded. Refunds, account deletion and community rules still apply.</Text> : null}
         {premium.data?.previousPaymentFailed && !openOrder ? (
@@ -196,15 +206,16 @@ export function PremiumScreen() {
         {premium.data?.purchaseBlockReason === "verification-required" ? <YStack gap="$2"><Text color="$textMuted">Verify your photos before buying a pass, so you can use it straight away.</Text><SecondaryButton onPress={() => navigation.navigate("Verification")}>Verify my photos</SecondaryButton></YStack> : null}
         <SecondaryButton onPress={() => void refreshStatus()} loading={premium.isFetching}>Refresh pass status</SecondaryButton>
         {nativeBillingAvailable ? <SecondaryButton loading={busy} onPress={() => void act(true)}>Restore purchases</SecondaryButton> : null}
+        {webCheckout && paidChat && !lifetimeOwned && chat && !chat.unlimited ? <ChatAccessCard variant="offer" access={chat} onGetPlus={() => setSelected("month")} onVerify={() => navigation.navigate("Verification")} /> : null}
         <YStack gap="$3">
           <Text fontSize="$5" fontWeight="700">What Plus adds</Text>
           {[
             ...(paidChat ? [["Unlimited messaging", `Send messages in all your chats while your pass runs. Only want to chat? Unlimited Chat is ₹${chat?.unlock.priceInr ?? 49} once, for messaging only, and never expires.`]] : []),
-            webCheckout && (plan.id === "month" || plan.id === "lifetime" || lifetimeOwned) ? ["Unlimited regular likes", `No daily regular-like cap on the monthly and lifetime plans. ${ALLOWANCE.plus.supers} Super Likes a day; privacy, mutual-match and anti-abuse rules still apply.`] : [`${Math.round(ALLOWANCE.plus.likes / ALLOWANCE.free.likes)}× the likes`, `${ALLOWANCE.plus.likes} likes and ${ALLOWANCE.plus.supers} Super Likes a day, instead of ${ALLOWANCE.free.likes} and ${ALLOWANCE.free.supers}.`],
+            webCheckout && (["month", "halfyear", "lifetime"].includes(plan.id) || lifetimeOwned) ? ["Unlimited regular likes", `No daily regular-like cap on monthly, six-month and lifetime plans. ${ALLOWANCE.plus.supers} Super Likes a day; privacy, mutual-match and anti-abuse rules still apply.`] : [`${Math.round(ALLOWANCE.plus.likes / ALLOWANCE.free.likes)}× the likes`, `${ALLOWANCE.plus.likes} likes and ${ALLOWANCE.plus.supers} Super Likes a day, instead of ${ALLOWANCE.free.likes} and ${ALLOWANCE.free.supers}.`],
             ["See who likes you", "Reveal pending liker profiles and their notes, including people outside your search range and filters. Like someone back to match."],
             ["Priority likes", "Your likes are listed ahead of other plain likes in their “Likes you”. A note still beats everything, so write one."],
             ["Age-gap filter", "Show only Silver Foxes and Cougars (35+), or only people into someone older, and see each person's side on their card."],
-            ["A pass, not a trap", `${webCheckout ? "1 day, 7 days, 2 months or lifetime access" : "1 day, 7 days or 30 days"}. ${lifetimePlan || lifetimeOwned ? "Lifetime has no expiry." : "Fixed-duration passes simply end."} No auto-renewal, no cancellation hunt.`]
+            ["A pass, not a trap", `${webCheckout ? "1 day, 7 days, 2 months, 6 months or lifetime access" : "1 day, 7 days or 30 days"}. ${lifetimePlan || lifetimeOwned ? "Lifetime has no expiry." : "Fixed-duration passes simply end."} No auto-renewal, no cancellation hunt.`]
           ].map(([title, description]) => (
             <XStack key={title} gap="$3" alignItems="flex-start">
               <Icon name="add-circle-outline" color="primary" size={22} />

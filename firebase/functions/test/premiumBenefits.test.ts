@@ -39,3 +39,13 @@ test("each provider requires its own confirmed status and future recovery period
   expect(benefits([order({ status: "paid", paymentSource: "upi" })]).expiresAt).toBe(0);
   expect(benefits([], { status: "active", startsAt: now + day, expiresAt: now + 2 * day })).toEqual({ expiresAt: 0, lifetime: false, unlimitedLikesUntil: 0 });
 });
+
+test("six-month purchases remove the like cap for their actual 180-day window, across providers", () => {
+  for (const paymentSource of ["razorpay", "ccavenue", "upi"]) {
+    const pass = order({ plan: "halfyear", paymentSource, status: paymentSource === "upi" ? "approved" : "paid", startsAt: now, expiresAt: now + 180 * day });
+    expect(benefits([pass])).toEqual({ expiresAt: now + 180 * day, lifetime: false, unlimitedLikesUntil: now + 180 * day });
+    expect(benefits([pass], undefined, undefined, undefined, now + 180 * day)).toEqual({ expiresAt: 0, lifetime: false, unlimitedLikesUntil: 0 });
+    expect(benefits([{ ...pass, status: "refunded" }]).unlimitedLikesUntil).toBe(0);
+    expect(benefits([{ ...pass, startsAt: now + day }]).unlimitedLikesUntil).toBe(0);
+  }
+});

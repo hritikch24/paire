@@ -90,7 +90,7 @@ export type UpiOrder = {
 };
 
 /** Your open UPI order (the same one each time, so you're never asked to pay twice). With `plan`, a Paire Plus pass. */
-export async function startUpiUnlock(plan?: "day" | "week" | "month" | "lifetime"): Promise<{ status: "owned" } | { status: "order"; order: UpiOrder }> {
+export async function startUpiUnlock(plan?: "day" | "week" | "month" | "halfyear" | "lifetime"): Promise<{ status: "owned" } | { status: "order"; order: UpiOrder }> {
   return callFunction("createUpiUnlockOrder", plan ? { plan } : {});
 }
 

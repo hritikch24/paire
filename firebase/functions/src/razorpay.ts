@@ -122,7 +122,7 @@ async function syncIfMember(uid: string | null): Promise<void> {
 export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeoutSeconds: 30 }, async (request) => {
   const uid = requireAuth(request);
   const plan = (request.data as { plan?: unknown } | null)?.plan;
-  if (!isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass, or Lifetime Plus.");
+  if (!isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a day, week, monthly, six-month or lifetime Plus pass.");
   if (!(await razorpayPlusOpen())) throw new HttpsError("failed-precondition", "Card payments aren't available right now. You haven't been charged.");
   requireHostedCheckout();
   if ((await webPassBenefits(uid)).lifetime) throw new HttpsError("failed-precondition", "You already have Lifetime Plus. No purchase is needed.");

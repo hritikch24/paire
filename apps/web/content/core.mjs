@@ -3,7 +3,7 @@ const D = "2026-10-13";
 
 export const core = [
   {
-    path: "about/", crumb: "About Paire", published: D, updated: "2026-10-23", eyebrow: "ABOUT PAIRE",
+    path: "about/", crumb: "About Paire", published: D, updated: "2026-10-24", eyebrow: "ABOUT PAIRE",
     title: "About Paire — An Indian Dating App Where Women Set the Rules",
     description: "Meet adult singles across India on Paire. Likes can carry notes, women have free privacy controls, and optional Plus passes reveal who likes you.",
     h1: "About <em>Paire</em>",
@@ -13,7 +13,7 @@ export const core = [
       "Every like can carry a note, so matches start with a real conversation.",
       "Women control who can reach them; Paire Plus reveals who likes you.",
       "Members confirm their email before liking or chatting. Photo-check status is shown separately when available.",
-      "No caste field or filter. Paire Plus is optional, from ₹29, and never auto-renews."
+      "No caste field or filter. Paire Plus is optional, from ₹20, and never auto-renews."
     ],
     body: `
 <h2>Why Paire exists</h2>
@@ -23,7 +23,7 @@ export const core = [
 <li><strong>A like should mean something.</strong> Every like can carry a short note, and everyone gets a free daily allowance of likes, so each one is considered rather than sprayed.</li>
 <li><strong>Women set the rules.</strong> Women can accept only likes that come with a note, choose to send the first message, browse in incognito, and keep photos private until they match. These controls are free.</li>
 <li><strong>Clearer trust signals.</strong> Confirmed email is required before liking or chatting. A current photo badge indicates a separate completed photo check; it does not verify employment or intentions.</li>
-<li><strong>Fair pricing.</strong> Your likes count is free. Paire Plus reveals the profiles behind it. Paire Plus offers fixed-duration passes (₹299 for 60 days with unlimited likes, ₹99 a week or ₹29 a day), or Lifetime Plus for ₹1,499 once with no expiry. Men and women pay the same.</li>
+<li><strong>Fair pricing.</strong> Your likes count is free. Paire Plus reveals the profiles behind it. Paire Plus offers fixed-duration passes (₹399 for 60 days with unlimited likes, ₹99 a week or ₹20 a day), or Lifetime Plus for ₹1,499 once with no expiry. A six-month pass is ₹799 for 180 days. Men and women pay the same.</li>
 <li><strong>Respect.</strong> There is no caste field or filter, religion is never used to rank anyone, and paid arrangements are banned.</li>
 </ul>
 <h2>Who Paire is for</h2>
@@ -36,44 +36,48 @@ export const core = [
 <p>Questions, press or partnerships: see our <a href="/contact/">contact page</a>.</p>`,
     faq: [
       ["Is Paire an Indian app?", "Yes. Paire is built in India, open across the country, and designed for how people date in India: notes with every like, women-first controls, no caste filters and prices in rupees."],
-      ["Is Paire free?", "Joining, 10 likes a day, matching, an anonymous likes count, reading messages and every privacy and safety control are free. Sending messages needs Paire Plus (passes from ₹29 that never auto-renew) or a one-time ₹49 Unlimited Chat unlock."],
+      ["Is Paire free?", "Joining, 10 likes a day, matching, an anonymous likes count, reading messages and every privacy and safety control are free. Sending messages needs Paire Plus (passes from ₹20 that never auto-renew) or a one-time ₹49 Unlimited Chat unlock."],
       ["Is Paire only for serious relationships?", "No. Paire covers everything from casual dating to marriage-minded relationships. You set your intention and can choose to see only people who want the same."]
     ],
     related: ["features/", "verification/", "pricing/", "guides/best-dating-apps-india/"]
   },
   {
-    path: "pricing/", crumb: "Pricing", published: D, updated: "2026-10-23", eyebrow: "PRICING",
-    title: "Paire Pricing — Free Dating App, Plus Passes from ₹29 (No Auto-Renew)",
-    description: "Paire Plus: ₹29/day, ₹99/week, ₹299 for 60 days or Lifetime Plus for ₹1,499 once. Monthly and lifetime plans include unlimited regular likes. No auto-renewal.",
+    path: "pricing/", crumb: "Pricing", published: D, updated: "2026-10-24", eyebrow: "PRICING",
+    title: "Paire Pricing — Free Dating App, Plus Passes from ₹20 (No Auto-Renew)",
+    description: "Paire Plus: ₹399 for 60 days, ₹20 for a day or ₹1,499 lifetime. Compare ₹99 weekly, ₹799 six-month and ₹49 chat-only options. No auto-renewal.",
     h1: "Free first. <em>Fair always.</em>",
     lede: "Joining, matching and safety on Paire are free. To send messages, choose a short Paire Plus pass or a one-time ₹49 Unlimited Chat unlock. Both end or stay on their own terms: nothing to cancel, no surprise renewals.",
     summary: [
       "Free forever: 10 likes a day (each with a note), 1 Super Like a day, an anonymous likes count, mutual matching, reading every message you receive, every privacy and safety control.",
       "Sending messages: your own Paire Plus pass, or Unlimited Chat for ₹49 once (all current and future matches, no expiry). Each person needs their own access to send.",
-      "Paire Plus: ₹299 for 60 days with unlimited regular likes (buy 1 month, get 1 free), ₹99 for 7 days, ₹29 for 24 hours, or Lifetime Plus for ₹1,499 once with no expiry.",
-      "Every Plus plan reveals who likes you, adds messaging, priority likes, the age-gap filter and 5 Super Likes daily. Monthly and lifetime plans include unlimited regular likes; day and week passes include 100 regular likes daily.",
+      "Paire Plus: ₹399 for 60 days with unlimited regular likes (buy 1 month, get 1 free), ₹20 for 24 hours, or Lifetime Plus for ₹1,499 once with no expiry. More options: ₹99 for 7 days and ₹799 for 180 days.",
+      "Every Plus plan reveals who likes you, adds messaging, priority likes, the age-gap filter and 5 Super Likes daily. Monthly, six-month and lifetime plans include unlimited regular likes; day and week passes include 100 regular likes daily.",
       "Passes never auto-renew. Men and women pay the same. Pay by UPI, card or netbanking."
     ],
     body: `
 <h2>What's free</h2>
 <table><thead><tr><th>Feature</th><th>Free</th><th>Paire Plus</th></tr></thead><tbody>
-<tr><td>Likes per day (each can carry a note)</td><td>10</td><td>Unlimited on monthly/lifetime; 100 on day/week</td></tr>
+<tr><td>Likes per day (each can carry a note)</td><td>10</td><td>Unlimited on monthly/six-month/lifetime; 100 on day/week</td></tr>
 <tr><td>Super Likes per day</td><td>1</td><td>5</td></tr>
 <tr><td>See who likes you</td><td>Anonymous preview</td><td>Full profiles</td></tr>
 <tr><td>Read the messages you receive</td><td>Yes</td><td>Yes</td></tr>
 <tr><td>Send messages</td><td>With Unlimited Chat (₹49 once)</td><td>Included</td></tr>
 <tr><td>Women-first controls (notes-only likes, I'll message first, incognito, private photos)</td><td>Yes</td><td>Yes</td></tr>
-<tr><td>Vibe First, Duos, Garba Nights</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Vibe First, Duos, Date Duet</td><td>Yes</td><td>Yes</td></tr>
 <tr><td>Selfie verification and safety tools</td><td>Yes</td><td>Yes</td></tr>
 <tr><td>Priority likes (shown first in "Likes you")</td><td>No</td><td>Yes</td></tr>
 <tr><td>Age-gap filter</td><td>No</td><td>Yes</td></tr>
 </tbody></table>
 <h2>Paire Plus passes</h2>
 <ul>
-<li><strong>Best value: ₹299 for 60 days</strong>: buy 1 month, get 1 month free. Just ₹5 a day, about 83% less per day than buying day passes.</li>
-<li><strong>₹99 for 7 days</strong>: about ₹14 a day.</li>
-<li><strong>₹29 for 24 hours</strong>: try Plus for a day, for example on a weekend.</li>
+<li><strong>Monthly offer: ₹399 for 60 days</strong>: buy 1 month, get 1 month free. ₹6.65 a day, about 67% less per day than buying day passes.</li>
+<li><strong>₹20 for 24 hours</strong>: try Plus for a day, for example on a weekend.</li>
 <li><strong>Lifetime Plus: ₹1,499 once</strong>: unlimited regular likes and all Plus benefits, with no expiry while the service operates on your account.</li>
+</ul>
+<h3>More options</h3>
+<ul>
+<li><strong>₹99 for 7 days</strong>: 100 regular likes and 5 Super Likes daily, with all other Plus features.</li>
+<li><strong>₹799 for 180 days</strong>: six months of Plus with unlimited regular likes, 5 Super Likes daily and all other Plus features. About ₹4.44 a day, paid once.</li>
 </ul>
 <p>Fixed-duration passes are paid once using the methods available at checkout. They do not renew: when the time is up, your account simply goes back to free. Buying a new pass before the old one ends adds the time on.</p>
 <h2>Lifetime Plus: ₹1,499 once</h2><p>One payment, all Plus benefits and unlimited regular likes, with no expiry while Paire’s Plus service operates on your account. Includes messaging, liker reveals, priority likes, the age-gap filter and 5 Super Likes daily. Lifetime access starts after payment confirmation, does not auto-renew, and is tied to one account. Refunds, account deletion and community rules still apply.</p>
@@ -82,7 +86,7 @@ export const core = [
 <h2>Why we price it this way</h2>
 <p>Many dating apps charge a monthly subscription to see who likes you and renew it automatically. Your anonymous likes preview is free. Plus reveals the profiles behind those likes and adds reach and messaging, Unlimited Chat adds messaging only, and safety is never for sale: reporting, blocking and unmatching are always free. Paying never guarantees a match or a reply. See our <a href="/refunds/">refund and cancellation policy</a> for details.</p>`,
     faq: [
-      ["How much does Paire cost?", "Joining and matching are free. To send messages, get a Paire Plus pass (₹299 for 60 days with the buy 1 month, get 1 free offer, ₹99 for 7 days or ₹29 for 24 hours), Lifetime Plus for ₹1,499 once, or Unlimited Chat for ₹49 once."],
+      ["How much does Paire cost?", "Joining and matching are free. To send messages, get a Paire Plus pass (₹399 for 60 days with the buy 1 month, get 1 free offer, ₹99 for 7 days or ₹20 for 24 hours), Lifetime Plus for ₹1,499 once, or Unlimited Chat for ₹49 once."],
       ["Is Unlimited Chat per match?", "No. One ₹49 payment covers all your current and future mutual matches, with no expiry. It belongs to your account only, and the other person needs their own access to reply."],
       ["Does Paire Plus renew automatically?", "No. Every Paire Plus pass is a one-time payment that ends by itself. There is nothing to cancel."],
       ["Do women and men pay differently?", "No. Paire Plus costs the same for everyone, and all safety and privacy features are free for everyone."],
@@ -91,7 +95,7 @@ export const core = [
     related: ["features/", "compare/tinder/", "compare/bumble/", "about/"]
   },
   {
-    path: "features/", crumb: "Features", published: D, updated: "2026-10-23", eyebrow: "FEATURES",
+    path: "features/", crumb: "Features", published: D, updated: "2026-10-24", eyebrow: "FEATURES",
     title: "Paire Features — Notes With Likes, Women-First Controls, Vibe First & Duos",
     description: "Everything Paire does: likes with notes, 'who likes you' with Plus, women-first privacy controls, Vibe First, Duos double dates, blind date mode, Paire AI icebreakers and selfie verification.",
     h1: "Everything <em>Paire</em> does",
@@ -135,7 +139,7 @@ export const core = [
     related: ["verification/", "pricing/", "guides/dating-apps-for-women-india/", "guides/first-message-examples/"]
   },
   {
-    path: "verification/", crumb: "How verification works", published: D, updated: "2026-10-23", eyebrow: "SAFETY · TRUST SIGNALS",
+    path: "verification/", crumb: "How verification works", published: D, updated: "2026-10-24", eyebrow: "SAFETY · TRUST SIGNALS",
     title: "Paire Verification — Confirmed Email, Photo Checks & Work Badges",
     description: "Understand Paire's trust signals: confirmed email, separate photo-check badges, and self-declared work sectors. Photo verification is not required for every profile.",
     h1: "Know what a <em>badge means.</em>",

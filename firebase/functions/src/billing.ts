@@ -74,13 +74,19 @@ export async function storeExpiryIfEnabled(uid: string, now = Date.now()): Promi
   return storePassExpiry(uid, now).catch(() => 0);
 }
 
-/** Authoritative web benefits, including old monthly purchases and explicit lifetime grants. */
+/** Authoritative web benefits, including old monthly purchases, six-month passes and explicit lifetime grants. */
 export async function webPassBenefits(uid: string, now = Date.now(), tx?: Transaction): Promise<WebBenefits> {
   const queries = ["razorpayOrders", "upiUnlockOrders", "ccavenueOrders"].map(collection => db.collection(collection).where("uid", "==", uid));
   const refs = ["supportPlusGrants", "complimentaryPlusGrants", "lifetimePlusGrants"].map(collection => db.doc(`${collection}/${uid}`));
-  const [orders, grants] = await Promise.all([
-    Promise.all(queries.map(query => tx ? tx.get(query) : query.get())),
-    Promise.all(refs.map(ref => tx ? tx.get(ref) : ref.get()))
+  // Keep reads within one transaction sequential. If one query aborts under
+  // contention, sibling reads must not outlive that attempt and race its retry.
+  const readTransaction = async (transaction: Transaction) => {
+    const snapshots = [];
+    for (const query of queries) snapshots.push(await transaction.get(query));
+    return [snapshots, await transaction.getAll(...refs)] as const;
+  };
+  const [orders, grants] = tx ? await readTransaction(tx) : await Promise.all([
+    Promise.all(queries.map(query => query.get())), db.getAll(...refs)
   ]);
   const records = orders.flatMap((snap, source) => snap.docs.filter(doc => source === 0 || doc.get("kind") === "plus").map(doc => ({ ...doc.data(), id: doc.id, paymentSource: ["razorpay", "upi", "ccavenue"][source] })));
   return summarizeWebBenefits(records, grants[0].data(), grants[1].data(), grants[2].data(), now);

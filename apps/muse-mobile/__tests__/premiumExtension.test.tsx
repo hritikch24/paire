@@ -3,15 +3,17 @@ import renderer, { act } from "react-test-renderer";
 import { PremiumScreen } from "../src/screens/PremiumScreen";
 import { useKraftaiReturn } from "../src/hooks/useKraftaiReturn";
 import { purchaseWebPass, fetchPremiumStatus } from "../src/services/billingService";
+import { ChatAccess, purchaseChatUnlock } from "../src/services/chatAccessService";
 import { callFunction } from "../src/services/firebase";
 import { showToast } from "../src/components/Toast";
 
+let mockChat: ChatAccess | undefined;
 const mockUntil = Date.UTC(2026, 11, 18, 10);
 let mockPremium: { active: boolean; expiresAt: number | null; webPurchaseAvailable: boolean; lifetime?: boolean } = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
 const mockInvalidate = jest.fn();
 const mockRefetch = jest.fn();
 jest.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: mockInvalidate }),
+  useQueryClient: () => ({ invalidateQueries: mockInvalidate, setQueryData: jest.fn() }),
   useQuery: ({ queryKey }: { queryKey: string[] }) => ({ data: queryKey[0] === "premium" ? mockPremium : undefined, refetch: mockRefetch })
 }));
 jest.mock("@react-navigation/native", () => ({ useNavigation: () => ({ navigate: jest.fn() }) }));
@@ -25,9 +27,9 @@ jest.mock("../src/components/UpiPayPanel", () => ({ UpiPayPanel: () => null }));
 jest.mock("../src/components/Toast", () => ({ showToast: jest.fn() }));
 jest.mock("../src/theme/useThemeColors", () => ({ useThemeColors: () => ({ gradient: ["#fff", "#000"] }) }));
 jest.mock("../src/store/authStore", () => ({ useAuthStore: (select: (state: unknown) => unknown) => select({ user: { uid: "fixture-member" } }) }));
-jest.mock("../src/hooks/useChatAccess", () => ({ useChatAccess: () => ({ data: undefined }) }));
+jest.mock("../src/hooks/useChatAccess", () => ({ useChatAccess: () => ({ data: mockChat }) }));
 jest.mock("../src/services/billingService", () => ({ webCheckout: true, nativeBillingAvailable: false, purchaseWebPass: jest.fn(), fetchPremiumStatus: jest.fn() }));
-jest.mock("../src/services/chatAccessService", () => ({ fetchOpenUpiOrder: jest.fn(), startUpiUnlock: jest.fn(), fetchChatAccess: jest.fn() }));
+jest.mock("../src/services/chatAccessService", () => ({ fetchOpenUpiOrder: jest.fn(), startUpiUnlock: jest.fn(), purchaseChatUnlock: jest.fn(), fetchChatAccess: jest.fn() }));
 jest.mock("../src/services/ccavenueService", () => ({ ccavenueCheckout: true }));
 jest.mock("../src/services/discoveryService", () => ({ fetchDailyAllowance: jest.fn() }));
 jest.mock("../src/services/analytics", () => ({ trackConversion: jest.fn() }));
@@ -36,7 +38,7 @@ jest.mock("../src/services/supportMode", () => ({ isSupportView: false }));
 jest.mock("../src/utils/chatAccess", () => ({ restoreDrafts: jest.fn(), takeReturnChat: jest.fn() }));
 jest.mock("../src/config/legal", () => ({ legal: {} }));
 
-afterEach(() => { jest.clearAllMocks(); });
+afterEach(() => { jest.clearAllMocks(); mockChat = undefined; });
 
 test("an active web member can extend by the selected days, retaining the current expiry", async () => {
   mockPremium = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
@@ -45,11 +47,11 @@ test("an active web member can extend by the selected days, retaining the curren
   await act(async () => { tree = renderer.create(<PremiumScreen />); });
   const button = () => tree.root.findByProps({ testID: "premium-purchase" });
   expect(button().props.disabled).toBe(false);
-  expect(button().props.children).toBe("Extend Plus by 60 days · ₹299");
+  expect(button().props.children).toBe("Extend Plus by 60 days · ₹399");
   const extension = () => tree.root.findByProps({ testID: "premium-extension" }).findAll(node => typeof node.props.children === "string").map(node => node.props.children).join(" ");
   expect(extension()).toContain(new Date(mockUntil + 60 * 86_400_000).toLocaleString("en-IN"));
   await act(async () => { tree.root.findByProps({ testID: "premium-plan-day" }).props.onPress(); });
-  expect(button().props.children).toBe("Extend Plus by 1 day · ₹29");
+  expect(button().props.children).toBe("Extend Plus by 1 day · ₹20");
   expect(extension()).toContain(new Date(mockUntil + 86_400_000).toLocaleString("en-IN"));
   await act(async () => { await button().props.onPress(); });
   expect(purchaseWebPass).toHaveBeenCalledWith("day", "#000");
@@ -106,5 +108,52 @@ test("lifetime owners see permanent benefits instead of another purchase or an i
   expect(tree.root.findByProps({ testID: "premium-purchase" }).props.children).toBe("Lifetime Plus is active");
   expect(tree.root.findAllByProps({ testID: "premium-plan-lifetime" })).toHaveLength(0);
   expect(tree.root.findByProps({ testID: "premium-lifetime-active" })).toBeDefined();
+  await act(async () => { tree.unmount(); });
+});
+
+test("featured offers keep monthly, day, lifetime order; six months is a deliberate secondary choice", async () => {
+  mockPremium = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
+  jest.mocked(purchaseWebPass).mockResolvedValue({ redirecting: true });
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<PremiumScreen />); });
+  const choices = () => tree.root.findAll(node => node.props.accessibilityRole === "radio").map(node => node.props.testID);
+  expect(choices()).toEqual(["premium-plan-month", "premium-plan-day", "premium-plan-lifetime"]);
+  await act(async () => { tree.root.findByProps({ testID: "premium-more-options" }).props.onPress(); });
+  expect(choices()).toEqual(["premium-plan-month", "premium-plan-day", "premium-plan-lifetime", "premium-plan-week", "premium-plan-halfyear"]);
+  await act(async () => { tree.root.findByProps({ testID: "premium-plan-halfyear" }).props.onPress(); });
+  const button = tree.root.findByProps({ testID: "premium-purchase" });
+  expect(button.props.children).toBe("Extend Plus by 180 days · ₹799");
+  const extension = tree.root.findByProps({ testID: "premium-extension" }).findAll(node => typeof node.props.children === "string").map(node => node.props.children).join(" ");
+  expect(extension).toContain(new Date(mockUntil + 180 * 86_400_000).toLocaleString("en-IN"));
+  await act(async () => { await button.props.onPress(); });
+  expect(purchaseWebPass).toHaveBeenCalledWith("halfyear", "#000");
+  await act(async () => { tree.unmount(); });
+});
+
+function chatOffer(unlock: ChatAccess["unlock"]): ChatAccess {
+  return { enforced: true, enforceFrom: null, legacyCutoff: null, legacyGraceUntil: null, canSend: false, unlimited: false, premiumUntil: null, unlock, serverNow: Date.now() };
+}
+test("the messaging-only offer explains first-match eligibility and never opens a purchase for an unavailable account", async () => {
+  mockPremium = { active: false, expiresAt: null, webPurchaseAvailable: true };
+  mockChat = chatOffer({ status: "unavailable", priceInr: 49, reason: "no-match" });
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<PremiumScreen />); });
+  expect(tree.root.findByProps({ testID: "chat-offer-unavailable" }).props.children).toMatch(/first mutual match/);
+  expect(tree.root.findAllByProps({ testID: "chat-access-unlock" })).toHaveLength(0);
+  expect(purchaseChatUnlock).not.toHaveBeenCalled();
+  await act(async () => { tree.unmount(); });
+});
+test("eligible members can deliberately open messaging-only checkout from Plus without creating a Plus order", async () => {
+  mockPremium = { active: false, expiresAt: null, webPurchaseAvailable: true };
+  mockChat = chatOffer({ status: "available", priceInr: 49, methods: ["razorpay"] });
+  jest.mocked(purchaseChatUnlock).mockResolvedValue("redirecting");
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<PremiumScreen />); });
+  expect(purchaseChatUnlock).not.toHaveBeenCalled();
+  const buyChat = tree.root.findByProps({ testID: "chat-access-unlock" });
+  expect(buyChat.props.children).toBe("Unlock unlimited chats — ₹49 once");
+  await act(async () => { await buyChat.props.onPress(); });
+  expect(purchaseChatUnlock).toHaveBeenCalledWith("#000", undefined);
+  expect(purchaseWebPass).not.toHaveBeenCalled();
   await act(async () => { tree.unmount(); });
 });

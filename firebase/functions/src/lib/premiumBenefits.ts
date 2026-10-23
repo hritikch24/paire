@@ -11,8 +11,9 @@ export function summarizeWebBenefits(orders: RecordData[], support: RecordData |
   const expiresAt = timed.reduce((until, item) => Math.max(until, finite(item.expiresAt)), 0);
   const lifetime = Boolean(lifetimeGrant?.status === "active" && started(lifetimeGrant, now)) || paid.some(order => order.plan === "lifetime" && started(order, now));
   // Older owner recoveries may predate the plan field: follow their covered order IDs.
-  const recoveredMonth = support?.status === "active" && (support.plan === "month" || orders.some(order => order.plan === "month" && Array.isArray(support.coveredOrderIds) && support.coveredOrderIds.includes(order.id)));
-  const monthly = [...paid.filter(order => order.plan === "month"), ...(recoveredMonth ? [support!] : [])];
-  const unlimitedLikesUntil = monthly.filter(item => started(item, now)).reduce((until, item) => Math.max(until, finite(item.expiresAt)), 0);
+  const unlimitedPlan = (record: RecordData) => record.plan === "month" || record.plan === "halfyear";
+  const recoveredUnlimited = support?.status === "active" && (unlimitedPlan(support) || orders.some(order => unlimitedPlan(order) && Array.isArray(support.coveredOrderIds) && support.coveredOrderIds.includes(order.id)));
+  const unlimited = [...paid.filter(order => unlimitedPlan(order)), ...(recoveredUnlimited ? [support!] : [])];
+  const unlimitedLikesUntil = unlimited.filter(item => started(item, now)).reduce((until, item) => Math.max(until, finite(item.expiresAt)), 0);
   return { expiresAt: expiresAt > now ? expiresAt : 0, lifetime, unlimitedLikesUntil: unlimitedLikesUntil > now ? unlimitedLikesUntil : 0 };
 }

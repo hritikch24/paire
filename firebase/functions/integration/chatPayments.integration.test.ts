@@ -172,6 +172,22 @@ describe("Plus validity extensions", () => {
     }
   });
 
+  test("six-month Plus is priced by the server, grants 180 days and unlimited likes, and refunds cleanly", async () => {
+    const uid = await buyer();
+    const { orderId, amount } = await call(createPlusOrder, uid, { plan: "halfyear", amountPaise: 1 });
+    expect(amount).toBe(79900);
+    const payment = pay(orderId);
+    const status = await confirm(uid, payment);
+    const order = await saved(orderId);
+    expect(order.expiresAt - order.startsAt).toBe(180 * day);
+    expect(status).toMatchObject({ active: true, lifetime: false, unlimitedLikes: true });
+    expect((await admin.doc(`billing/${uid}`).get()).get("unlimitedLikesUntil")).toBe(order.expiresAt);
+    await confirm(uid, payment);
+    expect((await saved(orderId)).expiresAt).toBe(order.expiresAt);
+    await webhook("refund.processed", { refund: { entity: { payment_id: payment.id } } });
+    expect((await admin.doc(`billing/${uid}`).get()).get("unlimitedLikesUntil")).toBe(0);
+  });
+
   test("complimentary Plus is preserved even without a queue ledger", async () => {
     const uid = await buyer();
     const until = Date.now() + 60 * day;
@@ -217,7 +233,7 @@ describe("Plus validity extensions", () => {
 
 describe("Unlimited Chat orders", () => {
   test("Plus orders use KraftAI metadata while ownership stays in Firestore", async () => {
-    for (const plan of ["day", "week", "month"]) {
+    for (const plan of ["day", "week", "month", "halfyear"]) {
       const uid = await buyer();
       const result = await call(createPlusOrder, uid, { plan });
       expect(fake.orders.get(result.orderId)?.notes).toEqual({ product: "kraftai_plus", plan });
@@ -549,7 +565,7 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
 
   test("Paire Plus by UPI: the plan's own amount, and approval starts the pass (revoke ends it)", async () => {
     const uid = await buyer({ matched: false });
-    await expect(call(upi.createUpiUnlockOrder, uid, { plan: "forever" })).rejects.toThrow(/1-day, 7-day or 30-day/);
+    await expect(call(upi.createUpiUnlockOrder, uid, { plan: "forever" })).rejects.toThrow(/six-month/);
     const created = await call(upi.createUpiUnlockOrder, uid, { plan: "week" });
     if (created.status !== "order") throw new Error("expected an order");
     expect(created.order).toMatchObject({ kind: "plus", product: "Paire Plus · 7 days" });
@@ -573,6 +589,21 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(order.expiresAt);
     await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "revoke" });
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(0);
+  });
+
+  test("six-month UPI approval grants the full duration and unlimited likes; revoking removes them", async () => {
+    const uid = await buyer();
+    const created = await call(upi.createUpiUnlockOrder, uid, { plan: "halfyear", amountPaise: 1 });
+    if (created.status !== "order") throw new Error("expected an order");
+    expect(created.order.amountPaise).toBeGreaterThanOrEqual(79900);
+    expect(created.order.amountPaise).toBeLessThan(80000);
+    await call(upi.submitUpiPayment, uid, { orderId: created.order.orderId });
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "approve" });
+    const record = (await admin.doc(`upiUnlockOrders/${created.order.orderId}`).get()).data()!;
+    expect(record.expiresAt - record.startsAt).toBe(180 * 86400000);
+    expect((await admin.doc(`billing/${uid}`).get()).get("unlimitedLikesUntil")).toBe(record.expiresAt);
+    await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "revoke" });
+    expect((await admin.doc(`billing/${uid}`).get()).get("unlimitedLikesUntil")).toBe(0);
   });
 
   test("new Razorpay Plus sales can be switched off", async () => {
@@ -646,7 +677,7 @@ describe("Lifetime Plus", () => {
     expect(await statusOf(uid)).toMatchObject({ active: true, lifetime: true, expiresAt: null });
     await confirmLifetime(uid, payment); await webhook("payment.captured", paymentEvent(payment));
     expect((await admin.doc(`webPassLedger/${uid}`).get()).get("until")).toBe(0);
-    for (const plan of ["day", "week", "month", "lifetime"]) await expect(call(createPlusOrder, uid, { plan })).rejects.toThrow(/already have Lifetime Plus/);
+    for (const plan of ["day", "week", "month", "halfyear", "lifetime"]) await expect(call(createPlusOrder, uid, { plan })).rejects.toThrow(/already have Lifetime Plus/);
     expect(await call(chat.createChatUnlockOrder, uid)).toEqual({ status: "owned" });
   });
 

@@ -110,3 +110,7 @@ the two creation functions plus the KraftAI deployment.
 ## Hosting identity and lifetime catalog (2026-10-23)
 
 The live KraftAI checkout project is `hritikchaudhary016-4858s-projects/myaiproductss`, **not** Team-Rockstar (which hosts Paire). Inspect the live domain/project before linking a local checkout; selecting a missing project name in the wrong team can create an empty project with no production environment. GitHub `main` is connected to the existing live project. Checkout counterpart `9ffd3f7` adds `lifetime` at 149900 paise (₹1,499 once), with no duration. Paire must deploy the matching catalog and entitlement code before offering it. See `docs/lifetime-plus.md`.
+
+## Offer update (2026-10-24)
+
+Current web quotes: ₹399/month (60 days with the bonus), ₹20/day, ₹1,499 lifetime; secondary ₹99/week and `halfyear` ₹799/180 days, plus the existing ₹49 messaging-only unlock. Old ₹29 day and ₹299 month server orders stay valid at their exact historical quotes. Catalog matching and deployment order are documented in `docs/plus-offers.md`. Do not edit old paid orders or reprice their recorded receipts.

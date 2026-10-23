@@ -33,6 +33,14 @@ const actions = [], server = createServer((req, res) => {
       await page.setViewportSize({ width: 390, height: 844 });
     }
     await page.goto(origin + '/'); await responsive('home');
+    assert.deepEqual(await page.locator('.primary-price-grid article h3').evaluateAll(nodes => nodes.map(node => node.firstChild.textContent)), ['₹399', '₹20', '₹1,499']);
+    assert.equal(await page.locator('.other-passes').getAttribute('open'), null);
+    await page.locator('.other-passes summary').click();
+    assert.match(await page.locator('.other-pass-grid').innerText(), /₹799/);
+    assert.match(await page.locator('.other-pass-grid').innerText(), /messaging only/);
+    await responsive('pricing-expanded');
+    await page.locator('.other-passes summary').click();
+    console.log('PASS featured price order, total-price labels and secondary options at 320/390/768/1280px');
     assert.equal(await page.locator('#garba').count(), 0); assert.equal(await page.locator('a[href="#garba"]').count(), 0);
     await page.getByRole('link', { name: 'Try Date Duet', exact: true }).click(); await responsive('duet-intro'); console.log('PASS public landing layouts');
     await page.locator('#start').click(); assert(await page.locator('#next').isDisabled());

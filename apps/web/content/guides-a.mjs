@@ -29,7 +29,7 @@ export const guidesA = [
 </ol>
 <h2>The apps</h2>
 <h3>Paire</h3>
-<p>An Indian app where every like can carry a note, women set the rules (notes-only likes, I'll message first, incognito, private photos until match), and seeing who likes you comes with Paire Plus. Members must confirm their email before liking or chatting. Check each profile’s current photo badge; photo verification is not required for everyone. No caste field. Paire Plus is a one-time pass from ₹29 that never auto-renews. It's newer and smaller than the global apps, open across India. <strong>Best for:</strong> people who value thoughtful notes and free privacy controls. <a href="/features/">See features</a>.</p>
+<p>An Indian app where every like can carry a note, women set the rules (notes-only likes, I'll message first, incognito, private photos until match), and seeing who likes you comes with Paire Plus. Members must confirm their email before liking or chatting. Check each profile’s current photo badge; photo verification is not required for everyone. No caste field. Paire Plus is a one-time pass from ₹20 that never auto-renews. It's newer and smaller than the global apps, open across India. <strong>Best for:</strong> people who value thoughtful notes and free privacy controls. <a href="/features/">See features</a>.</p>
 <h3>Tinder</h3>
 <p>The biggest global dating app, with a very large user base in Indian cities. Swipe-based, used for everything from casual to serious. Seeing who already likes you is part of its paid tiers. <strong>Best for:</strong> the largest pool and travel. <a href="/compare/tinder/">Paire vs Tinder</a>.</p>
 <h3>Bumble</h3>

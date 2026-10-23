@@ -6,12 +6,12 @@ import { Platform } from "react-native";
  * localised price is shown and charged when store billing is live.
  */
 export const PREMIUM_PLANS = [
-  { id: "day", productId: "muse_premium_day", label: "1 day", days: 1, bonusDays: 0, priceInr: Platform.OS === "web" ? 29 : 20, detail: "24 hours", badge: "Try it" },
+  { id: "day", productId: "muse_premium_day", label: "1 day", days: 1, bonusDays: 0, priceInr: 20, detail: "24 hours", badge: "Try it" },
   { id: "week", productId: "muse_premium_week", label: "1 week", days: 7, bonusDays: 0, priceInr: 99, detail: "7 days", badge: "Popular" },
-  { id: "month", productId: "muse_premium_month", label: "1 month", days: 30, bonusDays: 30, priceInr: 299, detail: "30 days", badge: "Best value" }
+  { id: "month", productId: "muse_premium_month", label: "1 month", days: 30, bonusDays: 30, priceInr: Platform.OS === "web" ? 399 : 299, detail: "30 days", badge: "Best value" }
 ] as const;
 /** Lifetime is web-only; native product IDs and store billing stay unchanged. */
-export const WEB_PREMIUM_PLANS = [...PREMIUM_PLANS, { id: "lifetime", productId: "web_lifetime_plus", label: "Lifetime Plus", days: null, bonusDays: 0, priceInr: 1499, detail: "No expiry", badge: "Pay once" }] as const;
+export const WEB_PREMIUM_PLANS = [...PREMIUM_PLANS, { id: "halfyear", productId: "web_halfyear_plus", label: "6 months", days: 180, bonusDays: 0, priceInr: 799, detail: "180 days", badge: "Longer access" }, { id: "lifetime", productId: "web_lifetime_plus", label: "Lifetime Plus", days: null, bonusDays: 0, priceInr: 1499, detail: "No expiry", badge: "Pay once" }] as const;
 export type PremiumPlanId = (typeof WEB_PREMIUM_PLANS)[number]["id"];
 export type PremiumPlan = (typeof WEB_PREMIUM_PLANS)[number];
 
@@ -29,7 +29,7 @@ export function webPlan(plan: PremiumPlan) {
   const daily = PREMIUM_PLANS[0].priceInr;
   return {
     days,
-    perDay: dailyPrice(plan.priceInr, days),
+    perDay: dailyPrice(plan.priceInr, days, 2),
     savePercent: Math.round((1 - perDay / daily) * 100),
     label: plan.bonusDays ? `${plan.label} + 1 month free` : plan.label,
     detail: plan.bonusDays ? `${days} days for the price of ${plan.days}` : plan.detail
@@ -42,6 +42,6 @@ export const ALLOWANCE = {
   plus: { likes: 100, supers: 5 }
 } as const;
 
-export function dailyPrice(priceInr: number, days: number): string {
-  return (priceInr / days).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+export function dailyPrice(priceInr: number, days: number, precision = 0): string {
+  return (priceInr / days).toLocaleString("en-IN", { maximumFractionDigits: precision });
 }

@@ -15,12 +15,15 @@ const DAY = 24 * 60 * 60 * 1000;
 const sign = (value: string | Buffer, secret: string) => createHmac("sha256", secret).update(value).digest("hex");
 
 describe("Paire Plus on the web", () => {
-  it("prices passes on the server: ₹29, ₹99 and ₹299", () => {
-    expect(PLUS_PASSES.day.amountPaise).toBe(2900);
+  it("prices passes on the server: ₹20, ₹99, ₹399, ₹799 and ₹1,499", () => {
+    expect(PLUS_PASSES.day.amountPaise).toBe(2000);
     expect(PLUS_PASSES.week).toMatchObject({ amountPaise: 9900, days: 7 });
-    expect(PLUS_PASSES.month).toMatchObject({ amountPaise: 29900, days: 30 });
+    expect(PLUS_PASSES.month).toMatchObject({ amountPaise: 39900, days: 30 });
     // Web offer: buy 1 month, get 1 month free. Day and week passes have no bonus.
     expect(passDays("month")).toBe(60);
+    expect(PLUS_PASSES.halfyear.amountPaise).toBe(79900);
+    expect(passDays("halfyear")).toBe(180);
+    expect(planWindow(DAY, "halfyear", 2 * DAY)).toEqual({ startsAt: 2 * DAY, expiresAt: 182 * DAY });
     expect(passDays("week")).toBe(7);
     expect(passDays("day")).toBe(1);
     expect(isPlusPlan("week")).toBe(true);
