@@ -57,4 +57,4 @@ export function checkoutHost(orderId: string): { name: string; hostedUrl: string
  * Paire price change must land on both sites together: a test fails here until this
  * table, and kraftai.in, are updated too.
  */
-export const KRAFTAI_PUBLISHED_PAISE = { day: 2900, week: 9900, month: 29900, chat: 4900 } as const;
+export const KRAFTAI_PUBLISHED_PAISE = { day: 2900, week: 9900, month: 29900, lifetime: 149900, chat: 4900 } as const;

@@ -8,13 +8,13 @@ const paireColumn = {
   notes: "Every like can carry a note",
   women: "Notes-only likes, I'll message first, incognito, private photos: all free",
   verify: "Confirmed email required; photo checks and current photo badges shown separately",
-  price: "Free; Plus passes from ₹5/day (₹299 for 2 months), ₹99/week, ₹29/day, never auto-renew",
+  price: "Free; Plus passes from ₹5/day (₹299 for 2 months), ₹99/week, ₹29/day; Lifetime Plus ₹1,499 once, never auto-renew",
   india: "Built in India: no caste field, prices in rupees, Date Duet, Duos"
 };
 
 export const compare = [
   {
-    path: "compare/tinder/", parent, crumb: "Paire vs Tinder", published: D, updated: D, eyebrow: "COMPARE · TINDER",
+    path: "compare/tinder/", parent, crumb: "Paire vs Tinder", published: D, updated: "2026-10-23", eyebrow: "COMPARE · TINDER",
     title: "Paire vs Tinder in India — A Tinder Alternative With Notes and Short Plus Passes",
     description: "Looking for a Tinder alternative in India? Paire Plus reveals who likes you, lets likes carry notes, requires confirmed email before liking or chatting, and its passes never auto-renew.",
     h1: "Paire vs <em>Tinder</em>",
@@ -54,7 +54,7 @@ ${NOTE}`,
     related: ["compare/bumble/", "compare/hinge/", "guides/best-dating-apps-india/", "pricing/"]
   },
   {
-    path: "compare/bumble/", parent, crumb: "Paire vs Bumble", published: D, updated: D, eyebrow: "COMPARE · BUMBLE",
+    path: "compare/bumble/", parent, crumb: "Paire vs Bumble", published: D, updated: "2026-10-23", eyebrow: "COMPARE · BUMBLE",
     title: "Paire vs Bumble in India — Women-First Dating, Compared",
     description: "Paire vs Bumble: both put women in control. On Paire, seeing who likes you comes with Paire Plus, likes carry notes, women choose whether to message first, and confirmed email is required before liking or chatting. Photo-check badges are shown separately.",
     h1: "Paire vs <em>Bumble</em>",
@@ -88,7 +88,7 @@ ${NOTE}`,
     related: ["compare/tinder/", "compare/hinge/", "guides/dating-apps-for-women-india/", "verification/"]
   },
   {
-    path: "compare/hinge/", parent, crumb: "Paire vs Hinge", published: D, updated: D, eyebrow: "COMPARE · HINGE",
+    path: "compare/hinge/", parent, crumb: "Paire vs Hinge", published: D, updated: "2026-10-23", eyebrow: "COMPARE · HINGE",
     title: "Paire vs Hinge in India — Comment-Style Likes, Compared",
     description: "Hinge lets you like a specific photo or prompt with a comment; Paire lets every like carry a note too. Here's how they differ on pricing, women-first controls, verification and India-specific features.",
     h1: "Paire vs <em>Hinge</em>",

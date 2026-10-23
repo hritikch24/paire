@@ -106,3 +106,7 @@ the two creation functions plus the KraftAI deployment.
 5. **Sales switches** (unchanged by this work): Plus needs `MUSE_BILLING_ENABLED` and `runtime/trust.razorpayPlusSales` (on unless set to false); chat needs `MUSE_CHAT_UNLOCK_ENABLED`, `MUSE_CHAT_UNLOCK_LIVE` and `runtime/trust.unlockSales` (`scripts/set-runtime-flags.mjs`; run it without changes to print the current state). Whatever Razorpay checkout is open when step 3 deploys moves to kraftai.in. With CCAvenue also on, the Plus screen uses Razorpay as the main button.
 6. **Legal copy.** Terms, Refunds and Privacy name CCAvenue/Razorpay today. Add that payments are taken by KraftAI and show as KraftAI on bank statements (fewer "unknown merchant" chargebacks).
 7. **One real payment** of ₹29 and a refund from the dashboard, then check the pass appears and ends.
+
+## Hosting identity and lifetime catalog (2026-10-23)
+
+The live KraftAI checkout project is `hritikchaudhary016-4858s-projects/myaiproductss`, **not** Team-Rockstar (which hosts Paire). Inspect the live domain/project before linking a local checkout; selecting a missing project name in the wrong team can create an empty project with no production environment. GitHub `main` is connected to the existing live project. Checkout counterpart `9ffd3f7` adds `lifetime` at 149900 paise (₹1,499 once), with no duration. Paire must deploy the matching catalog and entitlement code before offering it. See `docs/lifetime-plus.md`.

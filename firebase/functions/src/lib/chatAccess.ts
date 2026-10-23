@@ -38,7 +38,7 @@ export type ChatPolicy = {
   ccavenueSales: boolean;
 };
 
-export type ChatAccessMirror = { unlimited: boolean; premiumUntil: number };
+export type ChatAccessMirror = { unlimited: boolean; premiumUntil: number; premiumLifetime?: boolean };
 
 const ms = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0);
 

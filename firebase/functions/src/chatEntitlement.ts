@@ -36,11 +36,11 @@ export async function syncChatAccess(uid: string): Promise<ChatAccessMirror | nu
     const billed = billing.get("expiresAt");
     // syncPremium writes billing/{uid} before calling this, so it's always the fresh reading.
     const plusUntil = process.env.MUSE_BILLING_ENABLED === "true" && typeof billed === "number" && Number.isFinite(billed) ? billed : 0;
-    const next: ChatAccessMirror = { unlimited: unlock.get("status") === "active", premiumUntil: Math.max(0, Math.floor(plusUntil)) };
+    const next: ChatAccessMirror = { unlimited: unlock.get("status") === "active" || (process.env.MUSE_BILLING_ENABLED === "true" && billing.get("lifetime") === true), premiumUntil: Math.max(0, Math.floor(plusUntil)), premiumLifetime: process.env.MUSE_BILLING_ENABLED === "true" && billing.get("lifetime") === true };
     const current = moderation.get("chatAccess") as Partial<ChatAccessMirror> | undefined;
     // No mirror already means no access to the rules: don't write one just to say so.
-    const nothing = !next.unlimited && next.premiumUntil === 0;
-    if (current ? current.unlimited !== next.unlimited || current.premiumUntil !== next.premiumUntil : !nothing) {
+    const nothing = !next.unlimited && !next.premiumLifetime && next.premiumUntil === 0;
+    if (current ? current.unlimited !== next.unlimited || current.premiumUntil !== next.premiumUntil || Boolean(current.premiumLifetime) !== next.premiumLifetime : !nothing) {
       tx.set(db.doc(`moderation/${uid}`), { chatAccess: { ...next, updatedAt: Date.now() } }, { merge: true });
     }
     return next;

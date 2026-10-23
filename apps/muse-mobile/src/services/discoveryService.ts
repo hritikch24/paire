@@ -2,7 +2,7 @@ import { AgeGapSide, DiscoverProfile, FeedCursor, SwipeResult, SwipeType } from 
 import { callFunction } from "./firebase";
 
 export type FeedPage = { profiles: DiscoverProfile[]; cursor: FeedCursor | null };
-export type DailyAllowance = { remaining: { likes: number; supers: number }; limits: { likes: number; supers: number }; resetsAt: number };
+export type DailyAllowance = { remaining: { likes: number | null; supers: number }; limits: { likes: number | null; supers: number }; resetsAt: number };
 
 export function fetchDailyAllowance(): Promise<DailyAllowance> {
   return callFunction<DailyAllowance>("getDailyAllowance");

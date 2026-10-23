@@ -8,6 +8,7 @@ import { parsePasses, sameSecret, validRevenueCatSignature } from "./lib/billing
 import { ccavenueSalesOpen, chatPolicy, syncChatAccess, upiSalesOpen } from "./chatEntitlement";
 import { consumeDailyQuota } from "./quota";
 import { verifiedUsers } from "./trust";
+import { summarizeWebBenefits, WebBenefits } from "./lib/premiumBenefits";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 /** Paid features switch on only with MUSE_BILLING_ENABLED=true (after live QA). */
@@ -29,6 +30,8 @@ export const ccavenuePlusOpen = async () => billingEnabled() && (await ccavenueS
 
 export type PremiumStatus = {
   active: boolean;
+  lifetime?: boolean;
+  unlimitedLikes?: boolean;
   expiresAt: number | null;
   /** Store checkout (Android/iOS app). */
   purchaseAvailable: boolean;
@@ -71,30 +74,21 @@ export async function storeExpiryIfEnabled(uid: string, now = Date.now()): Promi
   return storePassExpiry(uid, now).catch(() => 0);
 }
 
-/** Latest expiry among the member's paid, unrefunded web passes. 0 when none. */
-export async function webPassExpiry(uid: string, now = Date.now(), tx?: Transaction): Promise<number> {
-  const paidQuery = db.collection("razorpayOrders").where("uid", "==", uid).where("status", "==", "paid");
-  const upiQuery = db.collection("upiUnlockOrders").where("uid", "==", uid).where("status", "==", "approved");
-  const ccavenueQuery = db.collection("ccavenueOrders").where("uid", "==", uid).where("status", "==", "paid");
-  const supportRef = db.doc(`supportPlusGrants/${uid}`);
-  const giftRef = db.doc(`complimentaryPlusGrants/${uid}`);
-  const [paid, upi, ccavenue, support, gift] = await Promise.all([
-    tx ? tx.get(paidQuery) : paidQuery.get(),
-    // Plus passes paid by UPI and approved by a moderator (upiPayments.ts).
-    tx ? tx.get(upiQuery) : upiQuery.get(),
-    // Plus passes paid through CCAvenue (ccavenue.ts).
-    tx ? tx.get(ccavenueQuery) : ccavenueQuery.get(),
-    // A separately audited owner-authorized recovery, never a fabricated gateway success.
-    tx ? tx.get(supportRef) : supportRef.get(),
-    tx ? tx.get(giftRef) : giftRef.get()
+/** Authoritative web benefits, including old monthly purchases and explicit lifetime grants. */
+export async function webPassBenefits(uid: string, now = Date.now(), tx?: Transaction): Promise<WebBenefits> {
+  const queries = ["razorpayOrders", "upiUnlockOrders", "ccavenueOrders"].map(collection => db.collection(collection).where("uid", "==", uid));
+  const refs = ["supportPlusGrants", "complimentaryPlusGrants", "lifetimePlusGrants"].map(collection => db.doc(`${collection}/${uid}`));
+  const [orders, grants] = await Promise.all([
+    Promise.all(queries.map(query => tx ? tx.get(query) : query.get())),
+    Promise.all(refs.map(ref => tx ? tx.get(ref) : ref.get()))
   ]);
-  const supportUntil = support.get("status") === "active" && Number(support.get("startsAt")) <= now &&
-    typeof support.get("expiresAt") === "number" ? support.get("expiresAt") as number : 0;
-  return [...paid.docs, ...[...upi.docs, ...ccavenue.docs].filter((doc) => doc.get("kind") === "plus")].reduce((latest, doc) => {
-    const expiresAt = doc.get("expiresAt");
-    return typeof expiresAt === "number" && expiresAt > now ? Math.max(latest, expiresAt) : latest;
-  }, Math.max(Number.isFinite(supportUntil) && supportUntil > now ? supportUntil : 0,
-    gift.get("status") === "active" && typeof gift.get("expiresAt") === "number" && Number.isFinite(gift.get("expiresAt")) && gift.get("expiresAt") > now ? gift.get("expiresAt") as number : 0));
+  const records = orders.flatMap((snap, source) => snap.docs.filter(doc => source === 0 || doc.get("kind") === "plus").map(doc => ({ ...doc.data(), id: doc.id, paymentSource: ["razorpay", "upi", "ccavenue"][source] })));
+  return summarizeWebBenefits(records, grants[0].data(), grants[1].data(), grants[2].data(), now);
+}
+
+/** Finite pass queue only. Lifetime access never consumes or fabricates queued days. */
+export async function webPassExpiry(uid: string, now = Date.now(), tx?: Transaction): Promise<number> {
+  return (await webPassBenefits(uid, now, tx)).expiresAt;
 }
 
 /**
@@ -107,13 +101,13 @@ export async function syncPremium(uid: string): Promise<PremiumStatus> {
   const now = Date.now();
   const [store, web] = await Promise.all([
     status.purchaseAvailable ? storePassExpiry(uid, now) : Promise.resolve(0),
-    webPassExpiry(uid, now)
+    webPassBenefits(uid, now)
   ]);
-  const expiresAt = Math.max(store, web);
-  await db.doc(`billing/${uid}`).set({ expiresAt, checkedAt: now });
+  const expiresAt = Math.max(store, web.expiresAt);
+  await db.doc(`billing/${uid}`).set({ expiresAt, lifetime: web.lifetime, unlimitedLikesUntil: web.unlimitedLikesUntil, checkedAt: now });
   // Plus includes unlimited messaging: keep the rules' copy current (never touches Unlimited Chat).
   await syncChatAccess(uid);
-  return { active: expiresAt > now, expiresAt: expiresAt > now ? expiresAt : null, ...status };
+  return { active: web.lifetime || expiresAt > now, lifetime: web.lifetime, unlimitedLikes: web.lifetime || web.unlimitedLikesUntil > now, expiresAt: web.lifetime ? null : expiresAt > now ? expiresAt : null, ...status };
 }
 
 /** Never accepts a client-supplied entitlement, price, receipt status or duration. */
@@ -122,9 +116,11 @@ export const getPremiumStatus = onCall({ region: REGION, secrets: ["REVENUECAT_S
   await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "billingChecks", 100);
   const cached = isSupportSession(request) ? await db.doc(`billing/${uid}`).get() : null;
   const expiresAt = billingEnabled() ? Number(cached?.get("expiresAt")) || 0 : 0;
+  const cachedLifetime = billingEnabled() && cached?.get("lifetime") === true;
   const status: PremiumStatus = cached
-    ? { active: expiresAt > Date.now(), expiresAt: expiresAt > Date.now() ? expiresAt : null, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, ccavenuePurchaseAvailable: false }
+    ? { active: cachedLifetime || expiresAt > Date.now(), lifetime: cachedLifetime, unlimitedLikes: cachedLifetime || Number(cached.get("unlimitedLikesUntil")) > Date.now(), expiresAt: cachedLifetime ? null : expiresAt > Date.now() ? expiresAt : null, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, ccavenuePurchaseAvailable: false }
     : await syncPremium(uid);
+  if (status.lifetime) return { ...status, purchaseAvailable: false, webPurchaseAvailable: false, upiPurchaseAvailable: false, ccavenuePurchaseAvailable: false };
   if (!status.active) {
     const orders = await db.collection("razorpayOrders").where("uid", "==", uid).limit(20).get();
     if (orders.docs.some((doc) => doc.get("status") === "created") && !orders.docs.some((doc) => doc.get("status") === "paid")) status.previousPaymentFailed = true;

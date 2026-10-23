@@ -12,7 +12,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const PLUS_PASSES = {
   day: { days: 1, bonusDays: 0, amountPaise: 2900, label: PAYMENT_NAMES.labels.day, razorpayLabel: PAYMENT_NAMES.razorpayLabels.day },
   week: { days: 7, bonusDays: 0, amountPaise: 9900, label: PAYMENT_NAMES.labels.week, razorpayLabel: PAYMENT_NAMES.razorpayLabels.week },
-  month: { days: 30, bonusDays: 30, amountPaise: 29900, label: PAYMENT_NAMES.labels.month, razorpayLabel: PAYMENT_NAMES.razorpayLabels.month }
+  month: { days: 30, bonusDays: 30, amountPaise: 29900, label: PAYMENT_NAMES.labels.month, razorpayLabel: PAYMENT_NAMES.razorpayLabels.month },
+  lifetime: { days: 0, bonusDays: 0, amountPaise: 149900, label: PAYMENT_NAMES.labels.lifetime, razorpayLabel: PAYMENT_NAMES.razorpayLabels.lifetime }
 } as const;
 export type PlusPlan = keyof typeof PLUS_PASSES;
 
@@ -48,6 +49,10 @@ export function validWebhookSignature(raw: Buffer, signature: string | undefined
 export function passWindow(paidAt: number, days: number, currentExpiry: number): { startsAt: number; expiresAt: number } {
   const startsAt = Math.max(paidAt, currentExpiry);
   return { startsAt, expiresAt: startsAt + days * DAY_MS };
+}
+
+export function planWindow(paidAt: number, plan: PlusPlan, currentExpiry: number): { startsAt: number; expiresAt: number | null; lifetime?: true } {
+  return plan === "lifetime" ? { startsAt: paidAt, expiresAt: null, lifetime: true } : passWindow(paidAt, passDays(plan), currentExpiry);
 }
 
 /** A Razorpay payment we can grant for: captured, for this exact order, amount and currency. */

@@ -4,6 +4,7 @@ export function nextDailyReset(now = Date.now()): number {
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1);
 }
 
-export function remainingAllowance(used: unknown, limit: number): number {
+export function remainingAllowance(used: unknown, limit: number | null): number | null {
+  if (limit === null) return null;
   return Math.max(0, limit - (typeof used === "number" && Number.isFinite(used) ? Math.max(0, used) : 0));
 }

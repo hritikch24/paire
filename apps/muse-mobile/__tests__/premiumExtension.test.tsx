@@ -7,7 +7,7 @@ import { callFunction } from "../src/services/firebase";
 import { showToast } from "../src/components/Toast";
 
 const mockUntil = Date.UTC(2026, 11, 18, 10);
-let mockPremium = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
+let mockPremium: { active: boolean; expiresAt: number | null; webPurchaseAvailable: boolean; lifetime?: boolean } = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
 const mockInvalidate = jest.fn();
 const mockRefetch = jest.fn();
 jest.mock("@tanstack/react-query", () => ({
@@ -80,5 +80,31 @@ test.each(["pending", "paid", "cancelled"])("an existing pass does not misreport
   expect(message).toMatch(outcome === "pending" ? /still confirming/ : outcome === "cancelled" ? /window closed/ : /Payment received.*pass is active/);
   expect(showToast).toHaveBeenCalledTimes(1);
   expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: ["premium"] });
+  await act(async () => { tree.unmount(); });
+});
+
+
+test("Lifetime Plus is ₹1,499 once, starts immediately and never pretends to add finite days", async () => {
+  mockPremium = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
+  jest.mocked(purchaseWebPass).mockResolvedValue({ redirecting: true });
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<PremiumScreen />); });
+  await act(async () => { tree.root.findByProps({ testID: "premium-plan-lifetime" }).props.onPress(); });
+  expect(tree.root.findByProps({ testID: "premium-purchase" }).props.children).toBe("Get Lifetime Plus · ₹1,499");
+  expect(tree.root.findAllByProps({ testID: "premium-extension" })).toHaveLength(0);
+  expect(tree.root.findByProps({ testID: "premium-lifetime-terms" }).props.children).toMatch(/₹1,499 once/);
+  await act(async () => { await tree.root.findByProps({ testID: "premium-purchase" }).props.onPress(); });
+  expect(purchaseWebPass).toHaveBeenCalledWith("lifetime", "#000");
+  await act(async () => { tree.unmount(); });
+});
+
+test("lifetime owners see permanent benefits instead of another purchase or an invalid expiry", async () => {
+  mockPremium = { active: true, expiresAt: null, lifetime: true, webPurchaseAvailable: false };
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<PremiumScreen />); });
+  expect(tree.root.findByProps({ testID: "premium-purchase" }).props.disabled).toBe(true);
+  expect(tree.root.findByProps({ testID: "premium-purchase" }).props.children).toBe("Lifetime Plus is active");
+  expect(tree.root.findAllByProps({ testID: "premium-plan-lifetime" })).toHaveLength(0);
+  expect(tree.root.findByProps({ testID: "premium-lifetime-active" })).toBeDefined();
   await act(async () => { tree.unmount(); });
 });

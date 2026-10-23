@@ -39,6 +39,8 @@ export async function purgeUserData(uid: string): Promise<void> {
   await db.doc(`billing/${uid}`).delete();
   await db.doc(`supportPlusGrants/${uid}`).delete();
   await db.doc(`complimentaryPlusGrants/${uid}`).delete();
+  await db.doc(`lifetimePlusGrants/${uid}`).delete();
+  await db.doc(`lifetimePlusCheckout/${uid}`).delete();
   // Payment records (razorpayOrders, ccavenueOrders) are kept for tax law, as the privacy policy says; the queue isn't.
   await db.doc(`webPassLedger/${uid}`).delete();
   // Unlimited Chat belongs to this account only and ends with it; chatUnlockOrders are kept like razorpayOrders.

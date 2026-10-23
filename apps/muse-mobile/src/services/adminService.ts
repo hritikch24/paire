@@ -41,6 +41,7 @@ export type MemberDetail = {
   activity: { matches: number; reportsAgainst: number };
   payments: MemberPayment[];
   plusUntil: number | null;
+  plusLifetime?: boolean;
   unlimitedChat: boolean;
 };
 

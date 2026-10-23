@@ -625,3 +625,91 @@ describe("member admin", () => {
     expect(detail.payments).toContainEqual(expect.objectContaining({ source: "upi", product: "Unlimited Chat", amountInr: 49.37, status: "submitted" }));
   });
 });
+
+describe("Lifetime Plus", () => {
+  const confirmLifetime = (uid: string, payment: FakePayment) => call(confirmPlusPayment, uid, { orderId: payment.order_id, paymentId: payment.id, signature: checkoutSignature(payment.order_id, payment.id) });
+  const statusOf = async (uid: string) => {
+    const { syncPremium } = await import("../src/billing");
+    return syncPremium(uid);
+  };
+
+  test("₹1,499 lifetime checkout is reused, verified at the server price, permanent and protected from another purchase", async () => {
+    const uid = await buyer(), other = await buyer();
+    const created = await call(createPlusOrder, uid, { plan: "lifetime", amountPaise: 1, uid: other, lifetime: false });
+    expect(created.amount).toBe(149900);
+    expect((await call(createPlusOrder, uid, { plan: "lifetime" })).orderId).toBe(created.orderId);
+    const payment = pay(created.orderId);
+    await expect(confirmLifetime(other, payment)).rejects.toThrow(/find that order/);
+    expect(await confirmLifetime(uid, payment)).toMatchObject({ active: true, lifetime: true, unlimitedLikes: true, expiresAt: null });
+    expect((await admin.doc(`razorpayOrders/${created.orderId}`).get()).data()).toMatchObject({ uid, status: "paid", plan: "lifetime", expiresAt: null });
+    expect(await mirrorOf(uid)).toMatchObject({ unlimited: true, premiumLifetime: true, premiumUntil: 0 });
+    expect(await statusOf(uid)).toMatchObject({ active: true, lifetime: true, expiresAt: null });
+    await confirmLifetime(uid, payment); await webhook("payment.captured", paymentEvent(payment));
+    expect((await admin.doc(`webPassLedger/${uid}`).get()).get("until")).toBe(0);
+    for (const plan of ["day", "week", "month", "lifetime"]) await expect(call(createPlusOrder, uid, { plan })).rejects.toThrow(/already have Lifetime Plus/);
+    expect(await call(chat.createChatUnlockOrder, uid)).toEqual({ status: "owned" });
+  });
+
+  test("an authorised payment is pending, and wrong price or forged signatures never grant lifetime", async () => {
+    const uid = await buyer(); const created = await call(createPlusOrder, uid, { plan: "lifetime" });
+    const pending = pay(created.orderId, { status: "authorized" });
+    expect(await confirmLifetime(uid, pending)).toMatchObject({ active: false, lifetime: false, pending: true });
+    pending.status = "captured"; pending.amount = 149899;
+    await expect(confirmLifetime(uid, pending)).rejects.toThrow(/doesn't match/);
+    await expect(call(confirmPlusPayment, uid, { orderId: created.orderId, paymentId: pending.id, signature: "a".repeat(64) })).rejects.toThrow(/verify that payment/);
+    expect((await statusOf(uid)).lifetime).toBe(false);
+  });
+
+  test("simultaneous lifetime captures grant once, refund the duplicate once, and don't revoke the original", async () => {
+    const uid = await buyer(), first = await call(createPlusOrder, uid, { plan: "lifetime" });
+    await admin.doc(`lifetimePlusCheckout/${uid}`).update({ updatedAt: Date.now() - 7 * 3600000 });
+    const second = await call(createPlusOrder, uid, { plan: "lifetime" });
+    expect(first.orderId).not.toBe(second.orderId);
+    const payments = [pay(first.orderId), pay(second.orderId)], before = fake.refunds.length;
+    expect(await Promise.all(payments.map(p => webhook("payment.captured", paymentEvent(p))))).toEqual([200, 200]);
+    const records = await Promise.all([first, second].map(async o => (await admin.doc(`razorpayOrders/${o.orderId}`).get()).data()!));
+    expect(records.map(r => r.status).sort()).toEqual(["duplicate", "paid"]);
+    expect(fake.refunds.length - before).toBe(1); expect(fake.refunds.at(-1)?.amount).toBe(149900);
+    const duplicate = payments[records.findIndex(r => r.status === "duplicate")];
+    await webhook("payment.captured", paymentEvent(duplicate));
+    await webhook("refund.processed", { refund: { entity: { payment_id: duplicate.id } } });
+    expect((await statusOf(uid)).lifetime).toBe(true); expect(fake.refunds.length - before).toBe(1);
+  });
+
+  test("a second captured attempt is refunded without ending the original lifetime entitlement", async () => {
+    const uid = await buyer(), created = await call(createPlusOrder, uid, { plan: "lifetime" });
+    const original = pay(created.orderId); await confirmLifetime(uid, original);
+    const extra = pay(created.orderId), before = fake.refunds.length;
+    await webhook("payment.captured", paymentEvent(extra));
+    expect(fake.refunds.length - before).toBe(1);
+    await webhook("refund.processed", { refund: { entity: { payment_id: extra.id } }, ...paymentEvent(extra) });
+    expect((await admin.doc(`razorpayOrders/${created.orderId}`).get()).get("status")).toBe("paid");
+    expect((await statusOf(uid)).lifetime).toBe(true);
+  });
+
+  test("a lifetime refund or lost chargeback restores any remaining monthly entitlement", async () => {
+    for (const event of ["refund.processed", "payment.dispute.lost"]) {
+      const uid = await buyer(), month = await call(createPlusOrder, uid, { plan: "month" });
+      await confirmLifetime(uid, pay(month.orderId));
+      const until = (await admin.doc(`billing/${uid}`).get()).get("expiresAt");
+      const life = await call(createPlusOrder, uid, { plan: "lifetime" }), p = pay(life.orderId); await confirmLifetime(uid, p);
+      expect((await statusOf(uid)).expiresAt).toBeNull();
+      await webhook(event, event === "refund.processed" ? { refund: { entity: { payment_id: p.id } } } : { dispute: { entity: { payment_id: p.id } } });
+      expect(await statusOf(uid)).toMatchObject({ active: true, lifetime: false, unlimitedLikes: true, expiresAt: until });
+      expect(await mirrorOf(uid)).toMatchObject({ unlimited: false, premiumLifetime: false, premiumUntil: until });
+    }
+  });
+
+  test("an owner lifetime gift survives refresh and unrelated refunds, and blocks redundant chat payments", async () => {
+    const uid = await buyer(), chatOrder = await checkout(uid), old = await call(createPlusOrder, uid, { plan: "day" });
+    const earlier = pay(old.orderId); await confirmLifetime(uid, earlier);
+    await admin.doc(`lifetimePlusGrants/${uid}`).set({ status: "active", startsAt: Date.now(), amountReportedPaise: 0, source: "owner-gift" });
+    await statusOf(uid); await webhook("refund.processed", { refund: { entity: { payment_id: earlier.id } } });
+    expect(await statusOf(uid)).toMatchObject({ active: true, lifetime: true, unlimitedLikes: true, expiresAt: null });
+    const p = pay(chatOrder), before = fake.refunds.length;
+    await webhook("payment.captured", paymentEvent(p));
+    expect((await admin.doc(`chatUnlockOrders/${chatOrder}`).get()).get("status")).toBe("duplicate");
+    expect(fake.refunds.length - before).toBe(1); expect((await statusOf(uid)).lifetime).toBe(true);
+    expect((await admin.doc(`chatUnlocks/${uid}`).get()).exists).toBe(false);
+  });
+});

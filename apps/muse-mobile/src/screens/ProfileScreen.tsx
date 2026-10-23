@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { fetchPremiumStatus } from "../services/billingService";
 import { ProfileSharing } from "../components/ProfileSharing";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -20,6 +22,9 @@ import type { AppStackParamList } from "../navigation/types";
 export function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const profile = useAuthStore((state) => state.profile);
+  const uid = useAuthStore((state) => state.user?.uid);
+  const premium = useQuery({ queryKey: ["premium", uid], queryFn: fetchPremiumStatus, enabled: Boolean(uid && Platform.OS === "web"), staleTime: 60_000 });
+  const lifetime = Platform.OS === "web" && premium.data?.lifetime === true;
 
   if (!profile) {
     return (
@@ -92,12 +97,12 @@ export function ProfileScreen() {
             <Icon name="chevron-forward" size={18} color="textMuted" />
           </XStack>
         </Pressable>
-        <Pressable testID="profile-premium" accessibilityRole="button" accessibilityLabel={`Explore Paire Plus from ${PREMIUM_PLANS[0].priceInr} rupees`} onPress={() => navigation.navigate("Premium")}>
+        <Pressable testID="profile-premium" accessibilityRole="button" accessibilityLabel={lifetime ? "View your Lifetime Plus benefits" : `Explore Paire Plus from ${PREMIUM_PLANS[0].priceInr} rupees`} onPress={() => navigation.navigate("Premium")}>
           <YStack gap="$3" padding="$5" backgroundColor="$primarySoft" borderRadius={24}>
             <XStack alignItems="center" justifyContent="space-between"><Text color="$primary" fontWeight="700" fontSize="$2" letterSpacing={1}>PAIRE PLUS</Text><Icon name="sparkles-outline" color="primary" /></XStack>
-            <Text fontSize={26} lineHeight={32} fontWeight="700">A little more possibility.</Text>
-            <Text color="$textMuted" fontSize="$3">{`₹${PREMIUM_PLANS[0].priceInr} a day, ₹99 a week or ₹299 a month. No auto-renewal.`}</Text>
-            <XStack alignItems="center" gap="$1"><Text color="$primary" fontWeight="700">Explore plans</Text><Icon name="arrow-forward" size={17} color="primary" /></XStack>
+            <Text fontSize={26} lineHeight={32} fontWeight="700">{lifetime ? "Lifetime Plus is yours." : "A little more possibility."}</Text>
+            <Text color="$textMuted" fontSize="$3">{lifetime ? "Unlimited regular likes, messaging and all Plus benefits. No expiry." : Platform.OS === "web" ? "Monthly Plus: unlimited likes. Lifetime Plus: ₹1,499 once. Day and week passes also available." : `₹${PREMIUM_PLANS[0].priceInr} a day, ₹99 a week or ₹299 a month. No auto-renewal.`}</Text>
+            <XStack alignItems="center" gap="$1"><Text color="$primary" fontWeight="700">{lifetime ? "View benefits" : "Explore plans"}</Text><Icon name="arrow-forward" size={17} color="primary" /></XStack>
           </YStack>
         </Pressable>
         {Platform.OS === "web" ? <SettingsSection><SettingsRow testID="profile-work-circles" icon="briefcase-outline" label="Work Circles" description="Corporate, government, banking, healthcare & more" onPress={() => navigation.navigate("WorkCircles")} showDivider={false} /></SettingsSection> : null}

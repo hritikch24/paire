@@ -154,3 +154,33 @@ test("quota errors offer an upgrade for free likes, while Plus keeps its real da
   await dailyLimitRef(viewer.uid).set({ likes: 100 });
   await expect(call(swipe, viewer.uid, { targetUid: other.uid, type: "like" })).rejects.toMatchObject({ code: "resource-exhausted", details: { upgradeAvailable: false } });
 });
+
+test("existing monthly buyers and lifetime gifts have truly unlimited likes; privacy, Super Like caps and revocation still apply", async () => {
+  const { getDailyAllowance } = await import("../src/quota");
+  const viewer = await member(), target = await member({}, "man"), blocked = await member({}, "man");
+  const order = db.doc(`razorpayOrders/monthly-existing-${viewer.uid}`), now = Date.now();
+  await order.set({ uid: viewer.uid, plan: "month", status: "paid", mode: "live", currency: "INR", amountPaise: 29900, startsAt: now - DAY, expiresAt: now + 59 * DAY });
+  expect(await syncPremium(viewer.uid)).toMatchObject({ active: true, unlimitedLikes: true, lifetime: false });
+  await dailyLimitRef(viewer.uid).set({ likes: 10000, supers: 5 });
+  expect(await call(getDailyAllowance, viewer.uid)).toMatchObject({ remaining: { likes: null, supers: 0 }, limits: { likes: null, supers: 5 } });
+  expect(await call(swipe, viewer.uid, { targetUid: target.uid, type: "like" })).toMatchObject({ remaining: { likes: null } });
+  expect((await dailyLimitRef(viewer.uid).get()).get("likes")).toBe(10001);
+  await expect(call(swipe, viewer.uid, { targetUid: blocked.uid, type: "super" })).rejects.toMatchObject({ code: "resource-exhausted" });
+  await db.doc(`blocks/${viewer.uid}/blocked/${blocked.uid}`).set({ targetUid: blocked.uid });
+  await expect(call(swipe, viewer.uid, { targetUid: blocked.uid, type: "like" })).rejects.toMatchObject({ code: "not-found" });
+  await order.update({ status: "refunded" });
+  expect(await syncPremium(viewer.uid)).toMatchObject({ active: false, unlimitedLikes: false });
+  expect(await call(getDailyAllowance, viewer.uid)).toMatchObject({ remaining: { likes: 0 }, limits: { likes: 10 } });
+  const beforeGift = await readRevenue();
+  await db.doc(`lifetimePlusGrants/${viewer.uid}`).set({ status: "active", startsAt: Date.now(), source: "owner-gift", amountReportedPaise: 0 });
+  expect(await syncPremium(viewer.uid)).toMatchObject({ active: true, lifetime: true, expiresAt: null, unlimitedLikes: true });
+  expect((await db.doc(`moderation/${viewer.uid}`).get()).get("chatAccess")).toMatchObject({ unlimited: true, premiumLifetime: true, premiumUntil: 0 });
+  expect(await call(getDailyAllowance, viewer.uid)).toMatchObject({ limits: { likes: null } });
+  expect(await readRevenue()).toEqual(beforeGift);
+  await expect(grant(viewer)).rejects.toThrow(/already has Lifetime Plus/);
+  const { adminGetMember } = await import("../src/memberAdmin");
+  expect(await call(adminGetMember, owner.uid, { uid: viewer.uid })).toMatchObject({ plusLifetime: true, plusUntil: null, unlimitedChat: true });
+  await call(deleteAccount, viewer.uid);
+  expect((await db.doc(`lifetimePlusGrants/${viewer.uid}`).get()).exists).toBe(false);
+  expect((await db.doc(`billing/${viewer.uid}`).get()).exists).toBe(false);
+});

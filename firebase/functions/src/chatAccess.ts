@@ -3,7 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { db } from "./admin";
-import { razorpayConfigured, syncPremium } from "./billing";
+import { razorpayConfigured, syncPremium, webPassBenefits } from "./billing";
 import { chatPolicy, syncChatAccess } from "./chatEntitlement";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth, requireReadAuth, isSupportSession } from "./lib/auth";
@@ -92,7 +92,7 @@ async function unlockOffer(uid: string, access: ChatAccessMirror | null): Promis
     ...((await upiSalesOpen()) ? ["upi" as const] : []),
     ...((await ccavenueSalesOpen()) ? ["ccavenue" as const] : [])
   ];
-  if (access?.unlimited) return { status: "owned", priceInr, methods };
+  if (access?.unlimited || access?.premiumLifetime) return { status: "owned", priceInr, methods };
   const checkout = await db.doc(`chatUnlockCheckout/${uid}`).get();
   if (checkout.get("state") === "pending" && Date.now() - (Number(checkout.get("updatedAt")) || 0) < CHAT_UNLOCK.checkoutReuseMs) return { status: "pending", priceInr, methods };
   // Even after direct UPI gives way to CCAvenue, a UPI payment already submitted is still being confirmed.
@@ -120,6 +120,7 @@ export type ChatAccessStatus = {
   canSend: boolean;
   unlimited: boolean;
   premiumUntil: number | null;
+  premiumLifetime?: boolean;
   unlock: UnlockOffer;
   serverNow: number;
 };
@@ -143,6 +144,7 @@ export async function chatAccessStatus(uid: string, readOnly = false): Promise<C
     canSend: entitled(access ?? undefined, now),
     unlimited: access?.unlimited === true,
     premiumUntil: access && access.premiumUntil > now ? access.premiumUntil : null,
+    premiumLifetime: access?.premiumLifetime === true,
     unlock: await unlockOffer(uid, access),
     serverNow: now
   };
@@ -217,7 +219,7 @@ export async function grantChatUnlock(orderId: string, payment: UnlockPayment): 
       tx.update(orderRef, { ...record, status: "rejected", rejectedReason: "test-mode-payment-for-real-account" });
       return "rejected";
     }
-    if (unlock.get("status") === "active") {
+    if (unlock.get("status") === "active" || (await webPassBenefits(order.uid, now, tx)).lifetime) {
       tx.update(orderRef, { ...record, status: unlock.get("orderId") === orderId ? "paid" : "duplicate" });
       return unlock.get("orderId") === orderId ? "granted" : "duplicate";
     }
@@ -363,8 +365,8 @@ export const createChatUnlockOrder = onCall({ region: REGION, secrets: SECRETS, 
   if (!user.exists) throw new HttpsError("failed-precondition", "Finish creating your profile first.");
   if (moderation.get("status") === "banned") throw new HttpsError("permission-denied", "This account is unavailable. Contact support for help.");
   if (!testModeAllowedFor(mode, moderation.get("cohort"))) throw new HttpsError("failed-precondition", "Test payments are only for test accounts.");
-  if (unlock.get("status") === "active") {
-    await syncChatAccess(uid);
+  if (unlock.get("status") === "active" || (await webPassBenefits(uid)).lifetime) {
+    await syncPremium(uid);
     return { status: "owned" };
   }
   if (!(await hasHadMatch(uid))) throw new HttpsError("failed-precondition", "Unlimited Chat opens up once you have a mutual match.", { reason: "no-match" });

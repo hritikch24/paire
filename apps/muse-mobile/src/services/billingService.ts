@@ -8,6 +8,8 @@ import { auth, callFunction } from "./firebase";
 
 export type PremiumStatus = {
   active: boolean;
+  lifetime?: boolean;
+  unlimitedLikes?: boolean;
   expiresAt: number | null;
   /** Store checkout in the Android/iOS app. */
   purchaseAvailable: boolean;

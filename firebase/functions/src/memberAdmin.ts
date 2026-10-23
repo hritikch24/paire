@@ -21,15 +21,16 @@ const rupees = (paise: unknown) => (Number(paise) || 0) / 100;
 
 type Payment = { source: "razorpay" | "upi" | "ccavenue" | "support" | "gift"; product: string; amountInr: number; status: string; at: number | null; utr?: string | null; expiresAt?: number | null };
 
-async function paymentsOf(uid: string): Promise<{ payments: Payment[]; plusUntil: number | null; unlimitedChat: boolean }> {
-  const [razorpay, upi, ccavenue, unlock, billing, support, gift] = await Promise.all([
+async function paymentsOf(uid: string): Promise<{ payments: Payment[]; plusUntil: number | null; plusLifetime: boolean; unlimitedChat: boolean }> {
+  const [razorpay, upi, ccavenue, unlock, billing, support, gift, lifetimeGift] = await Promise.all([
     db.collection("razorpayOrders").where("uid", "==", uid).get(),
     db.collection("upiUnlockOrders").where("uid", "==", uid).get(),
     db.collection("ccavenueOrders").where("uid", "==", uid).get(),
     db.doc(`chatUnlocks/${uid}`).get(),
     db.doc(`billing/${uid}`).get(),
     db.doc(`supportPlusGrants/${uid}`).get(),
-    db.doc(`complimentaryPlusGrants/${uid}`).get()
+    db.doc(`complimentaryPlusGrants/${uid}`).get(),
+    db.doc(`lifetimePlusGrants/${uid}`).get()
   ]);
   const at = (value: unknown) => (typeof value === "number" ? value : value && typeof (value as { toMillis?: () => number }).toMillis === "function" ? (value as { toMillis: () => number }).toMillis() : null);
   const payments: Payment[] = [
@@ -60,11 +61,12 @@ async function paymentsOf(uid: string): Promise<{ payments: Payment[]; plusUntil
       at: at(doc.get("createdAt")),
       expiresAt: (doc.get("expiresAt") as number | undefined) ?? null
     })),
+    ...(lifetimeGift.exists ? [{ source: "gift" as const, product: "Plus · lifetime complimentary", amountInr: 0, status: String(lifetimeGift.get("status")), at: at(lifetimeGift.get("createdAt")), expiresAt: null }] : []),
     ...(gift.exists ? [{ source: "gift" as const, product: "Plus · complimentary", amountInr: 0, status: "owner granted", at: at(gift.get("updatedAt")), expiresAt: at(gift.get("expiresAt")) }] : []),
     ...(support.exists ? [{ source: "support" as const, product: "Plus · owner recovery", amountInr: rupees(support.get("amountReportedPaise")), status: support.get("status") === "active" ? "owner confirmed · gateway unverified" : String(support.get("status")), at: at(support.get("createdAt")), expiresAt: at(support.get("expiresAt")) }] : [])
   ].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
   const expiresAt = billing.get("expiresAt");
-  return { payments, plusUntil: typeof expiresAt === "number" && expiresAt > Date.now() ? expiresAt : null, unlimitedChat: unlock.get("status") === "active" };
+  return { payments, plusLifetime: billing.get("lifetime") === true, plusUntil: typeof expiresAt === "number" && expiresAt > Date.now() ? expiresAt : null, unlimitedChat: unlock.get("status") === "active" || billing.get("lifetime") === true };
 }
 
 export type MemberRow = {
@@ -112,8 +114,8 @@ export const adminListMembers = onCall({ region: REGION, timeoutSeconds: 60 }, a
       status: String(moderation.get("status") ?? "ok"),
       verified: moderation.get("verification.status") === "verified",
       testAccount: moderation.get("cohort") === "test",
-      plus: (Number(billing.get("expiresAt")) || 0) > now,
-      unlimitedChat: unlock.get("status") === "active"
+      plus: billing.get("lifetime") === true || (Number(billing.get("expiresAt")) || 0) > now,
+      unlimitedChat: unlock.get("status") === "active" || billing.get("lifetime") === true
     };
   });
   return { members, nextCursor: snap.size === PAGE ? snap.docs[snap.size - 1].id : null, total: total.data().count };

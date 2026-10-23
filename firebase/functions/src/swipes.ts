@@ -19,7 +19,7 @@ import { ModerationRecord, PublicProfile, SwipeType, UserSettings } from "./type
 type SwipeResult = {
   matched: boolean;
   matchId: string | null;
-  remaining: { likes: number; supers: number };
+  remaining: { likes: number | null; supers: number };
 };
 
 const COUNTER_FIELD: Record<SwipeType, "likes" | "supers" | "passes"> = {
@@ -79,7 +79,7 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
       passes: (limitSnap.get("passes") as number | undefined) ?? 0
     };
     const remaining = () => ({
-      likes: Math.max(0, limits.likesPerDay - used.likes),
+      likes: limits.likesPerDay === null ? null : Math.max(0, limits.likesPerDay - used.likes),
       supers: Math.max(0, limits.supersPerDay - used.supers)
     });
 
@@ -113,7 +113,8 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
     }
 
     const counter = COUNTER_FIELD[type];
-    if (used[counter] >= limitFor[type]) {
+    const cap = limitFor[type];
+    if (cap !== null && used[counter] >= cap) {
       throw new HttpsError(
         "resource-exhausted",
         type === "super"

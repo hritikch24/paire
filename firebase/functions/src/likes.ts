@@ -29,12 +29,12 @@ export const getLikesYou = onCall({ region: REGION, timeoutSeconds: 30, secrets:
     db.doc(`moderation/${uid}`).get(), db.doc(`billing/${uid}`).get()
   ]);
   let billed = billing.data();
-  if (billingEnabled() && Number(billed?.expiresAt) > Date.now() && !validBillingSnapshot(billed)) {
+  if (billingEnabled() && (billed?.lifetime === true || Number(billed?.expiresAt) > Date.now()) && !validBillingSnapshot(billed)) {
     await syncPremium(uid);
     billed = (await db.doc(`billing/${uid}`).get()).data();
   }
   const plus = limitsFor(billed).priority;
-  const result: LikesYouResult = { profiles: [], count: 0, locked: !plus, hasMore: likesSnap.size === SCAN_LIMIT, expiresAt: plus ? Number(billed?.expiresAt) : null };
+  const result: LikesYouResult = { profiles: [], count: 0, locked: !plus, hasMore: likesSnap.size === SCAN_LIMIT, expiresAt: plus && billed?.lifetime !== true ? Number(billed?.expiresAt) : null };
   if (!myProfile.exists) return result;
   const settings = mySettings.data() as UserSettings | undefined;
   const viewer = buildDiscoveryEntry(uid, myProfile.data() as PublicProfile, settings, myMod.data() as ModerationRecord | undefined);

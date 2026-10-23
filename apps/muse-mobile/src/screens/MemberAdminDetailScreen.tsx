@@ -80,7 +80,7 @@ export function MemberAdminDetailScreen() {
             <Row label="Reports against" value={String(data.activity.reportsAgainst)} />
           </Section>
           <Section title="Payments">
-            <Row label="Paire Plus" value={data.plusUntil ? `Active until ${when(data.plusUntil)}` : "No"} />
+            <Row label="Paire Plus" value={data.plusLifetime ? "Lifetime · no expiry" : data.plusUntil ? `Active until ${when(data.plusUntil)}` : "No"} />
             <Row label="Unlimited Chat" value={data.unlimitedChat ? "Owned" : "No"} />
             {data.payments.length ? (
               data.payments.map((payment, index) => (

@@ -286,6 +286,11 @@ describe("server-only collections", () => {
     await assertFails(alexa.doc("discovery/alexa").get());
     await assertFails(alexa.doc("supportPlusGrants/alexa").get());
     await assertFails(alexa.doc("supportPlusGrants/alexa").set({ status: "active", expiresAt: 9999999999999 }));
+    await assertFails(alexa.doc("lifetimePlusGrants/alexa").get());
+    await assertFails(alexa.doc("lifetimePlusGrants/alexa").set({ status: "active", lifetime: true }));
+    await assertFails(alexa.doc("lifetimePlusCheckout/alexa").set({ state: "open" }));
+    await assertFails(alexa.doc("billing/alexa").set({ lifetime: true, checkedAt: Date.now() }));
+    await assertFails(alexa.doc("moderation/alexa").set({ chatAccess: { unlimited: true, premiumLifetime: true } }, { merge: true }));
     await assertFails(alexa.doc("complimentaryPlusGrants/alexa").get());
     await assertFails(alexa.doc("complimentaryPlusGrants/alexa").set({ status: "active", expiresAt: 9999999999999 }));
     await assertFails(alexa.doc("notificationCampaigns/run").get());
@@ -720,6 +725,15 @@ describe("paid chat: Paire Plus or Unlimited Chat to send", () => {
     await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
     await seed({ "moderation/alexa": member({ unlimited: true, premiumUntil: Date.now() - 1000 }) });
     await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+  });
+
+  test("server-mirrored Lifetime Plus sends without expiry, while a revoked gift and bans stay enforced", async () => {
+    await seed({ ...enforced(), "matches/alexa_jules": matchDoc(), "moderation/jules": member(), "moderation/alexa": member({ unlimited: true, premiumLifetime: true, premiumUntil: 0 }) });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "moderation/alexa": member({ unlimited: true, premiumLifetime: true, premiumUntil: 0 }, { status: "banned" }) });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "moderation/alexa": member({ unlimited: false, premiumLifetime: false, premiumUntil: 0 }) });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
   });
 
   test("Unlimited Chat works in every match, current and future", async () => {

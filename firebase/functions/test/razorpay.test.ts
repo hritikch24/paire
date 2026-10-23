@@ -4,6 +4,7 @@ import {
   passDays,
   isRazorpayId,
   passWindow,
+  planWindow,
   paymentMatchesOrder,
   PLUS_PASSES,
   validCheckoutSignature,
@@ -23,7 +24,9 @@ describe("Paire Plus on the web", () => {
     expect(passDays("week")).toBe(7);
     expect(passDays("day")).toBe(1);
     expect(isPlusPlan("week")).toBe(true);
-    expect(isPlusPlan("lifetime")).toBe(false);
+    expect(isPlusPlan("lifetime")).toBe(true);
+    expect(PLUS_PASSES.lifetime.amountPaise).toBe(149900);
+    expect(planWindow(1234, "lifetime", 999999)).toEqual({ startsAt: 1234, expiresAt: null, lifetime: true });
     expect(isPlusPlan("toString")).toBe(false);
   });
 

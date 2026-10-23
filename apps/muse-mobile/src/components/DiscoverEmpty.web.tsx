@@ -66,7 +66,7 @@ export function DiscoverEmpty({ onReload, plus, onGetPlus }: Props) {
         <Text fontSize="$5" fontWeight="700" textAlign="center">Want to meet more people?</Text>
         <Text testID="discover-month-offer" fontSize="$3" fontWeight="700" color="$primary" textAlign="center">{`🎁 ${MONTH_OFFER}`}</Text>
         <Text fontSize="$2" color="$textMuted" textAlign="center" maxWidth={300} lineHeight={20}>
-          {`100 likes daily, 5 Super Likes and priority likes. ₹${month.priceInr} for ${monthly.days} days (₹${monthly.perDay}/day), or ₹${day.priceInr} for one day. No auto-renewal.`}
+          {`Unlimited likes, 5 daily Super Likes and priority likes. ₹${month.priceInr} for ${monthly.days} days (₹${monthly.perDay}/day), or ₹${day.priceInr} for one day. No auto-renewal.`}
         </Text>
         <YStack width="100%" maxWidth={280} gap="$2">
           <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>{`Get 2 months · ₹${month.priceInr}`}</PrimaryButton>

@@ -1,6 +1,6 @@
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { adminAuth, db } from "./admin";
-import { billingEnabled, webPassExpiry } from "./billing";
+import { billingEnabled, webPassBenefits } from "./billing";
 import { REGION } from "./config";
 import { requireSupportOperator } from "./supportAdmin";
 
@@ -21,9 +21,10 @@ async function recipient(value: unknown) {
 export const adminPreviewPlusGrant = onCall({ region: REGION }, async (request) => {
   await requireSupportOperator(request);
   const account = await recipient(request.data?.email);
-  const [profile, billing, mod, web] = await Promise.all([db.doc(`users/${account.uid}`).get(), db.doc(`billing/${account.uid}`).get(), db.doc(`moderation/${account.uid}`).get(), webPassExpiry(account.uid)]);
+  const [profile, billing, mod, web] = await Promise.all([db.doc(`users/${account.uid}`).get(), db.doc(`billing/${account.uid}`).get(), db.doc(`moderation/${account.uid}`).get(), webPassBenefits(account.uid)]);
   if (!profile.exists || mod.get("status") === "banned") throw new HttpsError("failed-precondition", "That member is unavailable.");
-  const now = Date.now(), startsAt = Math.max(now, future(billing.get("expiresAt"), now), web);
+  if (web.lifetime) throw new HttpsError("failed-precondition", "This member already has Lifetime Plus.");
+  const now = Date.now(), startsAt = Math.max(now, future(billing.get("expiresAt"), now), web.expiresAt);
   return { uid: account.uid, email: account.email, name: String(profile.get("displayName") || account.displayName || "Member"), addedDays: DAYS, startsAt, expiresAt: startsAt + DAYS * DAY_MS };
 });
 
@@ -46,7 +47,9 @@ export const adminGrantPlusMonth = onCall({ region: REGION, timeoutSeconds: 60 }
     }
     if (!user.exists || moderation.get("status") === "banned") throw new HttpsError("failed-precondition", "That member is unavailable.");
     const now = Date.now();
-    const startsAt = Math.max(now, future(billing.get("expiresAt"), now), future(ledger.get("until"), now), await webPassExpiry(uid, now, tx));
+    const benefits = await webPassBenefits(uid, now, tx);
+    if (benefits.lifetime) throw new HttpsError("failed-precondition", "This member already has Lifetime Plus.");
+    const startsAt = Math.max(now, future(billing.get("expiresAt"), now), future(ledger.get("until"), now), benefits.expiresAt);
     const expiresAt = startsAt + DAYS * DAY_MS;
     tx.create(auditRef, { uid, action: "goodwill-grant", status: "active", amountReportedPaise: 0, currency: "INR", days: DAYS, startsAt, expiresAt, createdAt: now, actorUid, reason: typeof reason === "string" && reason.trim() ? reason.trim() : "Owner complimentary month", requestId });
     tx.set(db.doc(`complimentaryPlusGrants/${uid}`), { status: "active", expiresAt, updatedAt: now, grantedBy: actorUid, lastAuditId: auditRef.id }, { merge: true });

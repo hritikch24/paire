@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import type { BillingSnapshot } from "./premiumBenefits";
 
 export const PASS_PRODUCTS = { muse_premium_day: 1, muse_premium_week: 7, muse_premium_month: 30 } as const;
 export type PassProduct = keyof typeof PASS_PRODUCTS;
@@ -26,9 +27,9 @@ export function parsePasses(value: unknown, now = Date.now(), allowSandbox = fal
   return result;
 }
 
-export function validBillingSnapshot(snapshot: { expiresAt?: unknown; checkedAt?: unknown } | undefined, now = Date.now()): boolean {
-  return typeof snapshot?.expiresAt === "number" && Number.isFinite(snapshot.expiresAt) && snapshot.expiresAt > now &&
-    typeof snapshot.checkedAt === "number" && snapshot.checkedAt <= now && snapshot.checkedAt > now - 10 * 60_000;
+export function validBillingSnapshot(snapshot: BillingSnapshot | undefined, now = Date.now()): boolean {
+  return Boolean(snapshot && (snapshot.lifetime === true || (typeof snapshot.expiresAt === "number" && Number.isFinite(snapshot.expiresAt) && snapshot.expiresAt > now)) &&
+    typeof snapshot.checkedAt === "number" && snapshot.checkedAt <= now && snapshot.checkedAt > now - 10 * 60_000);
 }
 
 export function sameSecret(actual: string | undefined, expected: string | undefined): boolean {

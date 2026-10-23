@@ -4,9 +4,9 @@ import { logger } from "firebase-functions";
 import { CallableRequest, HttpsError, onCall } from "firebase-functions/v2/https";
 import QRCode from "qrcode";
 import { db } from "./admin";
-import { billingEnabled, storeExpiryIfEnabled, syncPremium, webPassExpiry } from "./billing";
+import { billingEnabled, storeExpiryIfEnabled, syncPremium, webPassBenefits, webPassExpiry } from "./billing";
 import { syncChatAccess, upiSalesOpen, upiVpa } from "./chatEntitlement";
-import { isPlusPlan, passDays, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
+import { isPlusPlan, planWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth, requireReadAuth } from "./lib/auth";
 import { consumeDailyQuota } from "./quota";
@@ -118,8 +118,9 @@ async function reserveAmount(orderId: string, basePaise: number, now: number): P
 export const createUpiUnlockOrder = onCall({ region: REGION, secrets: ["REVENUECAT_SECRET_KEY", "RAZORPAY_KEY_SECRET"], timeoutSeconds: 30 }, async (request): Promise<{ status: "owned" } | { status: "order"; order: UpiOrderView }> => {
   const uid = requireAuth(request);
   const plan = (request.data as { plan?: unknown } | null)?.plan;
-  if (plan !== undefined && !isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass.");
+  if (plan !== undefined && !isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass, or Lifetime Plus.");
   const kind: Kind = plan ? "plus" : "chat";
+  if ((await webPassBenefits(uid)).lifetime) return { status: "owned" };
   const vpa = upiVpa();
   if (!vpa || !(await upiSalesOpen()) || (kind === "plus" && !billingEnabled())) throw new HttpsError("failed-precondition", "UPI payments aren't available right now. You haven't been charged.", { reason: "sales-off" });
   const [user, moderation, unlock] = await db.getAll(db.doc(`users/${uid}`), db.doc(`moderation/${uid}`), db.doc(`chatUnlocks/${uid}`));
@@ -245,10 +246,11 @@ export const reviewUpiPayment = onCall({ region: REGION, secrets: ["REVENUECAT_S
       if (order.get("status") === "approved") return "approved";
       if (order.get("status") !== "submitted") throw new HttpsError("failed-precondition", "Only payments with a submitted UPI reference can be approved.");
       if (!user.exists) throw new HttpsError("failed-precondition", "This account was deleted. Refund the payment by hand.");
+      if ((await webPassBenefits(uid, now, tx)).lifetime) throw new HttpsError("failed-precondition", "This member already has Lifetime Plus. Check and refund this extra payment by hand.");
       if (kind === "plus") {
         const queuedUntil = Math.max(Number(ledger?.get("until")) || 0, storeExpiry, await webPassExpiry(uid, now, tx));
-        const { startsAt, expiresAt } = passWindow(now, passDays(order.get("plan") as PlusPlan), queuedUntil);
-        tx.set(ledgerRef, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
+        const { startsAt, expiresAt } = planWindow(now, order.get("plan") as PlusPlan, queuedUntil);
+        tx.set(ledgerRef, { until: expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() });
         tx.update(ref, { ...audit, status: "approved", startsAt, expiresAt });
         return "approved";
       }

@@ -43,7 +43,7 @@ function postTo(redirect: Redirect) {
  * Resolves "redirecting" while the browser leaves for CCAvenue, or "owned" /
  * "pending" when an earlier payment already covers it (never a second charge).
  */
-export async function startCcavenuePayment(plan?: "day" | "week" | "month", returnToChat?: string): Promise<"redirecting" | "owned" | "pending"> {
+export async function startCcavenuePayment(plan?: "day" | "week" | "month" | "lifetime", returnToChat?: string): Promise<"redirecting" | "owned" | "pending"> {
   if (!ccavenueCheckout) throw new Error("Card payments are available on paire.in.");
   const created = await callFunction<CreateResult>("createCcavenueOrder", plan ? { plan } : {});
   if (created.status !== "redirect") return created.status;

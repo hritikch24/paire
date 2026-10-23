@@ -2,7 +2,7 @@ const NAME_KEYS = [
   "PAIRE_PLUS_NAME", "PAIRE_CHAT_NAME", "PAIRE_PLUS_DAY_LABEL", "PAIRE_PLUS_WEEK_LABEL",
   "PAIRE_PLUS_MONTH_LABEL", "PAIRE_CHAT_LABEL", "PAIRE_CHECKOUT_NAME", "KRAFTAI_CHECKOUT_NAME",
   "RAZORPAY_PLUS_NAME", "RAZORPAY_CHAT_NAME", "RAZORPAY_PLUS_DAY_LABEL", "RAZORPAY_PLUS_WEEK_LABEL",
-  "RAZORPAY_PLUS_MONTH_LABEL", "RAZORPAY_CHAT_LABEL"
+  "RAZORPAY_PLUS_MONTH_LABEL", "RAZORPAY_CHAT_LABEL", "PAIRE_PLUS_LIFETIME_LABEL", "RAZORPAY_PLUS_LIFETIME_LABEL"
 ];
 
 describe("payment display names", () => {
@@ -22,7 +22,7 @@ describe("payment display names", () => {
     const { CHAT_UNLOCK } = await import("../src/config");
     const { checkoutHost } = await import("../src/lib/kraftai");
     expect(Object.values(PLUS_PASSES).map((pass) => pass.label)).toEqual([
-      "Paire Plus · 1 day", "Paire Plus · 7 days", "Paire Plus · 1 month + 1 month free"
+      "Paire Plus · 1 day", "Paire Plus · 7 days", "Paire Plus · 1 month + 1 month free", "Paire Plus · Lifetime"
     ]);
     expect(CHAT_UNLOCK.label).toBe("Paire Unlimited Chat · one-time ₹49 unlock");
     expect(CHAT_UNLOCK.razorpayLabel).toBe("KraftAI Unlimited Chat · one-time ₹49 unlock");
@@ -58,7 +58,7 @@ describe("payment display names", () => {
     process.env.PAIRE_CHAT_LABEL = "Chat forever";
     const { PLUS_PASSES } = await import("../src/lib/razorpay");
     const { CHAT_UNLOCK } = await import("../src/config");
-    expect(Object.values(PLUS_PASSES).map((pass) => pass.label)).toEqual(["Day pass", "Weekly access", "Monthly access"]);
+    expect(Object.values(PLUS_PASSES).map((pass) => pass.label)).toEqual(["Day pass", "Weekly access", "Monthly access", "Premium · Lifetime"]);
     expect(CHAT_UNLOCK.label).toBe("Chat forever");
     expect(CHAT_UNLOCK.razorpayLabel).toBe("KraftAI Unlimited Chat · one-time ₹49 unlock");
     expect(PLUS_PASSES.day.razorpayLabel).toBe("KraftAI Plus · 1 day");
@@ -68,7 +68,7 @@ describe("payment display names", () => {
     const { PAYMENT_NAMES } = await import("../src/lib/payment-names");
     expect(PAYMENT_NAMES).toMatchObject({
       plus: "Paire Plus", chat: "Paire Unlimited Chat", hostedMerchant: "KraftAI",
-      labels: { day: "Paire Plus · 1 day", week: "Paire Plus · 7 days", month: "Paire Plus · 1 month + 1 month free", chat: "Paire Unlimited Chat · one-time ₹49 unlock" }
+      labels: { day: "Paire Plus · 1 day", week: "Paire Plus · 7 days", month: "Paire Plus · 1 month + 1 month free", lifetime: "Paire Plus · Lifetime", chat: "Paire Unlimited Chat · one-time ₹49 unlock" }
     });
     expect(PAYMENT_NAMES.razorpayLabels.day).toBe("KraftAI Plus · 1 day");
   });
@@ -79,10 +79,10 @@ describe("payment display names", () => {
     const { PLUS_PASSES } = await import("../src/lib/razorpay");
     const { CHAT_UNLOCK } = await import("../src/config");
     expect(Object.values(PLUS_PASSES).map((pass) => pass.label)).toEqual([
-      "Paire Plus · 1 day", "Paire Plus · 7 days", "Paire Plus · 1 month + 1 month free"
+      "Paire Plus · 1 day", "Paire Plus · 7 days", "Paire Plus · 1 month + 1 month free", "Paire Plus · Lifetime"
     ]);
     expect(Object.values(PLUS_PASSES).map((pass) => pass.razorpayLabel)).toEqual([
-      "KraftAI Plus · 1 day", "KraftAI Plus · 7 days", "KraftAI Plus · 1 month + 1 month free"
+      "KraftAI Plus · 1 day", "KraftAI Plus · 7 days", "KraftAI Plus · 1 month + 1 month free", "KraftAI Plus · Lifetime"
     ]);
     expect(CHAT_UNLOCK.label).toBe("Paire Unlimited Chat · one-time ₹49 unlock");
     expect(CHAT_UNLOCK.razorpayLabel).toBe("KraftAI Unlimited Chat · one-time ₹49 unlock");
@@ -94,7 +94,7 @@ describe("payment display names", () => {
     process.env.RAZORPAY_PLUS_MONTH_LABEL = "Monthly access";
     process.env.RAZORPAY_CHAT_LABEL = "Messaging access";
     const { PAYMENT_NAMES } = await import("../src/lib/payment-names");
-    expect(PAYMENT_NAMES.razorpayLabels).toEqual({ day: "Daily access", week: "Weekly access", month: "Monthly access", chat: "Messaging access" });
-    expect(PAYMENT_NAMES.labels).toEqual({ day: "Paire Plus · 1 day", week: "Paire Plus · 7 days", month: "Paire Plus · 1 month + 1 month free", chat: "Paire Unlimited Chat · one-time ₹49 unlock" });
+    expect(PAYMENT_NAMES.razorpayLabels).toEqual({ day: "Daily access", week: "Weekly access", month: "Monthly access", lifetime: "KraftAI Plus · Lifetime", chat: "Messaging access" });
+    expect(PAYMENT_NAMES.labels).toEqual({ day: "Paire Plus · 1 day", week: "Paire Plus · 7 days", month: "Paire Plus · 1 month + 1 month free", lifetime: "Paire Plus · Lifetime", chat: "Paire Unlimited Chat · one-time ₹49 unlock" });
   });
 });

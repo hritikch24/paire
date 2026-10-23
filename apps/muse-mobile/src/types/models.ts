@@ -160,7 +160,7 @@ export type SwipeType = "like" | "nope" | "super";
 export type SwipeResult = {
   matched: boolean;
   matchId: string | null;
-  remaining: { likes: number; supers: number };
+  remaining: { likes: number | null; supers: number };
 };
 
 export type MatchProfileSnippet = { displayName: string; photoUrl: string | null };

@@ -1,10 +1,11 @@
 import { db } from "./admin";
 import { LIMITS, PLUS_LIMITS } from "./config";
 import { validBillingSnapshot } from "./lib/billing";
+import type { BillingSnapshot } from "./lib/premiumBenefits";
 
-export function limitsFor(snapshot: { expiresAt?: unknown; checkedAt?: unknown } | undefined) {
+export function limitsFor(snapshot: BillingSnapshot | undefined) {
   return process.env.MUSE_BILLING_ENABLED === "true" && validBillingSnapshot(snapshot)
-    ? { likesPerDay: PLUS_LIMITS.likesPerDay, supersPerDay: PLUS_LIMITS.supersPerDay, priority: true }
+    ? { likesPerDay: snapshot?.lifetime === true || (typeof snapshot?.unlimitedLikesUntil === "number" && Number.isFinite(snapshot.unlimitedLikesUntil) && snapshot.unlimitedLikesUntil > Date.now()) ? null : PLUS_LIMITS.likesPerDay, supersPerDay: PLUS_LIMITS.supersPerDay, priority: true }
     : { likesPerDay: LIMITS.likesPerDay, supersPerDay: LIMITS.supersPerDay, priority: false };
 }
 

@@ -3,7 +3,7 @@ import { DocumentSnapshot, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { db } from "./admin";
-import { billingEnabled, storeExpiryIfEnabled, syncPremium, webPassExpiry } from "./billing";
+import { billingEnabled, storeExpiryIfEnabled, syncPremium, webPassBenefits, webPassExpiry } from "./billing";
 import { ccavenueSalesOpen, ccavenueSellingMode, syncChatAccess } from "./chatEntitlement";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth } from "./lib/auth";
@@ -25,7 +25,7 @@ import {
   returnUrl,
   rupees
 } from "./lib/ccavenue";
-import { isPlusPlan, passDays, passWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
+import { isPlusPlan, planWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
 import { verifiedUsers } from "./trust";
 
@@ -228,8 +228,10 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
     if (kind === "plus") {
       // A previous owner-authorized recovery already fulfilled this payment. Link
       // the first matching verified order without granting the same pass twice.
+      const benefits = await webPassBenefits(order.uid, now, tx);
+      if (benefits.lifetime) { tx.update(ref, { ...record, status: "duplicate" }); return "duplicate"; }
       const covered = support.get("coveredOrderIds");
-      if (support.get("status") === "active" && support.get("amountReportedPaise") === order.amountPaise &&
+      if (order.plan !== "lifetime" && support.get("status") === "active" && support.get("amountReportedPaise") === order.amountPaise &&
         Array.isArray(covered) && covered.includes(orderId) && !support.get("confirmedOrderId") &&
         Number(support.get("expiresAt")) > now && Number.isFinite(support.get("startsAt"))) {
         tx.update(ref, { ...record, status: "paid", paidAt: now, startsAt: support.get("startsAt"), expiresAt: support.get("expiresAt"), awaiting: false, fulfilledBySupportGrant: true });
@@ -238,12 +240,12 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
       }
       // Passes never overlap: this one starts when any running pass (web or store) ends.
       const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry, await webPassExpiry(order.uid, now, tx));
-      const { startsAt, expiresAt } = passWindow(now, passDays(order.plan!), queuedUntil);
-      tx.set(ledger.ref, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
+      const { startsAt, expiresAt } = planWindow(now, order.plan!, queuedUntil);
+      tx.set(ledger.ref, { until: expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() });
       tx.update(ref, { ...record, status: "paid", paidAt: now, startsAt, expiresAt, awaiting: false });
       return "granted";
     }
-    if (unlock.get("status") === "active") {
+    if (unlock.get("status") === "active" || (await webPassBenefits(order.uid, now, tx)).lifetime) {
       tx.update(ref, { ...record, status: "duplicate" });
       return "duplicate";
     }
@@ -304,8 +306,9 @@ type CreateResult = { status: "redirect"; redirect: CcavenueRedirect } | { statu
 export const createCcavenueOrder = onCall({ region: REGION, secrets: SECRETS, timeoutSeconds: 30 }, async (request): Promise<CreateResult> => {
   const uid = requireAuth(request);
   const plan = (request.data as { plan?: unknown } | null)?.plan;
-  if (plan !== undefined && !isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass.");
+  if (plan !== undefined && !isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass, or Lifetime Plus.");
   const kind: Kind = plan ? "plus" : "chat";
+  if ((await webPassBenefits(uid)).lifetime) return { status: "owned" };
   const mode = ccavenueSellingMode();
   if (!mode || !workingKey() || !(await ccavenueSalesOpen()) || (kind === "plus" && !billingEnabled())) {
     throw new HttpsError("failed-precondition", "Card and netbanking payments aren't available right now. You haven't been charged.", { reason: "sales-off" });

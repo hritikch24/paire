@@ -3,7 +3,7 @@ import { logger } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { db } from "./admin";
 import { handleChatUnlockWebhook } from "./chatAccess";
-import { razorpayConfigured, razorpayPlusOpen, storeExpiryIfEnabled, syncPremium, webPassExpiry } from "./billing";
+import { razorpayConfigured, razorpayPlusOpen, storeExpiryIfEnabled, syncPremium, webPassBenefits, webPassExpiry } from "./billing";
 import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { checkoutHost, requireHostedCheckout } from "./lib/kraftai";
@@ -11,8 +11,7 @@ import { CHECKOUT_PRODUCTS } from "./lib/checkout-products";
 import {
   isPlusPlan,
   isRazorpayId,
-  passDays,
-  passWindow,
+  planWindow,
   paymentMatchesOrder,
   PLUS_PASSES,
   PlusPlan,
@@ -22,6 +21,7 @@ import {
 import { consumeDailyQuota } from "./quota";
 import { razorpay } from "./razorpayClient";
 import { verifiedUsers } from "./trust";
+import { razorpayMode } from "./lib/chatAccess";
 
 /**
  * Paire Plus on the web, through Razorpay (UPI, cards, netbanking).
@@ -43,7 +43,7 @@ type OrderRecord = {
   uid: string;
   plan: PlusPlan;
   amountPaise: number;
-  status: "created" | "paid" | "refunded";
+  status: "created" | "paid" | "refunded" | "duplicate" | "orphaned" | "rejected";
   paymentId?: string;
   expiresAt?: number;
 };
@@ -64,24 +64,43 @@ type RazorpayPayment = {
  * transaction so two payments at once can't overlap, and store passes are
  * counted too. Returns the member's uid, or null when the order is unknown.
  */
-export async function grantWebPass(orderId: string, paymentId: string): Promise<string | null> {
+async function refundUnneededPass(orderId: string, paymentId: string, amountPaise: number, reason: string, extra = false): Promise<void> {
   const ref = db.doc(`razorpayOrders/${orderId}`);
-  const snap = await ref.get();
+  try {
+    const refund = await razorpay<{ id?: string }>(`/payments/${paymentId}/refund`, { method: "POST", body: { amount: amountPaise, speed: "normal", notes: { reason, product: CHECKOUT_PRODUCTS.plus } } });
+    await ref.update(extra ? { extraRefunds: FieldValue.arrayUnion({ paymentId, refundId: refund.id ?? null, at: Date.now() }) } : { refundRequestedAt: Date.now(), refundId: refund.id ?? null, refundReason: reason });
+  } catch (error) {
+    await ref.update(extra ? { extraRefundErrors: FieldValue.arrayUnion({ paymentId, error: String(error).slice(0, 300), at: Date.now() }) } : { refundError: String(error).slice(0, 300), refundReason: reason });
+    logger.error("Plus duplicate refund failed", { orderId, reason });
+  }
+}
+
+export async function grantWebPass(orderId: string, paymentId: string): Promise<string | null> {
+  const ref = db.doc(`razorpayOrders/${orderId}`), snap = await ref.get();
   if (!snap.exists) return null;
   const order = snap.data() as OrderRecord;
-  if (order.status !== "created") return order.uid;
-  const now = Date.now();
-  const storeExpiry = await storeExpiryIfEnabled(order.uid, now);
+  const now = Date.now(), storeExpiry = order.plan === "lifetime" ? 0 : await storeExpiryIfEnabled(order.uid, now);
   const ledgerRef = db.doc(`webPassLedger/${order.uid}`);
-  await db.runTransaction(async (tx) => {
-    const [fresh, ledger] = await tx.getAll(ref, ledgerRef);
-    if (fresh.get("status") !== "created") return;
-    // Include authoritative grants even if an older account has no queue ledger yet.
-    const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry, await webPassExpiry(order.uid, now, tx));
-    const { startsAt, expiresAt } = passWindow(now, passDays(order.plan), queuedUntil);
-    tx.update(ref, { status: "paid", paymentId, paidAt: now, startsAt, expiresAt, updatedAt: FieldValue.serverTimestamp() });
-    tx.set(ledgerRef, { until: expiresAt, updatedAt: FieldValue.serverTimestamp() });
+  const outcome = await db.runTransaction(async tx => {
+    const [fresh, ledger, user, moderation] = await tx.getAll(ref, ledgerRef, db.doc(`users/${order.uid}`), db.doc(`moderation/${order.uid}`));
+    if (fresh.get("status") === "paid" && fresh.get("paymentId") !== paymentId && !((fresh.get("extraPaymentIds") as string[] | undefined) ?? []).includes(paymentId)) {
+      tx.update(ref, { extraPaymentIds: FieldValue.arrayUnion(paymentId) }); return "extra";
+    }
+    if (fresh.get("status") !== "created") return "closed";
+    const benefits = await webPassBenefits(order.uid, now, tx);
+    const record = { paymentId, updatedAt: FieldValue.serverTimestamp() };
+    if (!user.exists) { tx.update(ref, { ...record, status: "orphaned" }); return "orphaned"; }
+    if (order.plan === "lifetime" && fresh.get("mode") === "test" && process.env.FUNCTIONS_EMULATOR !== "true" && moderation.get("cohort") !== "test") {
+      tx.update(ref, { ...record, status: "rejected" }); return "rejected";
+    }
+    if (benefits.lifetime) { tx.update(ref, { ...record, status: "duplicate" }); return "duplicate"; }
+    const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry, benefits.expiresAt);
+    const window = planWindow(now, order.plan, queuedUntil);
+    tx.update(ref, { ...record, ...window, status: "paid", paidAt: now });
+    tx.set(ledgerRef, { until: window.expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() });
+    return "granted";
   });
+  if (["duplicate", "orphaned", "rejected", "extra"].includes(outcome)) await refundUnneededPass(orderId, paymentId, order.amountPaise, outcome, outcome === "extra");
   return order.uid;
 }
 
@@ -103,15 +122,30 @@ async function syncIfMember(uid: string | null): Promise<void> {
 export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeoutSeconds: 30 }, async (request) => {
   const uid = requireAuth(request);
   const plan = (request.data as { plan?: unknown } | null)?.plan;
-  if (!isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass.");
+  if (!isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a 1-day, 7-day or 30-day pass, or Lifetime Plus.");
   if (!(await razorpayPlusOpen())) throw new HttpsError("failed-precondition", "Card payments aren't available right now. You haven't been charged.");
   requireHostedCheckout();
+  if ((await webPassBenefits(uid)).lifetime) throw new HttpsError("failed-precondition", "You already have Lifetime Plus. No purchase is needed.");
   await consumeDailyQuota(uid, "plusOrders", 20);
   if (!(await verifiedUsers([uid])).has(uid)) {
     throw new HttpsError("failed-precondition", "Verify your photos before buying a pass, so you can use it straight away.");
   }
   const pass = PLUS_PASSES[plan];
-  const order = await razorpay<{ id: string; amount: number; currency: string }>("/orders", {
+  const checkoutRef = db.doc(`lifetimePlusCheckout/${uid}`);
+  const previousId = plan === "lifetime" ? await db.runTransaction(async tx => {
+    const previous = await tx.get(checkoutRef), age = Date.now() - Number(previous.get("updatedAt") || 0);
+    if (previous.get("state") === "creating" && age < 60_000) throw new HttpsError("aborted", "Checkout is already opening. Try again in a moment.");
+    if (previous.get("state") === "open" && age < 6 * 3600_000 && isRazorpayId(previous.get("orderId"), "order")) return previous.get("orderId") as string;
+    tx.set(checkoutRef, { state: "creating", updatedAt: Date.now() }); return null;
+  }) : null;
+  if (previousId) {
+    const prior = await db.doc(`razorpayOrders/${previousId}`).get();
+    if (prior.get("uid") === uid && prior.get("plan") === "lifetime" && prior.get("status") === "created" && prior.get("amountPaise") === pass.amountPaise) return { orderId: previousId, amount: pass.amountPaise, currency: "INR", keyId: process.env.RAZORPAY_KEY_ID, description: pass.razorpayLabel, email: request.auth?.token.email ?? null, ...checkoutHost(previousId) };
+    await checkoutRef.set({ state: "closed", updatedAt: Date.now() });
+    throw new HttpsError("aborted", "Your earlier checkout changed. Refresh your pass status and try again.");
+  }
+  let order: { id: string; amount: number; currency: string };
+  try { order = await razorpay<{ id: string; amount: number; currency: string }>("/orders", {
     method: "POST",
     body: {
       amount: pass.amountPaise,
@@ -120,7 +154,8 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
       notes: { plan, product: CHECKOUT_PRODUCTS.plus }
     }
   });
-  if (!isRazorpayId(order.id, "order") || order.amount !== pass.amountPaise) {
+  } catch (error) { if (plan === "lifetime") await checkoutRef.set({ state: "failed", updatedAt: Date.now() }); throw error; }
+  if (!isRazorpayId(order.id, "order") || order.amount !== pass.amountPaise || order.currency !== "INR") {
     throw new HttpsError("unavailable", "The payment service returned an unexpected order. Please try again.");
   }
   await db.doc(`razorpayOrders/${order.id}`).set({
@@ -129,8 +164,10 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
     amountPaise: pass.amountPaise,
     currency: "INR",
     status: "created",
+    mode: razorpayMode(process.env.RAZORPAY_KEY_ID),
     createdAt: FieldValue.serverTimestamp()
   });
+  if (plan === "lifetime") await checkoutRef.set({ state: "open", orderId: order.id, updatedAt: Date.now() });
   return {
     orderId: order.id,
     amount: pass.amountPaise,
@@ -217,7 +254,11 @@ export const razorpayWebhook = onRequest(
           : null;
         // A refund can arrive before the capture was granted: fall back to the order id.
         const ref = byPayment?.docs[0]?.ref ?? (isRazorpayId(eventPayment?.order_id, "order") ? db.doc(`razorpayOrders/${eventPayment.order_id}`) : null);
-        if (ref) await syncIfMember(await refundWebPass(ref));
+        if (ref) {
+          const recorded = await ref.get();
+          // A refund for an extra captured attempt never revokes the original purchase.
+          if (!recorded.get("paymentId") || recorded.get("paymentId") === paymentId) await syncIfMember(await refundWebPass(ref));
+        }
       }
       response.sendStatus(200);
     } catch (error) {
