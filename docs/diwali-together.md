@@ -15,6 +15,7 @@ India Post lists Diwali on **Sunday 8 November 2026**. Paire's planning window i
 - **Plans:** `chai` (Chai & mithai), `mela`, `lights`, `meal`, and **`bash` (Diwali bash)**, a label for people going to a Diwali party or get-together who want company. It groups them in the feed; Paire does not host or vet these. The sheet shows a safety hint when it is picked.
 - **Cards:** the badge shows only overlapping plans, e.g. "🪔 Diwali together · Diwali bash". Never exact dates, coordinates or settings. Same badge on Vibe First and profile details.
 - **Empty state:** plain and honest, with *Edit my plans*, *Invite someone* (share link to the public page) and *Show everyone*.
+- **Pop-up:** after the member has used the app for about 45 s (foreground time only; never over the notification prompt or while typing), a closable "Away from home this Diwali?" card appears. Close with the X, Escape or *Maybe later* (back after a day, at most 3 times) or *Don't show this again*. *See Diwali Together* only opens the opt-in sheet; it never enrols. Not shown to members who already joined, in support view, to automated browsers, or after 10 Nov.
 - **After the window** the chip disappears and an old link just opens normal discovery.
 
 ## Matching rules (server: `getDiscoverFeed({ diwali: true })`)

@@ -1,5 +1,6 @@
 import { WorkCirclesScreen, WorkCircleScreen } from "../screens/WorkCirclesScreen";
 import { useWebLinks } from "../hooks/useWebLinks";
+import { DiwaliPromo } from "../components/DiwaliPromo";
 import { NotificationPrompt } from "../components/NotificationPrompt";
 import { Platform } from "react-native";
 import { AdminPremiumScreen } from "../screens/AdminPremiumScreen";
@@ -89,6 +90,7 @@ export function AppStack() {
       {features.calls ? <Stack.Screen name="Call" component={CallScreen} /> : null}
     </Stack.Navigator>
     <NotificationPrompt />
+    <DiwaliPromo />
     </>
   );
 }

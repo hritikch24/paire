@@ -10,6 +10,9 @@ import { showToast } from "./Toast";
 
 /** Anything can ask for the prompt again, e.g. the setup nudge. */
 export const OPEN_NOTIFICATION_PROMPT = "paire-open-notification-prompt";
+/** Lets other pop-ups wait their turn. */
+let showing = false;
+export const notificationPromptShowing = () => showing;
 const DELAY_MS = 4_000;
 const COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const MAX_ASKS = 5;
@@ -31,6 +34,7 @@ export function NotificationPrompt() {
   const uid = useAuthStore((state) => state.user?.uid);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  showing = open;
 
   useEffect(() => {
     if (!uid) return;

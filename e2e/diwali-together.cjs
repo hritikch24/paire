@@ -210,6 +210,54 @@ async function signOut(page) {
     console.log('PASS Not now is respected: no browser prompt, no registration, no nagging on reload');
     await ctx.close();
 
+    // ---- 8. The Diwali pop-up: after some real use, closable, not nagging, and never enrols by itself. ----
+    await settings('muse_casey').set({ diwaliPlan: null }, { merge: true });
+    const promoContext = async (width = 390) => {
+      const c = await browser.newContext({ viewport: { width, height: 844 }, serviceWorkers: 'block' });
+      await c.addInitScript(() => { Object.defineProperty(navigator, 'webdriver', { get: () => false }); try { localStorage.setItem('paire.pushPrompt.muse_casey', JSON.stringify({ at: Date.now(), count: 1 })); } catch (e) { /* ignore */ } });
+      return c;
+    };
+    const promoPage = async (c, url = appUrl) => { const p = await c.newPage(); p.setDefaultTimeout(60000); p.on('pageerror', (e) => errors.push(e.message)); await p.clock.install(); await p.goto(url); return p; };
+    ctx = await promoContext(); page = await promoPage(ctx);
+    await signIn(page, 'muse+casey@example.com'); await page.getByTestId('tab-discover').waitFor();
+    await page.clock.runFor(20_000); assert.equal(await page.getByTestId('diwali-promo').count(), 0, 'not before the member has used the app for a while');
+    await page.clock.runFor(30_000); await page.getByTestId('diwali-promo').waitFor();
+    const promoText = await page.getByTestId('diwali-promo').innerText();
+    assert.match(promoText, /Away from home this Diwali\?/); assert.match(promoText, /Free and completely optional/); assert.match(promoText, /Don't show this again/);
+    await page.screenshot({ path: '/tmp/muse-diwali-promo-390.png' });
+    for (const width of [320, 768, 1280]) { await page.setViewportSize({ width, height: width === 320 ? 568 : 844 }); await settle(page); await page.screenshot({ path: `/tmp/muse-diwali-promo-${width}.png` }); }
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal((await settings('muse_casey').get()).get('diwaliPlan') ?? null, null);
+    await page.getByTestId('diwali-promo-close').click(); await until(async () => (await page.getByTestId('diwali-promo').count()) === 0, 'closed with the X');
+    await page.reload(); await page.clock.install(); await page.getByTestId('tab-discover').waitFor(); await page.clock.runFor(60_000);
+    assert.equal(await page.getByTestId('diwali-promo').count(), 0, 'closing is respected for a day');
+    await ctx.close();
+    // After the cooldown it returns once more; Escape closes it too.
+    ctx = await promoContext(); await ctx.addInitScript(() => { try { if (!localStorage.getItem('paire.diwaliPromo.muse_casey')) localStorage.setItem('paire.diwaliPromo.muse_casey', JSON.stringify({ at: Date.now() - 2 * 86400000, count: 1 })); } catch (e) { /* ignore */ } });
+    page = await promoPage(ctx); await signIn(page, 'muse+casey@example.com'); await page.getByTestId('tab-discover').waitFor(); await page.clock.runFor(60_000);
+    await page.getByTestId('diwali-promo').waitFor(); await page.keyboard.press('Escape');
+    await until(async () => (await page.getByTestId('diwali-promo').count()) === 0, 'closed with Escape');
+    await ctx.close();
+    // "See Diwali Together" opens the opt-in sheet; nothing is saved until the member confirms.
+    ctx = await promoContext(); page = await promoPage(ctx); await signIn(page, 'muse+casey@example.com'); await page.getByTestId('tab-discover').waitFor(); await page.clock.runFor(60_000);
+    await page.getByTestId('diwali-promo-join').click(); await page.getByTestId('diwali-sheet').waitFor();
+    assert.equal(await page.getByTestId('diwali-promo').count(), 0);
+    assert.equal((await settings('muse_casey').get()).get('diwaliPlan') ?? null, null);
+    await ctx.close();
+    // "Don't show this again" is permanent.
+    ctx = await promoContext(); page = await promoPage(ctx); await signIn(page, 'muse+casey@example.com'); await page.getByTestId('tab-discover').waitFor();
+    await page.evaluate(() => localStorage.removeItem('paire.diwaliPromo.muse_casey')); await page.reload(); await page.clock.install(); await page.getByTestId('tab-discover').waitFor(); await page.clock.runFor(60_000);
+    await page.getByTestId('diwali-promo-never').click(); await until(async () => (await page.getByTestId('diwali-promo').count()) === 0, 'never');
+    assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('paire.diwaliPromo.muse_casey'))).count, 3);
+    await ctx.close();
+    // A member who has already joined is never shown it.
+    await plan('muse_casey', [d0], ['chai']);
+    ctx = await promoContext(); await ctx.addInitScript(() => { try { localStorage.removeItem('paire.diwaliPromo.muse_casey'); } catch (e) { /* ignore */ } });
+    page = await promoPage(ctx); await signIn(page, 'muse+casey@example.com'); await page.getByTestId('tab-discover').waitFor(); await page.clock.runFor(90_000);
+    assert.equal(await page.getByTestId('diwali-promo').count(), 0);
+    await ctx.close();
+    console.log('PASS the Diwali pop-up waits for real use, closes with X, Escape or Maybe later, stays away for a day, can be silenced, opens the opt-in sheet without enrolling, and skips members who joined');
+
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 })().catch((e) => { console.error(e); process.exitCode = 1; });
