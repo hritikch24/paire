@@ -10,7 +10,7 @@ export const istDay = (now = Date.now()) => new Date(now + 5.5 * 3_600_000).toIS
 
 export const DUET_EVENTS = ["duet_started", "duet_created", "duet_shared", "duet_compared", "duet_downloaded", "duet_app_opened"] as const;
 
-const PAGES = ["/date-duet/", "/circles/", "/vibe-quiz/", "/", "/app/", "/garba-nights/", "/privacy/", "/terms/", "/safety/", "/community-guidelines/", "/refunds/", "/contact/", "/delete-account/", "/auth/action/"];
+const PAGES = ["/date-duet/", "/circles/", "/vibe-quiz/", "/", "/app/", "/diwali-together/", "/garba-nights/", "/privacy/", "/terms/", "/safety/", "/community-guidelines/", "/refunds/", "/contact/", "/delete-account/", "/auth/action/"];
 
 /** Known pages only (Firestore map keys can't hold "/" or "."). */
 export function pageKey(path: unknown): string {

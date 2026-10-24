@@ -1,4 +1,5 @@
 import { ageGapLabel } from "../data/ageGap";
+import { diwaliBadge } from "../data/diwali";
 import { garbaBadge } from "../data/garba";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
@@ -387,8 +388,15 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
           pointerEvents="none"
         >
           <YStack gap="$2">
-            {!blindMode && (profile.isNew || profile.requiresNote || profile.ageGap || profile.garbaShared) ? (
+            {!blindMode && (profile.isNew || profile.requiresNote || profile.ageGap || profile.garbaShared || profile.diwaliShared) ? (
               <XStack gap="$2" flexWrap="wrap">
+                {profile.diwaliShared ? (
+                  <XStack testID="card-diwali" backgroundColor="rgba(255,255,255,0.22)" paddingHorizontal="$2" paddingVertical={4} borderRadius={999}>
+                    <Text color="white" fontSize="$1" fontWeight="700" numberOfLines={2}>
+                      {diwaliBadge(profile.diwaliShared)}
+                    </Text>
+                  </XStack>
+                ) : null}
                 {profile.garbaShared ? (
                   <XStack testID="card-garba" backgroundColor="rgba(255,255,255,0.22)" paddingHorizontal="$2" paddingVertical={4} borderRadius={999}>
                     <Text color="white" fontSize="$1" fontWeight="700">

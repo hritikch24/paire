@@ -88,6 +88,8 @@ export type UserSettings = {
   ageGap?: AgeGapSide | null;
   /** Garba Nights: the nights ("YYYY-MM-DD", IST) I'm going to Garba this Navratri. */
   garbaNights?: string[] | null;
+  /** Voluntary Diwali plans. Dates stay private; never describes living arrangements. */
+  diwaliPlan?: { dates: string[]; vibes: string[] } | null;
   /** Show matches when I'm online and when I was last active. Missing = shown. */
   showPresence?: boolean;
   updatedAt?: number;
@@ -141,6 +143,8 @@ export type DiscoverProfile = {
   ageGap?: AgeGapSide;
   /** Garba edition only: how many of your Garba nights they're going to (never which ones). */
   garbaShared?: number;
+  /** Only overlapping activity labels and a count, never another member’s dates. */
+  diwaliShared?: { days: number; vibes: string[] };
 };
 
 /** Why two people might click. Server-generated; ids are formatted by utils/insights. */

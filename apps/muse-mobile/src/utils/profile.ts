@@ -1,4 +1,5 @@
 import { GENDERS, Gender, UserProfile, UserSettings } from "../types/models";
+import { normalizeDiwaliPlan } from "../data/diwali";
 import { MAX_AGE, MIN_AGE } from "./age";
 
 export const GENDER_LABELS: Record<Gender, string> = {
@@ -117,6 +118,7 @@ export function withSettingsDefaults(settings: Partial<UserSettings> | null | un
     sharedLanguageOnly: settings?.sharedLanguageOnly === true,
     ageGap: settings?.ageGap === "older" || settings?.ageGap === "intoOlder" ? settings.ageGap : null,
     garbaNights: Array.isArray(settings?.garbaNights) ? settings.garbaNights.filter((night) => typeof night === "string") : [],
+    diwaliPlan: normalizeDiwaliPlan(settings?.diwaliPlan),
     showPresence: settings?.showPresence !== false
   };
 }

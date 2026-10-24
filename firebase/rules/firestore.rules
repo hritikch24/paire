@@ -212,12 +212,21 @@ service cloud.firestore {
       return l is list && l.size() <= 4 && garbaNight(l, 0) && garbaNight(l, 1) && garbaNight(l, 2) && garbaNight(l, 3);
     }
 
+    function validDiwaliPlan(p) {
+      return p is map && p.keys().hasOnly(['dates', 'vibes'])
+        && p.keys().hasAll(['dates', 'vibes'])
+        && p.dates is list && p.dates.size() >= 1 && p.dates.size() <= 3
+        && p.dates.hasOnly(['2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10'])
+        && p.vibes is list && p.vibes.size() >= 1 && p.vibes.size() <= 3
+        && p.vibes.hasOnly(['chai', 'mela', 'lights', 'meal', 'bash']);
+    }
+
     function validSettings(d) {
       return d.keys().hasOnly([
           'showMe', 'ageMin', 'ageMax', 'maxDistanceKm', 'locationEnabled', 'location',
           'sharedVibesOnly', 'aiVibeMatching', 'openToCasual', 'notifications', 'updatedAt',
           'requireNote', 'firstMove', 'incognito', 'privatePhotos', 'sameIntentOnly', 'sharedLanguageOnly',
-          'ageGap', 'garbaNights', 'showPresence'
+          'ageGap', 'garbaNights', 'diwaliPlan', 'showPresence'
         ])
         && (!('showMe' in d) || (d.showMe is list && d.showMe.size() >= 1 && d.showMe.size() <= 2
             && d.showMe.hasOnly(['woman', 'man'])))
@@ -236,6 +245,7 @@ service cloud.firestore {
         && optBool(d, 'privatePhotos') && optBool(d, 'sameIntentOnly') && optBool(d, 'sharedLanguageOnly')
         && optBool(d, 'showPresence')
         && (!('ageGap' in d) || d.ageGap == null || d.ageGap in ['older', 'intoOlder'])
+        && (!('diwaliPlan' in d) || d.diwaliPlan == null || validDiwaliPlan(d.diwaliPlan))
         && (!('garbaNights' in d) || d.garbaNights == null || validGarbaNights(d.garbaNights))
         && (!('notifications' in d) || (d.notifications is map
             && d.notifications.keys().hasOnly(['matches', 'messages', 'previews', 'reminders'])

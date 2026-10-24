@@ -131,7 +131,7 @@
       return `<li><b>${esc(p.name)}</b><small>${esc(details)}</small><time>${esc(ago(p.at))}</time></li>`;
     }).join("") : `<li><small>${esc(empty)}</small></li>`;
   };
-  const PAGE_NAMES = { home: "Home", app: "Web app (/app/)", "garba-nights": "Garba Nights", "auth-action": "Email links (/auth/action/)", other: "Other" };
+  const PAGE_NAMES = { home: "Home", app: "Web app (/app/)", "diwali-together": "Diwali Together", "garba-nights": "Garba Nights (old link)", "auth-action": "Email links (/auth/action/)", other: "Other" };
 
   async function load() {
     $("updated").textContent = "Refreshing…";

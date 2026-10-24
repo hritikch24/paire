@@ -9,11 +9,12 @@ export function fetchDailyAllowance(): Promise<DailyAllowance> {
 }
 
 /** Next page of people who match your search preferences. */
-/** One feed filter at a time: an age-gap side (Paire Plus only), or the Garba Nights edition. */
-export type FeedFilter = AgeGapSide | "garba" | null;
+/** One feed filter at a time: an age-gap side (Paire Plus only), or a seasonal edition (Garba on native, Diwali Together in the browser). */
+export type FeedFilter = AgeGapSide | "garba" | "diwali" | null;
 
 /** `revisit` (Paire Plus): people you passed on before come back, once everyone new is seen. */
 export function fetchFeedPage(cursor: FeedCursor | null, filter: FeedFilter = null, revisit = false): Promise<FeedPage> {
+  if (filter === "diwali") return callFunction<FeedPage>("getDiscoverFeed", { cursor, diwali: true });
   if (filter === "garba") return callFunction<FeedPage>("getDiscoverFeed", { cursor, garba: true });
   if (filter) return callFunction<FeedPage>("getDiscoverFeed", { cursor, ageGap: filter });
   return callFunction<FeedPage>("getDiscoverFeed", revisit ? { cursor, revisit: true } : { cursor });

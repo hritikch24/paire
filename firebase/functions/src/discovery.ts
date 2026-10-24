@@ -11,7 +11,8 @@ import { candidateLatLng, isCandidateForViewer, normalizeAgeRange, normalizeShow
 import { parseFeedInput } from "./lib/validate";
 import { matchesAgeGapFilter } from "./lib/ageGap";
 import { activeGarbaSeason, GARBA_RADIUS_KM, sharedGarbaNights, upcomingGarbaNights } from "./lib/garba";
-import { distanceKm } from "./lib/geo";
+import { coarsen, distanceKm } from "./lib/geo";
+import { DIWALI_SEASON, diwaliOpen, diwaliOverlap, normalizeDiwaliPlan } from "./lib/diwali";
 import { limitsFor } from "./premium";
 import { requireVerifiedUsers, verifiedUsers, verificationRequired } from "./trust";
 import { verificationState } from "./lib/verification";
@@ -150,7 +151,7 @@ export const getDiscoverFeed = onCall(
   async (request): Promise<{ profiles: DiscoverProfile[]; cursor: FeedCursor | null }> => {
     const uid = await requireReadAuth(request);
     await requireVerifiedUsers([uid], undefined, uid, isSupportSession(request));
-    const { cursor: startCursor, ageGap, garba, revisit, circle } = parseFeedInput(request.data);
+    const { cursor: startCursor, ageGap, garba, revisit, circle, diwali } = parseFeedInput(request.data);
     await consumeDailyQuota(isSupportSession(request) ? request.auth!.uid : uid, "feedCalls", LIMITS.feedCallsPerDay);
 
     const [indexSnap, settingsSnap, viewerProfileSnap, billingSnap] = await db.getAll(
@@ -197,6 +198,11 @@ export const getDiscoverFeed = onCall(
       settings?.locationEnabled && isValidLatLng(settings.location)
         ? { lat: settings.location.lat, lng: settings.location.lng }
         : null;
+    // Diwali Together: voluntary and free. Read from settings so a plan saved a moment ago counts.
+    if (diwali && !diwaliOpen(now)) throw new HttpsError("failed-precondition", "Diwali Together has closed.");
+    const myDiwaliPlan = diwali ? normalizeDiwaliPlan(settings?.diwaliPlan, now) : null;
+    if (diwali && !myDiwaliPlan) throw new HttpsError("failed-precondition", "Pick your Diwali dates and plans first.");
+    const diwaliViewer = myDiwaliPlan ? { plan: myDiwaliPlan, location: viewerLocation, city: viewerProfileSnap.get("city") } : null;
     const options = { viewerLocation, sharedVibesOnly: Boolean(settings?.sharedVibesOnly) };
     if (garba && !viewerLocation) {
       throw new HttpsError("failed-precondition", "Garba Nights shows people near you. Turn on location in Settings first.");
@@ -231,6 +237,7 @@ export const getDiscoverFeed = onCall(
       if (circle) query = query.where("workSector", "==", circle);
       if (ageGap) query = query.where("ageGap", "==", ageGap);
       if (garbaSeason) query = query.where("garba", "==", garbaSeason.id);
+      if (diwaliViewer) query = query.where("diwali", "==", DIWALI_SEASON.id);
       query = query
         .orderBy("lastActiveAt", "desc")
         .orderBy(FieldPath.documentId(), "desc")
@@ -250,7 +257,8 @@ export const getDiscoverFeed = onCall(
         (entry) =>
           isCandidateForViewer(viewer, entry, options) &&
           (!ageGap || matchesAgeGapFilter(ageGap, viewer.age as number, entry)) &&
-          (!garbaSeason || isGarbaCandidate(entry))
+          (!garbaSeason || isGarbaCandidate(entry)) &&
+          (!diwaliViewer || diwaliOverlap(diwaliViewer, entry.diwaliPlan, candidateLatLng(entry), entry.city, now) !== null)
       );
       const excluded = await loadExclusions(
         uid,
@@ -279,37 +287,41 @@ export const getDiscoverFeed = onCall(
       }
     }
 
-    const profileSnaps = picked.length
-      ? await db.getAll(...picked.map((entry) => db.doc(`users/${entry.uid}`)))
+    const pickedSnaps = picked.length
+      ? await db.getAll(...picked.map((entry) => db.doc(`users/${entry.uid}`)), ...picked.map((entry) => db.doc(`moderation/${entry.uid}`)))
       : [];
-    const approvals = picked.length ? await db.getAll(...picked.map((entry) => db.doc(`moderation/${entry.uid}`))) : [];
+    const profileByUid = new Map(pickedSnaps.slice(0, picked.length).map((snap) => [snap.id, snap]));
+    const approvalByUid = new Map(picked.map((entry, index) => [entry.uid, pickedSnaps[picked.length + index]]));
+    // The index can lag a withdrawal, a new city or expired dates: Diwali is re-checked on fresh data.
+    const sharedDiwali = new Map<string, { days: number; vibes: string[] }>();
+    if (diwaliViewer && picked.length) {
+      const fresh = await db.getAll(...picked.map((entry) => db.doc(`users/${entry.uid}/private/settings`)));
+      fresh.forEach((snap, index) => {
+        const theirs = snap.data() as UserSettings | undefined;
+        const location = theirs?.locationEnabled && isValidLatLng(theirs.location) ? coarsen(theirs.location) : null;
+        const shared = diwaliOverlap(diwaliViewer, theirs?.diwaliPlan, location, profileByUid.get(picked[index].uid)?.get("city"), now);
+        if (shared) sharedDiwali.set(picked[index].uid, shared);
+      });
+    }
     const traits = viewerTraits(viewer, viewerProfileSnap.data() as Partial<PublicProfile> | undefined);
     const verified = await verifiedUsers(picked.map((entry) => entry.uid));
-    const profiles = profileSnaps
-      .map((snap, index) =>
-        snap.exists && verified.has(snap.id) && (!circle || snap.get("workSector") === circle)
-          ? toDiscoverProfile(
-              snap.data() as Partial<PublicProfile>,
-              picked[index],
-              viewerLocation,
-              plus && superLikers.has(picked[index].uid),
-              traits,
-              now
-            )
-          : null
-      )
-      .filter((profile): profile is DiscoverProfile => profile !== null)
-      .map((profile) => {
-        const index = picked.findIndex((entry) => entry.uid === profile.uid);
+    const profiles = picked
+      .filter((entry) => !diwaliViewer || sharedDiwali.has(entry.uid))
+      .flatMap((entry) => {
+        const snap = profileByUid.get(entry.uid);
+        if (!snap?.exists || !verified.has(entry.uid) || (circle && snap.get("workSector") !== circle)) return [];
+        const profile = toDiscoverProfile(snap.data() as Partial<PublicProfile>, entry, viewerLocation, plus && superLikers.has(entry.uid), traits, now);
+        if (!profile) return [];
         // Checked against the stored photos, which private-photo profiles don't send.
-        const photoVerified = verificationState(approvals[index]?.get("verification"), profileSnaps[index]?.get("photoUrls"), now) === "verified";
-        const side = plus ? picked[index].ageGap : null;
+        const photoVerified = verificationState(approvalByUid.get(entry.uid)?.get("verification"), snap.get("photoUrls"), now) === "verified";
+        const side = plus ? entry.ageGap : null;
         // Only how many nights you share (never which), and only inside the Garba edition.
-        const garbaShared = garbaSeason ? sharedGarbaNights(myGarbaNights, picked[index].garbaNights, now).length : 0;
-        return {
-          profile: { ...profile, photoVerified, ...(side ? { ageGap: side } : {}), ...(garbaShared ? { garbaShared } : {}) },
+        const garbaShared = garbaSeason ? sharedGarbaNights(myGarbaNights, entry.garbaNights, now).length : 0;
+        const diwaliShared = sharedDiwali.get(entry.uid);
+        return [{
+          profile: { ...profile, photoVerified, ...(side ? { ageGap: side } : {}), ...(garbaShared ? { garbaShared } : {}), ...(diwaliShared ? { diwaliShared } : {}) },
           score: scoreOf(profile)
-        };
+        }];
       })
       .sort((a, b) => b.score - a.score)
       .map(({ profile }) => profile);

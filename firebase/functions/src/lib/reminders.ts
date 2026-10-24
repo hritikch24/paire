@@ -1,11 +1,12 @@
 import { DiscoveryEntry, UserSettings } from "../types";
 import { activeGarbaSeason, GARBA_RADIUS_KM, istDate, sharedGarbaNights, upcomingGarbaNights } from "./garba";
 import { distanceKm, isValidLatLng } from "./geo";
-import { isCandidateForViewer } from "./prefs";
+import { DIWALI_SEASON, diwaliOpen, diwaliOverlap, normalizeDiwaliPlan } from "./diwali";
+import { candidateLatLng, isCandidateForViewer } from "./prefs";
 
 export const DAY_MS = 86_400_000;
-export type ReminderState = { enabled?: boolean; recentAttempts?: number[]; garbaSeason?: string; latestId?: string; openedAt?: number };
-export type ReminderPlan = { type: "people" | "garba"; title: string; body: string; season?: string };
+export type ReminderState = { enabled?: boolean; recentAttempts?: number[]; garbaSeason?: string; diwaliSeason?: string; latestId?: string; openedAt?: number };
+export type ReminderPlan = { type: "people" | "garba" | "diwali"; title: string; body: string; season?: string };
 
 // Invitations to act, never invented likes, messages or guaranteed matches.
 const DISCOVERY_PROMPTS = [
@@ -29,6 +30,14 @@ export function reminderDue(settings: UserSettings | undefined, state: ReminderS
 export function chooseReminder(viewer: DiscoveryEntry, settings: UserSettings, candidates: DiscoveryEntry[], state: ReminderState, now: number): ReminderPlan | null {
   const location = settings.locationEnabled && isValidLatLng(settings.location) ? settings.location : null;
   const eligible = candidates.filter((candidate) => isCandidateForViewer(viewer, candidate, { viewerLocation: location, sharedVibesOnly: settings.sharedVibesOnly === true }));
+  // Only a real overlap in dates, plans and area, among members who each opted in, ever triggers this.
+  const myPlan = diwaliOpen(now) ? normalizeDiwaliPlan(settings.diwaliPlan, now) : null;
+  if (myPlan && state.diwaliSeason !== DIWALI_SEASON.id) {
+    const mine = { plan: myPlan, location, city: viewer.city };
+    if (eligible.some((candidate) => diwaliOverlap(mine, candidate.diwaliPlan, candidateLatLng(candidate), candidate.city, now))) {
+      return { type: "diwali", title: "Diwali plans? Find your company 🪔", body: "Someone near you shares your Diwali plans. Take a look and say hello with a thoughtful like.", season: DIWALI_SEASON.id };
+    }
+  }
   const season = activeGarbaSeason(now);
   // Event reminders require the recipient to have chosen nights and a recent approximate location.
   const freshLocation = location && typeof location.updatedAt === "number" && now - location.updatedAt >= 0 && now - location.updatedAt <= 7 * DAY_MS;

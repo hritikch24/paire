@@ -22,7 +22,7 @@ export function DiscoverWebStyles() {
     [data-testid="discover-header"] > div:first-child { min-width: 0 !important; }
     [data-testid="discover-city"] { max-width: 156px !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
     [data-testid="discover-intro"] { display: none !important; }
-    [data-testid="discover-intro"]:has([data-testid="discover-garba-edit"]) {
+    [data-testid="discover-intro"]:has([data-testid="discover-diwali-edit"]) {
       display: flex !important; flex-shrink: 0 !important; margin-bottom: 8px !important;
     }
     [data-testid="discover-modes"] { flex-shrink: 0 !important; padding: 0 0 4px !important; }
@@ -40,6 +40,10 @@ export function DiscoverWebStyles() {
     [data-testid="discover-card-area"]:has([data-testid^="discover-empty"]) {
       flex: 1 0 220px !important; min-height: 220px !important; padding: 16px !important;
     }
+    [data-testid="discover-card-area"]:has([data-testid="discover-empty-diwali"]) {
+      flex: 0 0 auto !important; min-height: 0 !important; padding-bottom: 24px !important;
+    }
+    [data-testid="discover-empty-diwali"] { min-height: 0 !important; padding: 8px 8px 0 !important; }
     [data-testid="discover-card-area"] > div { min-height: 0 !important; }
     [data-testid="discover-deck"] { min-height: 320px !important; }
     [data-testid="discover-card"] { box-shadow: 0 8px 28px #30101d14 !important; border-radius: 24px !important; }

@@ -2,9 +2,9 @@ import { logger } from "firebase-functions";
 import { db, messaging } from "./admin";
 import { UserSettings } from "./types";
 import { sendWebPushToUser } from "./webPush";
-import { notificationCopy } from "./lib/notificationPrivacy";
+import { notificationCopy, preferenceFor } from "./lib/notificationPrivacy";
 
-export type PushKind = "matches" | "messages";
+export type PushKind = "matches" | "messages" | "likes";
 
 export type PushMessage = {
   kind: PushKind;
@@ -33,7 +33,7 @@ export async function sendPushToUser(uid: string, message: PushMessage): Promise
       db.collection(`users/${uid}/devices`).get()
     ]);
     const settings = settingsSnap.data() as UserSettings | undefined;
-    if (settings?.notifications?.[message.kind] === false) return;
+    if (settings?.notifications?.[preferenceFor(message.kind)] === false) return;
 
     await sendWebPushToUser(uid, message, settings);
 
@@ -51,7 +51,7 @@ export async function sendPushToUser(uid: string, message: PushMessage): Promise
       android: {
         priority: "high",
         notification: {
-          channelId: message.kind,
+          channelId: preferenceFor(message.kind),
           tag: message.tag,
           sound: "default"
         }

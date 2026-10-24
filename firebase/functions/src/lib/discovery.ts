@@ -1,3 +1,4 @@
+import { DIWALI_SEASON, diwaliCityKey, normalizeDiwaliPlan } from "./diwali";
 import { isWorkSector } from "./workCircles";
 import { SPARKS } from "../config";
 import {
@@ -69,8 +70,10 @@ export function buildDiscoveryEntry(
   uid: string,
   profile: Partial<PublicProfile> | undefined,
   settings: UserSettings | undefined,
-  moderation: ModerationRecord | undefined
+  moderation: ModerationRecord | undefined,
+  now = Date.now()
 ): DiscoveryEntry {
+  const diwaliPlan = normalizeDiwaliPlan(settings?.diwaliPlan, now);
   const gender = isGender(profile?.gender) ? profile!.gender! : null;
   const rawAge = profile?.age;
   const age =
@@ -88,6 +91,9 @@ export function buildDiscoveryEntry(
 
   return {
     uid,
+    city: diwaliCityKey(profile?.city),
+    diwali: diwaliPlan ? DIWALI_SEASON.id : null,
+    diwaliPlan,
     workSector: isWorkSector(profile?.workSector) ? profile.workSector : null,
     // Photos are optional: profiles without one are shown, just ranked lower.
     visible: Boolean(

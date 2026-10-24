@@ -4,7 +4,8 @@ import { LIMITS, REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { garbaNightLabel, sharedGarbaNights } from "./lib/garba";
 import { AiProvider, aiProvider, askAiForJson, cleanLines, llmEnabled } from "./lib/llm";
-import { Person, describe, garbaOpener, templateBios, templateGroupOpeners, templateOpeners } from "./lib/suggestions";
+import { sharedDiwaliPlans, DIWALI_LABELS } from "./lib/diwali";
+import { Person, describe, diwaliOpener, garbaOpener, templateBios, templateGroupOpeners, templateOpeners } from "./lib/suggestions";
 import { parseMatchInput } from "./lib/validate";
 import { consumeDailyQuota } from "./quota";
 import { PublicProfile, QuickAnswer } from "./types";
@@ -88,17 +89,22 @@ export const suggestOpeners = onCall({ region: REGION, timeoutSeconds: 30, secre
   // A Garba night both picked: only named to two people who already matched.
   const garba = sharedGarbaNights(mySettings.get("garbaNights"), theirSettings.get("garbaNights")).map(garbaNightLabel);
 
+  // Activities both picked for Diwali; dates stay private even between matches.
+  const diwali = sharedDiwaliPlans(mySettings.get("diwaliPlan"), theirSettings.get("diwaliPlan"))?.vibes ?? [];
+
   if (llmEnabled()) {
     const reply = await askAiForJson(
       OPENERS_SYSTEM,
       `Sender:\n${describe({ ...me, bio: undefined, city: undefined })}\n\nTheir match:\n${describe(them)}` +
-        (garba.length ? `\n\nThey're both going to Garba this Navratri on: ${garba.join(", ")}. Make one message about meeting up for Garba or Dandiya.` : "")
+        (garba.length ? `\n\nThey're both going to Garba this Navratri on: ${garba.join(", ")}. Make one message about meeting up for Garba or Dandiya.` : "") +
+        (diwali.length ? `\n\nThey both said they'd like Diwali company: ${diwali.map((vibe) => DIWALI_LABELS[vibe]).join(", ")}. Make one message suggesting a public, easy plan like that. Don't mention dates.` : "")
     );
     const suggestions = cleanLines((reply as { suggestions?: unknown } | null)?.suggestions, 3, 180);
     if (suggestions.length === 3) return { suggestions, source: aiProvider() ?? "muse" };
   }
   const templates = templateOpeners(me, them);
-  return { suggestions: garba.length ? [garbaOpener(them, garba[0]), ...templates].slice(0, 3) : templates, source: "muse" };
+  const themed = [...(garba.length ? [garbaOpener(them, garba[0])] : []), ...(diwali.length ? [diwaliOpener(them, diwali[0])] : [])];
+  return { suggestions: themed.length ? [...themed, ...templates].slice(0, 3) : templates, source: "muse" };
 });
 
 /** Three bio drafts from the caller's own profile choices. */

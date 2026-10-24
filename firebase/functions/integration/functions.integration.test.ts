@@ -25,6 +25,7 @@ import { getApps as getAdminApps, initializeApp as initializeAdminApp } from "fi
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import { activeGarbaSeason, seasonNights, upcomingGarbaNights } from "../src/lib/garba";
+import { DIWALI_SEASON, diwaliDates, diwaliOpen } from "../src/lib/diwali";
 
 const PROJECT_ID = "demo-muse";
 const REGION = process.env.FUNCTIONS_REGION || "us-central1";
@@ -1023,6 +1024,78 @@ describe("India v2: sparks and her rules", () => {
     await updateDoc(doc(her.db, "users", her.uid, "private", "settings"), { locationEnabled: false, location: null });
     await expect(her.call("getDiscoverFeed", { garba: true })).rejects.toThrow(/Turn on location/);
     await expect(her.call("getDiscoverFeed", { garba: true, ageGap: "older" })).rejects.toThrow(/one filter at a time/);
+  });
+
+  it("Diwali Together needs a shared date, activity and area, and respects opt-out even through a stale index", async () => {
+    const her = await makeClient("diwali-her");
+    const him = await makeClient("diwali-him");
+    const cityOnly = await makeClient("diwali-city");
+    const elsewhere = await makeClient("diwali-elsewhere");
+    const otherPlan = await makeClient("diwali-other");
+    const plain = await makeClient("diwali-plain");
+    await onboard(her, { name: "Diwali Her", gender: "woman", showMe: ["man"], age: 25 });
+    for (const [client, name] of [[him, "Diwali Him"], [cityOnly, "Diwali City"], [elsewhere, "Diwali Away"], [otherPlan, "Diwali Other"], [plain, "Diwali Plain"]] as const) {
+      await onboard(client, { name, gender: "man", showMe: ["woman"], age: 27 });
+    }
+    if (!diwaliOpen()) {
+      // Outside the window the edition is closed (the rest is covered by test/diwali.test.ts).
+      await expect(her.call("getDiscoverFeed", { diwali: true })).rejects.toThrow(/Diwali Together has closed/);
+      return;
+    }
+    await expect(her.call("getDiscoverFeed", { diwali: true })).rejects.toThrow(/Pick your Diwali/);
+    const dates = diwaliDates();
+    const settings = (client: Client) => doc(client.db, "users", client.uid, "private", "settings");
+    const indexed = async (client: Client, on: boolean) => waitFor(async () => ((await admin.doc(`discovery/${client.uid}`).get()).get("diwali") === DIWALI_SEASON.id) === on);
+    await updateDoc(settings(her), { diwaliPlan: { dates: [dates[0]], vibes: ["chai", "bash"] } });
+    await updateDoc(settings(him), { diwaliPlan: { dates: dates.slice(0, 2), vibes: ["bash", "meal"] } });
+    // No coordinates: the stated city (Mumbai) is enough. Another city is not.
+    await updateDoc(settings(cityOnly), { diwaliPlan: { dates: [dates[0]], vibes: ["bash"] }, locationEnabled: false, location: null });
+    await updateDoc(settings(elsewhere), { diwaliPlan: { dates: [dates[0]], vibes: ["bash"] }, locationEnabled: false, location: null });
+    await updateDoc(doc(elsewhere.db, "users", elsewhere.uid), { city: "Pune" });
+    await updateDoc(settings(otherPlan), { diwaliPlan: { dates: [dates[0]], vibes: ["mela"] } });
+    await Promise.all([him, cityOnly, elsewhere, otherPlan].map((client) => indexed(client, true)));
+    await waitFor(async () => (await admin.doc(`discovery/${cityOnly.uid}`).get()).get("lat") === null);
+    await waitFor(async () => (await admin.doc(`discovery/${elsewhere.uid}`).get()).get("city") === "pune");
+
+    const feed = await her.call<FeedResult>("getDiscoverFeed", { diwali: true });
+    const uids = feed.profiles.map((profile) => profile.uid);
+    expect(uids).toEqual(expect.arrayContaining([him.uid, cityOnly.uid]));
+    for (const excluded of [elsewhere, otherPlan, plain]) expect(uids).not.toContain(excluded.uid);
+    // Only a count and the overlapping activities: his second date and "meal" stay private.
+    const card = feed.profiles.find((profile) => profile.uid === him.uid)!;
+    expect(card.diwaliShared).toEqual({ days: 1, vibes: ["bash"] });
+    for (const hidden of ["diwaliPlan", "diwaliDates", "diwali", "lat", "lng", "location"]) expect(card).not.toHaveProperty(hidden);
+    expect(JSON.stringify(card)).not.toContain("2026-11");
+
+    // Normal discovery never shows the badge.
+    const everyone = await her.call<FeedResult>("getDiscoverFeed", {});
+    expect(everyone.profiles.find((profile) => profile.uid === him.uid)).not.toHaveProperty("diwaliShared");
+    await expect(her.call("getDiscoverFeed", { diwali: true, garba: true })).rejects.toThrow(/one filter at a time/);
+
+    // Withdrawal takes effect at once, even if the discovery index still says otherwise.
+    const stale = (await admin.doc(`discovery/${him.uid}`).get()).data()!;
+    await updateDoc(settings(him), { diwaliPlan: null });
+    await indexed(him, false);
+    await admin.doc(`discovery/${him.uid}`).set(stale);
+    const afterOptOut = await her.call<FeedResult>("getDiscoverFeed", { diwali: true });
+    expect(afterOptOut.profiles.map((profile) => profile.uid)).not.toContain(him.uid);
+    // A changed city is honoured immediately as well.
+    await updateDoc(doc(cityOnly.db, "users", cityOnly.uid), { city: "Chennai" });
+    const afterMove = await her.call<FeedResult>("getDiscoverFeed", { diwali: true });
+    expect(afterMove.profiles.map((profile) => profile.uid)).not.toContain(cityOnly.uid);
+
+    // Her own withdrawal closes the edition for her.
+    await updateDoc(settings(her), { diwaliPlan: null });
+    await expect(her.call("getDiscoverFeed", { diwali: true })).rejects.toThrow(/Pick your Diwali/);
+
+    // Matched members get an opener about the activity they both picked, with no dates.
+    await updateDoc(settings(her), { diwaliPlan: { dates: [dates[0]], vibes: ["chai", "bash"] } });
+    await updateDoc(settings(him), { diwaliPlan: { dates: [dates[0]], vibes: ["bash"] } });
+    await him.call("swipe", { targetUid: her.uid, type: "like" });
+    const match = await her.call<{ matched: boolean; matchId?: string }>("swipe", { targetUid: him.uid, type: "like" });
+    expect(match.matched).toBe(true);
+    const openers = await her.call<{ suggestions: string[] }>("suggestOpeners", { matchId: match.matchId });
+    expect(openers.suggestions[0]).toMatch(/Diwali bash/);
   });
 
   it("same intentions only filters the search and likes of the person who enables it", async () => {

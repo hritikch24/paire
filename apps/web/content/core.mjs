@@ -29,7 +29,7 @@ export const core = [
 <h2>Who Paire is for</h2>
 <p>Paire is for adult men and women in India looking for anything from casual dating to marriage-minded relationships. You say what you are looking for, and you can choose to see only people who want the same thing. Paire is open to members in every city and town across India.</p>
 <h2>How Paire works</h2>
-<p>You sign up with Google or email, confirm your email, and add a profile and interests. Photo checks are shown separately when available. Then you can browse people as photo cards, try <a href="/features/">Vibe First</a> to see interests before photos, team up with a best friend for a double date with <a href="/features/">Duos</a>, or join seasonal editions such as <a href="/garba-nights/">Garba Nights</a> during Navratri. Paire runs in any phone or laptop browser at <a href="/app/">paire.in/app</a>; an Android app is on the way.</p>
+<p>You sign up with Google or email, confirm your email, and add a profile and interests. Photo checks are shown separately when available. Then you can browse people as photo cards, try <a href="/features/">Vibe First</a> to see interests before photos, team up with a best friend for a double date with <a href="/features/">Duos</a>, or join an occasional seasonal edition, like <a href="/diwali-together/">Diwali Together</a> in 2026. Paire runs in any phone or laptop browser at <a href="/app/">paire.in/app</a>; an Android app is on the way.</p>
 <h2>Safety and privacy</h2>
 <p>Every chat has report and block. Paire AI warns you about common scam messages, such as requests for money, OTPs or investment tips. Your exact location is never shown, only an approximate distance. Read more in <a href="/verification/">how verification works</a> and our <a href="/safety/">dating safety guide</a>.</p>
 <h2>Contact</h2>
@@ -121,7 +121,7 @@ export const core = [
 <li><strong>Vibe First:</strong> see someone's interests, intentions and answers before their photos, then reveal the photos.</li>
 <li><strong>Duos:</strong> team up with a best friend and match with another pair for a double date.</li>
 <li><strong>Blind date mode</strong> for people who would rather chat first.</li>
-<li><strong>Seasonal editions</strong> such as <a href="/garba-nights/">Garba Nights</a> during Navratri.</li>
+<li><strong>Seasonal editions</strong> such as <a href="/diwali-together/">Diwali Together</a> (24 October to 10 November 2026), which is voluntary and never organises events.</li>
 </ul>
 <h2>Paire AI</h2>
 <p>Paire AI suggests icebreakers based on what you have in common, helps you write a bio, and can rank profiles by shared vibes if you turn on AI matching (opt-in, using only the profile choices you select). It also warns you about scam-style messages in chat.</p>

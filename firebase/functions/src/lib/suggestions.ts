@@ -165,6 +165,18 @@ export function templateOpeners(me: Person, them: Person): string[] {
   return unique(lines).slice(0, 3);
 }
 
+const DIWALI_OPENERS: Record<string, string> = {
+  chai: "are you up for chai and mithai somewhere public this Diwali?",
+  mela: "fancy a mela stroll this Diwali? Somewhere public and bright, of course.",
+  lights: "fancy a lights walk this Diwali? I hear the best streets are glowing.",
+  meal: "want to grab a Diwali meal at a nice café, somewhere public?",
+  bash: "are you headed to a Diwali bash too? Happy to compare plans first."
+};
+/** For two matches who both chose a Diwali plan in the app (see lib/diwali.ts). Names no dates. */
+export function diwaliOpener(them: Person, vibe: string): string {
+  return `${firstName(them.name)}, ${DIWALI_OPENERS[vibe] ?? DIWALI_OPENERS.chai} 🪔`;
+}
+
 /** For two matches going to Garba on the same night (see lib/garba.ts). */
 export function garbaOpener(them: Person, night: string): string {
   return `${firstName(them.name)}, we're both at Garba on ${night}! Team Dandiya or team Garba circle? 💃`;

@@ -62,7 +62,7 @@ export function parseTargetInput(data: unknown): { targetUid: string } {
 }
 
 /** `revisit` (Paire Plus): also show people you passed on before, once everyone new is seen. */
-export type FeedInput = { cursor: FeedCursor | null; ageGap: AgeGapSide | null; garba: boolean; revisit: boolean; circle?: WorkSector };
+export type FeedInput = { cursor: FeedCursor | null; ageGap: AgeGapSide | null; garba: boolean; revisit: boolean; circle?: WorkSector; diwali?: boolean };
 
 /** A feed page request: Work Circles, Garba Nights and age-gap editions are one filter at a time. */
 export function parseFeedInput(data: unknown): FeedInput {
@@ -74,15 +74,16 @@ export function parseFeedInput(data: unknown): FeedInput {
   if (body.garba !== undefined && typeof body.garba !== "boolean") {
     throw new HttpsError("invalid-argument", "garba is invalid.");
   }
+  if (body.diwali !== undefined && typeof body.diwali !== "boolean") throw new HttpsError("invalid-argument", "diwali is invalid.");
   if (body.revisit !== undefined && typeof body.revisit !== "boolean") {
     throw new HttpsError("invalid-argument", "revisit is invalid.");
   }
   if (body.circle !== undefined && !isWorkSector(body.circle)) throw new HttpsError("invalid-argument", "circle is invalid.");
-  const circle = isWorkSector(body.circle) ? { circle: body.circle } : {};
+  const circle = { ...(isWorkSector(body.circle) ? { circle: body.circle } : {}), ...(body.diwali === true ? { diwali: true } : {}) };
   const ageGap = isAgeGapSide(body.ageGap) ? body.ageGap : null;
   const garba = body.garba === true;
   const revisit = body.revisit === true;
-  if ([Boolean(ageGap), garba, Boolean(body.circle)].filter(Boolean).length > 1) throw new HttpsError("invalid-argument", "Choose one filter at a time.");
+  if ([Boolean(ageGap), garba, Boolean(body.circle), body.diwali === true].filter(Boolean).length > 1) throw new HttpsError("invalid-argument", "Choose one filter at a time.");
   if (body.cursor === null || body.cursor === undefined) return { cursor: null, ageGap, garba, revisit, ...circle };
   const cursor = asRecord(body.cursor);
   if (typeof cursor.lastActiveAt !== "number" || !Number.isFinite(cursor.lastActiveAt)) {

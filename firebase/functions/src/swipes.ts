@@ -189,6 +189,17 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
     });
   }
 
+  // A first-time like that didn't match yet: tell them, without saying who (only Plus reveals that).
+  if (!outcome.matched && outcome.me && isPositive(type)) {
+    await sendPushToUser(targetUid, {
+      kind: "likes",
+      title: type === "super" ? "Someone Super Liked you ⭐" : "Someone likes you 💛",
+      body: "Open Paire to see your likes.",
+      data: { type: "like" },
+      tag: `likes-${targetUid}`
+    });
+  }
+
   return { matched: outcome.matched, matchId: outcome.matchId, remaining: outcome.remaining };
 });
 

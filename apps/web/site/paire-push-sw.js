@@ -36,7 +36,7 @@ self.addEventListener('push', event => {
     const url = new URL('/app/', self.location.origin);
     if (/^[A-Za-z0-9_-]{1,256}$/.test(data.matchId || '')) url.searchParams.set('chat', data.matchId);
     else if (data.type === 'duo') url.searchParams.set('duo', '1');
-    else if (data.type === 'reminder' && ['people', 'garba'].includes(data.destination) && /^[a-f0-9-]{36}$/.test(data.reminderId || '')) {
+    else if (data.type === 'reminder' && ['people', 'garba', 'diwali'].includes(data.destination) && /^[a-f0-9-]{36}$/.test(data.reminderId || '')) {
       url.searchParams.set('discover', data.destination);
       url.searchParams.set('reminder', data.reminderId);
     }

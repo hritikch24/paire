@@ -4,6 +4,8 @@ describe("anonymous visit counting", () => {
   test("only known pages become keys", () => {
     expect(pageKey("/")).toBe("home");
     expect(pageKey("/app/chat/123")).toBe("app");
+    expect(pageKey("/diwali-together")).toBe("diwali-together");
+    expect(pageKey("/diwali-together/#v=chai&d=2026-11-08&c=Pune")).toBe("diwali-together");
     expect(pageKey("/garba-nights")).toBe("garba-nights");
     expect(pageKey("/auth/action/?mode=x")).toBe("auth-action");
     expect(pageKey("/wp-admin.php")).toBe("other");

@@ -6,6 +6,18 @@
   "outputDirectory": "apps/web/dist",
   "cleanUrls": true,
   "trailingSlash": true,
+  "redirects": [
+    {
+      "source": "/garba-nights",
+      "destination": "/diwali-together/",
+      "permanent": true
+    },
+    {
+      "source": "/garba-nights/",
+      "destination": "/diwali-together/",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/app/:path*",

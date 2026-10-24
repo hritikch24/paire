@@ -1,3 +1,4 @@
+import { DIWALI_VIBES } from "../data/diwali";
 import { workCircle } from "../data/workCircles";
 import { useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
@@ -44,8 +45,13 @@ export function useWebLinks() {
       } else if (url.searchParams.get("duo") === "1" && url.searchParams.get("for") === uid) {
         navigate = () => navigation.navigate("App", { screen: "Duo" });
         url.searchParams.delete("duo"); url.searchParams.delete("for");
-      } else if (["people", "garba"].includes(url.searchParams.get("discover") || "") && url.searchParams.get("for") === uid) {
-        const edition = url.searchParams.get("discover") as "people" | "garba";
+      } else if (url.searchParams.get("edition") === "diwali") {
+        // A public campaign link only opens the edition; joining is always the member's own choice.
+        const vibe = DIWALI_VIBES.find((item) => item === url.searchParams.get("vibe"));
+        navigate = () => navigation.navigate("App", { screen: "Tabs", params: { screen: "Discover", params: { intent: { edition: "diwali", vibe, nonce: Date.now() } } } });
+        url.searchParams.delete("edition"); url.searchParams.delete("vibe");
+      } else if (["people", "garba", "diwali"].includes(url.searchParams.get("discover") || "") && url.searchParams.get("for") === uid) {
+        const edition = url.searchParams.get("discover") as "people" | "garba" | "diwali";
         navigate = () => navigation.navigate("App", { screen: "Tabs", params: { screen: "Discover", params: { intent: { edition, nonce: Date.now() } } } });
         const id = url.searchParams.get("reminder");
         if (id && /^[a-f0-9-]{36}$/.test(id)) void callFunction("recordReminderOpen", { id }).catch(() => undefined);

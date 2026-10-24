@@ -178,8 +178,8 @@ export const cities = [
     ],
     getting: "Ahmedabad's Metro, BRTS and ride apps cover the main areas; share your ride at night.",
     safety: "At big Garba events, go with your group, agree on a meeting point and share your pass only once you're comfortable.",
-    extra: `<h2>Navratri and Garba</h2><p>During Navratri, Paire's free <a href="/garba-nights/">Garba Nights</a> edition lets you pick the nights you're going and meet people near you going on the same nights. Others only see how many nights you share, never which ones.</p>`,
-    faq: [["How do I find a Garba partner in Ahmedabad?", "During Navratri, open Paire's Garba Nights, pick up to four nights and see people near you going on the same nights. It's free."]],
+    extra: `<h2>Navratri and Garba</h2><p>Garba and Dandiya nights are a classic way to meet people in Ahmedabad. Go with a group, meet in the crowd and share your pass only once you're comfortable. Paire's 2026 Garba Nights edition has ended; it may return in a future Navratri.</p>`,
+    faq: [["How do I find a Garba partner in Ahmedabad?", "Paire's 2026 Garba Nights edition has ended. Until Navratri returns, you can still meet people through ordinary discovery, and plan a relaxed first meeting together with Date Duet."]],
     related: ["dating/jaipur/"]
   }),
   city({

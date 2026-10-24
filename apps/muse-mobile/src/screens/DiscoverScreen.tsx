@@ -11,7 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { DuoMode } from "../components/duo/DuoMode";
@@ -37,6 +37,8 @@ import { useAuthStore } from "../store/authStore";
 import { AGE_GAP_FILTERS } from "../data/ageGap";
 import { activeGarbaSeason, MAX_GARBA_NIGHTS, myUpcomingNights, upcomingNights } from "../data/garba";
 import { GarbaSheet } from "../components/GarbaNights";
+import { DiwaliSheet, shareDiwaliInvite } from "../components/DiwaliTogether";
+import { diwaliOpen, normalizeDiwaliPlan } from "../data/diwali";
 import { DiscoverProfile, FeedCursor, SwipeType } from "../types/models";
 import type { AppStackParamList, MainTabsParamList } from "../navigation/types";
 
@@ -117,6 +119,7 @@ function FeedFilters({
   locked,
   canSeekYounger,
   garbaOpen,
+  diwaliOpen: diwaliOn,
   onChange
 }: {
   value: FeedFilter;
@@ -124,11 +127,13 @@ function FeedFilters({
   /** "Into someone older" is a filter for Silver Foxes and Cougars only. */
   canSeekYounger: boolean;
   garbaOpen: boolean;
+  diwaliOpen: boolean;
   onChange: (value: FeedFilter) => void;
 }) {
   const options: Array<{ id: FeedFilter; label: string; plus: boolean; spoken: string }> = [
     { id: null, label: "Everyone", plus: false, spoken: "Everyone" },
     ...(garbaOpen || value === "garba" ? [{ id: "garba" as const, label: "🪔 Garba Nights", plus: false, spoken: "Garba Nights, free this Navratri" }] : []),
+    ...(diwaliOn || value === "diwali" ? [{ id: "diwali" as const, label: "🪔 Diwali Together", plus: false, spoken: "Diwali Together, free and optional" }] : []),
     ...AGE_GAP_FILTERS.filter((option) => option.id && (option.id !== "intoOlder" || canSeekYounger || value === "intoOlder")).map(
       (option) => ({ id: option.id, label: option.label, plus: true, spoken: `${option.label.replace(/^\S+\s/, "")}, Paire Plus` })
     )
@@ -147,7 +152,7 @@ function FeedFilters({
         return (
           <Pressable
             key={option.id ?? "all"}
-            testID={option.id === "garba" ? "discover-garba" : `discover-agegap-${option.id ?? "all"}`}
+            testID={option.id === "garba" ? "discover-garba" : option.id === "diwali" ? "discover-diwali" : `discover-agegap-${option.id ?? "all"}`}
             accessibilityRole="button"
             accessibilityLabel={option.spoken}
             accessibilityState={{ selected: active }}
@@ -193,14 +198,42 @@ function DiscoveryExperience() {
   const filterRef = useRef<FeedFilter>(null);
   filterRef.current = filter;
   // Garba Nights runs during Navratri; checked when the screen renders.
-  const garbaOpen = activeGarbaSeason() !== null;
+  // The browser app replaced it with Diwali Together; the native edition is untouched.
+  const garbaOpen = Platform.OS !== "web" && activeGarbaSeason() !== null;
   const myGarbaNights = myUpcomingNights(settings?.garbaNights);
   const [garbaSheet, setGarbaSheet] = useState(false);
+  // Diwali Together: voluntary, free, and gone after 10 November IST.
+  const diwaliOn = Platform.OS === "web" && diwaliOpen();
+  const rawDiwaliPlan = settings?.diwaliPlan;
+  const myDiwaliPlan = useMemo(() => (diwaliOn ? normalizeDiwaliPlan(rawDiwaliPlan) : null), [diwaliOn, rawDiwaliPlan]);
+  const [diwaliSheet, setDiwaliSheet] = useState(false);
+  const navigationRef = useRef(navigation);
+  navigationRef.current = navigation;
+  // Leaving Diwali Together (e.g. from Settings) returns this feed to everyone.
+  const hadDiwaliPlan = useRef(false);
+  const diwaliPlanRef = useRef(myDiwaliPlan);
+  diwaliPlanRef.current = myDiwaliPlan;
+  // Joining switches the feed on as soon as the saved plan reaches this screen.
+  const showDiwaliWhenReady = useRef(false);
+  useEffect(() => {
+    if (hadDiwaliPlan.current && !myDiwaliPlan) setFilter((current) => (current === "diwali" ? null : current));
+    if (myDiwaliPlan && showDiwaliWhenReady.current) { showDiwaliWhenReady.current = false; setFilter("diwali"); }
+    hadDiwaliPlan.current = Boolean(myDiwaliPlan);
+  }, [myDiwaliPlan]);
+  const [diwaliVibe, setDiwaliVibe] = useState<string | null>(null);
   // The season ended while the edition was on: back to everyone.
   useEffect(() => {
     if (!garbaOpen && filter === "garba") setFilter(null);
-  }, [garbaOpen, filter]);
+    if (!diwaliOn && filter === "diwali") setFilter(null);
+  }, [garbaOpen, diwaliOn, filter]);
   const chooseFilter = useCallback((next: FeedFilter) => {
+    if (next === "diwali") {
+      // A closed campaign opens the normal feed; joining always needs the member's own confirmation.
+      if (!diwaliOn) { setFilter(null); return; }
+      if (!myDiwaliPlan) setDiwaliSheet(true);
+      else setFilter("diwali");
+      return;
+    }
     if (next === "garba") {
       if (!garbaOpen) {
         showToast("Garba Nights is closed until next Navratri.");
@@ -223,7 +256,7 @@ function DiscoveryExperience() {
       return;
     }
     setFilter(next);
-  }, [garbaOpen, settings?.locationEnabled, navigation, myGarbaNights.length, premium.isLoading, plusLocked]);
+  }, [garbaOpen, diwaliOn, myDiwaliPlan, settings?.locationEnabled, navigation, myGarbaNights.length, premium.isLoading, plusLocked]);
   const allowance = useQuery({ queryKey: ["daily-allowance", uid], queryFn: fetchDailyAllowance, enabled: Boolean(uid), staleTime: 30_000, retry: 1 });
   const refreshAllowance = allowance.refetch;
   useEffect(() => { if (Platform.OS === "web" && uid && premium.isSuccess) void refreshAllowance(); }, [uid, premium.dataUpdatedAt, premium.isSuccess, refreshAllowance]);
@@ -294,6 +327,11 @@ function DiscoveryExperience() {
     }
     const generation = generationRef.current;
     const filter = filterRef.current;
+    // A plan that was just withdrawn can't be searched on: go back to everyone instead of asking the server.
+    if (filter === "diwali" && !diwaliPlanRef.current) {
+      setFilter(null);
+      return;
+    }
     loadingRef.current = true;
     try {
       let fresh: DiscoverProfile[] = [];
@@ -328,6 +366,16 @@ function DiscoveryExperience() {
         if (/Pick the Garba nights/.test(message)) setGarbaSheet(true);
         return;
       }
+      if (filter === "diwali" && /Diwali/.test(message)) {
+        // The campaign closed, or the plan was withdrawn or has passed. Only talk about it on screen.
+        setFilter(null);
+        // (A withdrawn plan isn't an error; an in-flight request just lost the race.)
+        if (diwaliPlanRef.current && navigationRef.current.isFocused()) {
+          showToast(friendlyError(err, "Diwali Together is off."));
+          if (/Pick your Diwali/.test(message)) setDiwaliSheet(true);
+        }
+        return;
+      }
       if (filter && /Paire Plus|Silver Fox/.test(message)) {
         // The pass ended (or the filter isn't open to them): show everyone again.
         showToast(friendlyError(err, "The age-gap filter is off."));
@@ -354,7 +402,8 @@ function DiscoveryExperience() {
     settings?.sharedLanguageOnly,
     filter,
     // Picking more Garba nights widens the Garba edition.
-    filter === "garba" ? myGarbaNights.join() : null
+    filter === "garba" ? myGarbaNights.join() : null,
+    filter === "diwali" ? [myDiwaliPlan, me?.city, settings?.location?.lat, settings?.location?.lng] : null
   ]);
   useEffect(() => {
     void load(true);
@@ -366,7 +415,9 @@ function DiscoveryExperience() {
     if (Platform.OS !== "web" || !intent || handledIntent.current === intent.nonce) return;
     handledIntent.current = intent.nonce;
     setMode("solo");
-    const next = intent.edition === "garba" ? "garba" : null;
+    // Garba is retired in the browser; an old link simply opens normal discovery.
+    const next = intent.edition === "diwali" ? "diwali" : null;
+    if (intent.edition === "diwali" && intent.vibe) setDiwaliVibe(intent.vibe);
     chooseFilter(next);
     if (filterRef.current === next) void load(true);
   }, [intent, chooseFilter, load]);
@@ -521,7 +572,17 @@ function DiscoveryExperience() {
 
       <XStack testID="discover-intro" paddingHorizontal="$4" alignItems="center" justifyContent="space-between" gap="$2" marginBottom="$3">
         <YStack flex={1}>
-          {filter === "garba" && mode !== "duo" ? (
+          {filter === "diwali" && mode !== "duo" ? (
+            <>
+              <Text fontSize={27} lineHeight={33} fontWeight="700" accessibilityRole="header">Diwali, together.</Text>
+              <XStack marginTop={4} gap="$2" alignItems="center" flexWrap="wrap">
+                <Text fontSize="$2" color="$textMuted">People with plans like yours.</Text>
+                <Pressable testID="discover-diwali-edit" accessibilityRole="button" onPress={() => setDiwaliSheet(true)} style={{ minHeight: 32, justifyContent: "center" }}>
+                  <Text fontSize="$2" color="$primary" fontWeight="700">Edit my plans</Text>
+                </Pressable>
+              </XStack>
+            </>
+          ) : filter === "garba" && mode !== "duo" ? (
             <>
               <Text fontSize={27} lineHeight={33} fontWeight="700" accessibilityRole="header">Find your Garba Paire.</Text>
               <XStack marginTop={4} gap="$2" alignItems="center" flexWrap="wrap">
@@ -563,7 +624,7 @@ function DiscoveryExperience() {
 
       {mode !== "duo" ? (
         <YStack testID="discover-filters" paddingBottom="$2">
-          <FeedFilters value={filter} locked={plusLocked} canSeekYounger={settings?.ageGap === "older"} garbaOpen={garbaOpen} onChange={chooseFilter} />
+          <FeedFilters value={filter} locked={plusLocked} canSeekYounger={settings?.ageGap === "older"} garbaOpen={garbaOpen} diwaliOpen={diwaliOn} onChange={chooseFilter} />
         </YStack>
       ) : null}
 
@@ -578,6 +639,17 @@ function DiscoveryExperience() {
           ) : status === "error" ? (
             <EmptyState icon="cloud-offline-outline" title="Couldn't load profiles" message={error ?? undefined}>
               <PrimaryButton onPress={() => void load(true)}>Try again</PrimaryButton>
+            </EmptyState>
+          ) : !top && filter === "diwali" ? (
+            <EmptyState
+              testID="discover-empty-diwali"
+              icon="sparkles-outline"
+              title="No one here yet for these plans"
+              message="No one in your area has picked a matching day and plan yet. Keep your plans on and check back, or change them anytime. You'll only ever meet people who also say yes."
+            >
+              <PrimaryButton onPress={() => setDiwaliSheet(true)}>Edit my plans</PrimaryButton>
+              <SecondaryButton onPress={() => void shareDiwaliInvite()}>Invite someone</SecondaryButton>
+              <SecondaryButton onPress={() => setFilter(null)}>Show everyone</SecondaryButton>
             </EmptyState>
           ) : !top && filter === "garba" ? (
             <EmptyState
@@ -730,6 +802,22 @@ function DiscoveryExperience() {
           setFilter("garba");
           showToast("You're in! Showing people going on your nights. 🪔", "success");
         }}
+      />
+
+      <DiwaliSheet
+        visible={diwaliSheet && diwaliOn}
+        initialVibe={diwaliVibe}
+        onClose={() => setDiwaliSheet(false)}
+        onSaved={() => {
+          setDiwaliSheet(false);
+          if (diwaliPlanRef.current) setFilter("diwali");
+          else showDiwaliWhenReady.current = true;
+          if (!me?.city?.trim() && !settings?.locationEnabled) {
+            showToast("You're in. Add your city so we can find people near you.", "success");
+            navigation.navigate("EditProfile");
+          } else showToast("You're in. Showing people with plans like yours. 🪔", "success");
+        }}
+        onWithdrawn={() => { if (filterRef.current === "diwali") setFilter(null); }}
       />
 
       <NoteFlight flightKey={flight?.key ?? null} name={flight?.name ?? ""} onDone={endFlight} />

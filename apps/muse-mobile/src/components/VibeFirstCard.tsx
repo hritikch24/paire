@@ -1,4 +1,5 @@
 import { ageGapLabel } from "../data/ageGap";
+import { diwaliBadge } from "../data/diwali";
 import { garbaBadge } from "../data/garba";
 import { Image } from "expo-image";
 import { useRef, useState } from "react";
@@ -48,6 +49,7 @@ export function VibeFirstCard({ profile, onOpen }: { profile: DiscoverProfile; o
               {basicsLine ? <Text color="$textMuted" fontSize="$1">{basicsLine}</Text> : null}
               {profile.requiresNote ? <XStack gap={4} alignItems="center"><Icon name="chatbubble-ellipses" size={12} color="primary" /><Text fontSize={11} color="$primary" fontWeight="700">Likes with a note only</Text></XStack> : null}
               {profile.ageGap ? <Text fontSize={11} color="$primary" fontWeight="700">{ageGapLabel(profile.ageGap, profile.gender)}</Text> : null}
+              {profile.diwaliShared ? <Text testID="vibe-diwali" fontSize={11} color="$primary" fontWeight="700">{diwaliBadge(profile.diwaliShared)}</Text> : null}
               {profile.garbaShared ? <Text fontSize={11} color="$primary" fontWeight="700">{garbaBadge(profile.garbaShared)}</Text> : null}
             </YStack>
             <YStack alignItems="flex-end" gap={5}>

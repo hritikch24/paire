@@ -26,7 +26,14 @@ beforeEach(() => jest.clearAllMocks());
 test("random fictional users receive a match event only after genuine reciprocal likes, once", async () => {
   const { a, b } = await pair();
   expect((await like(a, b)).matched).toBe(false);
-  expect(sendPushToUser).not.toHaveBeenCalled();
+  // A one-sided like is a real, anonymous "someone likes you" alert, never a match alert.
+  expect(sendPushToUser).toHaveBeenCalledTimes(1);
+  expect(sendPushToUser).toHaveBeenCalledWith(b, expect.objectContaining({ kind: "likes", data: { type: "like" }, body: "Open Paire to see your likes." }));
+  expect(JSON.stringify((sendPushToUser as jest.Mock).mock.calls)).not.toContain("Fictional A");
+  expect(sendPushToUser).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ kind: "matches" }));
+  await like(a, b); // a retry of the same like is idempotent and does not alert again
+  expect(sendPushToUser).toHaveBeenCalledTimes(1);
+  jest.clearAllMocks();
   const result = await like(b, a);
   expect(result.matched).toBe(true);
   expect((await db.doc(`matches/${result.matchId}`).get()).get("participants")).toEqual([a, b].sort());

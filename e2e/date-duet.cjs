@@ -42,6 +42,71 @@ const actions = [], server = createServer((req, res) => {
     await page.locator('.other-passes summary').click();
     console.log('PASS featured price order, total-price labels and secondary options at 320/390/768/1280px');
     assert.equal(await page.locator('#garba').count(), 0); assert.equal(await page.locator('a[href="#garba"]').count(), 0);
+    // Diwali Together: homepage teaser, public page, honest copy and the invitation card maker.
+    assert.equal(await page.locator('#diwali a[href="/diwali-together/"]').count() > 0, true);
+    assert.equal((await (await context.request.get(origin + '/garba-nights/')).text()).includes('diwali-together'), true);
+    await page.goto(origin + '/diwali-together/'); await responsive('diwali');
+    assert.match(await page.locator('h1:visible').innerText(), /Diwali is better with someone to share the chai/);
+    assert.match(await page.locator('#campaign-status').innerText(), /Open now through 10 November, IST/);
+    assert.equal(await page.locator('[data-diwali-join]').first().getAttribute('href'), '/app/?edition=diwali');
+    assert.equal(await page.locator('h1:visible').count(), 1);
+    await page.locator('#invite-form').waitFor();
+    assert.match(await page.locator('#invite-preview-vibe').innerText(), /Chai & mithai, anyone\?/);
+    // Choosing a plan card selects it in the builder and keeps the state in the fragment only.
+    await page.locator('[data-pick-vibe="bash"]').click();
+    assert.equal(await page.locator('input[name="vibe"]:checked').inputValue(), 'bash');
+    assert.match(await page.locator('#invite-preview-vibe').innerText(), /Going to a Diwali bash\?/);
+    await page.locator('input[name="day"][value="2026-11-09"]').check({ force: true });
+    // Hostile and oversized city text becomes a plain place name; nothing is injected.
+    await page.locator('#invite-city').fill('<img src=x onerror=window.__xss=1>Pune' + 'x'.repeat(80));
+    const city = await page.locator('#invite-city').inputValue();
+    assert(city.length <= 40 && !/[<>=]/.test(city));
+    assert.equal(await page.evaluate(() => window.__xss), undefined); assert.equal(await page.locator('#invite-preview img').count(), 0);
+    await page.locator('#invite-city').fill('Pune');
+    assert.match(await page.locator('#invite-preview-city').innerText(), /Around Pune/);
+    const fragment = new URL(page.url()).hash; assert.match(fragment, /^#v=bash&d=2026-11-09&c=Pune$/); assert.equal(new URL(page.url()).search, '');
+    assert.match(await page.locator('#invite-join').getAttribute('href'), /^\/app\/\?edition=diwali&vibe=bash$/);
+    assert.equal(await page.locator('#invite-link').inputValue(), origin + '/diwali-together/' + fragment);
+    // Refresh and a shared link restore the same card; a hostile fragment falls back to safe defaults.
+    await page.reload(); await page.locator('#invite-form').waitFor();
+    assert.equal(await page.locator('input[name="vibe"]:checked').inputValue(), 'bash'); assert.equal(await page.locator('#invite-city').inputValue(), 'Pune');
+    await page.goto(origin + '/diwali-together/#v=<script>&d=1999-01-01&c=' + encodeURIComponent('<b>Evil</b>' + 'y'.repeat(300)));
+    await page.locator('#invite-form').waitFor();
+    assert.equal(await page.locator('input[name="vibe"]:checked').inputValue(), 'chai');
+    // Share with files (system sheet stubbed): the PNG carries nothing but the plan, day and city.
+    await page.evaluate(() => { window.__shares = []; Object.defineProperty(navigator, 'canShare', { configurable: true, value: data => Boolean(data.files?.length) }); Object.defineProperty(navigator, 'share', { configurable: true, value: async data => { window.__shares.push({ title: data.title, text: data.text, url: data.url, type: data.files?.[0]?.type, size: data.files?.[0]?.size }); } }); });
+    assert.equal(await page.locator('#invite-share').isVisible(), true);
+    await page.locator('#invite-share').click(); await page.waitForFunction(() => window.__shares.length === 1);
+    const shared1 = await page.evaluate(() => window.__shares[0]); assert.equal(shared1.type, 'image/png'); assert(shared1.size > 20000); assert.match(shared1.url, /#v=chai/);
+    // Closing the system share sheet is silent.
+    await page.evaluate(() => Object.defineProperty(navigator, 'share', { configurable: true, value: async () => { throw new DOMException('Cancelled', 'AbortError'); } }));
+    await page.locator('#invite-share').click(); await page.waitForTimeout(300); assert.equal((await page.locator('#invite-status').innerText()).trim(), '');
+    // Download is a real 1080 x 1350 PNG; copy link falls back to selecting the field.
+    const cardDownload = page.waitForEvent('download'); await page.locator('#invite-download').click();
+    await (await cardDownload).saveAs('/tmp/muse-pm-diwali-card.png'); const cardPng = fs.readFileSync('/tmp/muse-pm-diwali-card.png');
+    assert.equal(cardPng.readUInt32BE(16), 1080); assert.equal(cardPng.readUInt32BE(20), 1350);
+    await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => { window.__copied = text; } } }));
+    await page.locator('#invite-copy').click(); assert.equal(await page.evaluate(() => window.__copied), await page.locator('#invite-link').inputValue());
+    // Keyboard: arrow keys move through the plan group.
+    await page.locator('input[name="vibe"]:checked').focus(); await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('input[name="vibe"]:checked').inputValue(), 'mela');
+    await page.locator('#invite-status', { hasText: /Card updated: Mela stroll/ }).waitFor();
+    // After 10 November IST the page says so, hides the maker and the app link opens normally.
+    const late = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    await late.addInitScript(() => { const fixed = Date.parse('2026-11-10T19:00:00Z'), Real = Date; class Fake extends Real { constructor(...a) { a.length ? super(...a) : super(fixed); } static now() { return fixed; } } window.Date = Fake; });
+    await late.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+    const lp = await late.newPage(); await lp.goto(origin + '/diwali-together/');
+    assert.match(await lp.locator('h1:visible').innerText(), /Diwali 2026 has passed\. Paire is still here\./);
+    assert.equal(await lp.locator('#card').isVisible(), false);
+    assert.equal(await lp.locator('a:visible[href="/app/"]').count() > 0, true);
+    await late.close();
+    // Old Garba link target and homepage expiry.
+    const homeLate = await browser.newContext({ serviceWorkers: 'block' });
+    await homeLate.addInitScript(() => { const fixed = Date.parse('2026-11-12T08:00:00Z'), Real = Date; class Fake extends Real { constructor(...a) { a.length ? super(...a) : super(fixed); } static now() { return fixed; } } window.Date = Fake; });
+    await homeLate.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+    const hp = await homeLate.newPage(); await hp.goto(origin + '/'); assert.equal(await hp.locator('#diwali').isVisible(), false); await homeLate.close();
+    console.log('PASS Diwali Together page: honest copy, plan cards, hostile input, fragment state, refresh, share/cancel/copy/download PNG, keyboard, expiry and layouts');
+    await page.goto(origin + '/');
     await page.getByRole('link', { name: 'Try Date Duet', exact: true }).click(); await responsive('duet-intro'); console.log('PASS public landing layouts');
     await page.locator('#start').click(); assert(await page.locator('#next').isDisabled());
     await page.getByRole('button', { name: /Chai & a conversation/ }).click();

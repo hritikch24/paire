@@ -19,7 +19,7 @@ export type OnboardingStackParamList = {
 
 export type MainTabsParamList = {
   /** `swipe` lets the full-profile screen act on the card it was opened from. */
-  Discover: { swipe?: { uid: string; type: SwipeType; nonce: number }; intent?: { edition: "people" | "garba"; nonce: number } } | undefined;
+  Discover: { swipe?: { uid: string; type: SwipeType; nonce: number }; intent?: { edition: "people" | "garba" | "diwali"; vibe?: string; nonce: number } } | undefined;
   Matches: undefined;
   Profile: undefined;
 };

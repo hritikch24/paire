@@ -86,6 +86,8 @@ export type UserSettings = {
   ageGap?: AgeGapSide | null;
   /** Garba Nights: the nights ("YYYY-MM-DD", IST) I'm going to Garba this Navratri. */
   garbaNights?: string[] | null;
+  /** Voluntary Diwali plans. Dates stay private; never describes living arrangements. */
+  diwaliPlan?: { dates: string[]; vibes: string[] } | null;
   /** Show matches when I'm online and when I was last active. Missing = true. */
   showPresence?: boolean;
 };
@@ -133,6 +135,9 @@ export type DiscoveryEntry = {
   garba?: string | null;
   /** Their upcoming Garba nights (server-only; only shared nights ever reach other members). */
   garbaNights?: string[];
+  diwali?: string | null;
+  diwaliPlan?: { dates: string[]; vibes: string[] } | null;
+  city?: string;
   /** Profile creation time in ms (for the "new here" boost); 0 when unknown. */
   createdAt?: number;
   /** Mirrors settings.showPresence === false: recency still orders feeds but is never shown. */
@@ -188,6 +193,8 @@ export type DiscoverProfile = {
   ageGap?: AgeGapSide;
   /** Garba edition only: how many of your Garba nights they're going to (never which ones). */
   garbaShared?: number;
+  /** Only overlapping activity labels and a count, never another member’s dates. */
+  diwaliShared?: { days: number; vibes: string[] };
 };
 
 export type FeedCursor = { lastActiveAt: number; uid: string };

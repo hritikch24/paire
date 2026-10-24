@@ -11,18 +11,14 @@ document.querySelectorAll('[data-vibe]').forEach(button => button.addEventListen
   document.querySelector('#vibe-tags').replaceChildren(...vibe.tags.map(tag => { const node = document.createElement('span'); node.textContent = tag; return node; }));
 }));
 
-// Garba Nights is a Navratri edition: mark tonight, fade past nights, and hide it all after Dussehra (India time).
+// Dated campaigns (Diwali Together) disappear after their last day (India time).
 (() => {
-  const section = document.querySelector('[data-garba-until]');
-  if (!section) return;
   const today = new Date(Date.now() + 330 * 60 * 1000).toISOString().slice(0, 10);
-  if (today > section.dataset.garbaUntil) {
+  document.querySelectorAll('[data-campaign-until]').forEach(section => {
+    if (today <= section.dataset.campaignUntil) return;
     section.hidden = true;
-    document.querySelectorAll('a[href="#garba"], [data-garba-item]').forEach(node => node.remove());
-    return;
-  }
-  section.querySelectorAll('[data-night]').forEach(night => {
-    if (night.dataset.night === today) night.classList.add('tonight');
-    else if (night.dataset.night < today) night.classList.add('past');
+    const id = section.id;
+    if (id) document.querySelectorAll(`a[href="#${id}"]`).forEach(node => node.remove());
+    document.querySelectorAll('[data-campaign-item]').forEach(node => node.remove());
   });
 })();

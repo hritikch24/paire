@@ -1,5 +1,6 @@
 import type { WorkSector } from "../data/workCircles";
 import { ageGapLabel } from "../data/ageGap";
+import { diwaliBadge } from "../data/diwali";
 import { garbaBadge } from "../data/garba";
 import type { ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
@@ -44,6 +45,7 @@ export type ProfileViewData = {
   casualMatch?: boolean;
   ageGap?: AgeGapSide;
   garbaShared?: number;
+  diwaliShared?: { days: number; vibes: string[] };
 };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -153,6 +155,7 @@ export function ProfileDetails({ profile }: { profile: ProfileViewData }) {
       ) : null}
       {profile.photoVerified ? <Text color="$primary" fontSize="$2">Photos checked · a photo check doesn’t guarantee safety</Text> : null}
       {profile.ageGap ? <Text testID="profile-agegap" color="$primary" fontSize="$2" fontWeight="700">{ageGapLabel(profile.ageGap, profile.gender)}</Text> : null}
+      {profile.diwaliShared ? <Text testID="profile-diwali" color="$primary" fontSize="$2" fontWeight="700">{diwaliBadge(profile.diwaliShared)}</Text> : null}
       {profile.garbaShared ? <Text testID="profile-garba" color="$primary" fontSize="$2" fontWeight="700">{garbaBadge(profile.garbaShared)}</Text> : null}
       {profile.bio ? (
         <Section title="About me">

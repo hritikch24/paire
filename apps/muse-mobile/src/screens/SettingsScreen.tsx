@@ -37,6 +37,7 @@ import { useAuthStore } from "../store/authStore";
 import { useTestServerStore } from "../store/testServerStore";
 import { AGE_GAP_OLDER_MIN_AGE } from "../data/ageGap";
 import { activeGarbaSeason, myUpcomingNights } from "../data/garba";
+import { DiwaliSettingsSection, DiwaliSheet } from "../components/DiwaliTogether";
 import { GARBA_PRIVACY_NOTE, GarbaNightPicker, toggleNight } from "../components/GarbaNights";
 import { AgeGapSide, UserSettings } from "../types/models";
 import { MAX_AGE, MIN_AGE } from "../utils/age";
@@ -63,6 +64,7 @@ export function SettingsScreen() {
   const [pushPermission, setPushPermission] = useState<PushPermission>("undetermined");
   const [locating, setLocating] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [diwaliOpen, setDiwaliOpen] = useState(false);
   const testServerOrigin = useTestServerStore((state) => state.origin);
   const themeName = useAppearanceStore((state) => PALETTES[state.palette].name);
   const presenceEnabled = usePresenceEnabled();
@@ -250,7 +252,9 @@ export function SettingsScreen() {
           />
         </SettingsSection>
 
-        {activeGarbaSeason() ? (
+        {Platform.OS === "web" ? (
+          <DiwaliSettingsSection onEdit={() => setDiwaliOpen(true)} />
+        ) : activeGarbaSeason() ? (
           <SettingsSection title="🪔 Garba Nights" footer={GARBA_PRIVACY_NOTE}>
             <YStack padding="$4" gap="$2">
               <Text fontSize="$4">Nights I'm going</Text>
@@ -436,6 +440,7 @@ export function SettingsScreen() {
       </YStack>
 
       <DeleteAccountSheet visible={deleteOpen} onClose={() => setDeleteOpen(false)} />
+      <DiwaliSheet visible={diwaliOpen} onClose={() => setDiwaliOpen(false)} onSaved={() => { setDiwaliOpen(false); showToast("Your Diwali plans are saved.", "success"); }} />
     </Screen>
   );
 }

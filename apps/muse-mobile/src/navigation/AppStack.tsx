@@ -1,5 +1,6 @@
 import { WorkCirclesScreen, WorkCircleScreen } from "../screens/WorkCirclesScreen";
 import { useWebLinks } from "../hooks/useWebLinks";
+import { NotificationPrompt } from "../components/NotificationPrompt";
 import { Platform } from "react-native";
 import { AdminPremiumScreen } from "../screens/AdminPremiumScreen";
 import { AdminNotificationsScreen } from "../screens/AdminNotificationsScreen";
@@ -51,6 +52,7 @@ export function AppStack() {
   useLocationHeartbeat();
 
   return (
+    <>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Tabs" component={MainTabs} />
       <Stack.Screen name="Chat" component={ChatScreen} />
@@ -86,5 +88,7 @@ export function AppStack() {
       />
       {features.calls ? <Stack.Screen name="Call" component={CallScreen} /> : null}
     </Stack.Navigator>
+    <NotificationPrompt />
+    </>
   );
 }

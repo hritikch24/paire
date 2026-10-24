@@ -7,7 +7,7 @@ import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { consumeDailyQuota } from "./quota";
 import { parseBrowserSubscription, subscriptionId } from "./lib/webPush";
-import { notificationCopy } from "./lib/notificationPrivacy";
+import { notificationCopy, preferenceFor } from "./lib/notificationPrivacy";
 import type { PushMessage } from "./push";
 import type { UserSettings } from "./types";
 
@@ -52,7 +52,7 @@ export const unregisterWebPush = onCall({ region: REGION }, async (request) => {
 /** Browser permission and account preferences apply to events and separately opted-in reminders. */
 export async function sendWebPushToUser(uid: string, message: BrowserPushMessage, settings: UserSettings | undefined): Promise<{ accepted: number; failed: number }> {
   const result = { accepted: 0, failed: 0 };
-  const allowed = message.kind === "test" || (message.kind === "reminders" ? settings?.notifications?.reminders === true : settings?.notifications?.[message.kind] !== false);
+  const allowed = message.kind === "test" || (message.kind === "reminders" ? settings?.notifications?.reminders === true : settings?.notifications?.[preferenceFor(message.kind)] !== false);
   if (!allowed || process.env.FUNCTIONS_EMULATOR === "true" || !publicKey()) return result;
   try {
     const key = privateKey.value();

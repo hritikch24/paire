@@ -21,6 +21,8 @@ const db=backendRequire('firebase-admin/firestore').getFirestore();
  try{
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,permissions:['notifications','geolocation'],geolocation:{latitude:28.613912,longitude:77.209034}});
  await context.addInitScript(({fake})=>{
+  // The friendly notification prompt has its own test (e2e/diwali-together.cjs); here it is recorded as already asked.
+  for(const uid of ['muse_dev','muse_casey'])localStorage.setItem('paire.pushPrompt.'+uid,JSON.stringify({at:Date.now(),count:1}));
   window.__permissionRequests=0;
   Notification.requestPermission=async()=>{window.__permissionRequests++;return 'granted';};
   Object.defineProperty(navigator,'share',{value:undefined,configurable:true});

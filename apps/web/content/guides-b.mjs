@@ -19,7 +19,7 @@ export const guidesB = [
 <h2>Outdoorsy (better for a second or third date)</h2>
 <ul><li>Sunrise trek or hill drive</li><li>Cycling tour</li><li>Lake or riverfront walk</li><li>Birdwatching at a sanctuary in winter</li></ul>
 <h2>Festive and seasonal</h2>
-<ul><li>Garba or Dandiya during Navratri: try Paire's <a href="/garba-nights/">Garba Nights</a></li><li>Diwali melas and markets</li><li>Durga Puja pandal-hopping</li><li>Holi with friends (as a group date)</li><li>Winter food festivals</li></ul>
+<ul><li>Garba or Dandiya during Navratri, with a group</li><li>Diwali melas and markets</li><li>Durga Puja pandal-hopping</li><li>Holi with friends (as a group date)</li><li>Winter food festivals</li></ul>
 <h2>Cosy and creative</h2>
 <ul><li>A double date with your best friend (try <a href="/features/">Duos</a>)</li><li>A film followed by dinner to talk about it</li><li>A planetarium show</li><li>A poetry or open-mic night</li></ul>
 <h2>Keep it relaxed (and safe)</h2>
@@ -29,7 +29,7 @@ export const guidesB = [
       ["What is a good first date in India?", "Something short, public and easy to talk over: coffee and a walk, a museum, a comedy show or a street-food trail. Save long drives and treks for later dates."],
       ["Who should pay on a first date in India?", "There's no fixed rule. Many couples split the bill or take turns; agree on whatever feels comfortable."]
     ],
-    related: ["dating/", "guides/dating-app-safety-tips-india/", "guides/first-message-examples/", "garba-nights/"]
+    related: ["dating/", "guides/dating-app-safety-tips-india/", "guides/first-message-examples/"]
   },
   {
     path: "guides/dating-profile-bio-examples/", parent, crumb: "Dating bio examples", published: D, updated: D, eyebrow: "GUIDE · PROFILES",

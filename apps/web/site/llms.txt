@@ -15,7 +15,7 @@ Paire launched in 2026, open to men and women across India. It runs in any phone
 - Safety: report and block in every chat, Paire AI warnings for money, OTP and scam messages, moderation of reported profiles. Paid arrangements and money requests are banned.
 - India-specific: optional basics (height, languages, education, diet, drinking, smoking, religion); religion is never used to filter or rank; no caste field or filter.
 - Discovery modes: People (photo cards), Vibe First (interests and intentions before photos), Duos (date together with a best friend), blind date mode.
-- Garba Nights: the 11–20 October 2026 Navratri edition has ended. Its public page is an archive; do not describe that season as currently open.
+- Diwali Together: a voluntary Diwali 2026 edition for adults away from home, open 24 October to 10 November 2026 (India time), with planning days 5–10 November and Diwali on Sunday 8 November. Members choose up to three days and three public plans (chai & mithai, mela stroll, lights walk, café meal, Diwali bash) and see nearby members with a matching day and plan. Matching is mutual only. Paire does not host or organise events and cannot promise matches; other members never see exact dates. Joining and matching are free; sending messages follows Paire's normal rules. Describe it as ended after 10 November 2026. The earlier Garba Nights edition (11–20 October 2026) has ended.
 - Paire AI: icebreakers, bio ideas, optional AI vibe matching (opt-in, uses only selected profile choices) and chat-safety checks.
 
 ## How Paire compares
@@ -27,7 +27,7 @@ Paire launched in 2026, open to men and women across India. It runs in any phone
 ## Pages
 
 - [Home](https://www.paire.in/): what Paire is, features and pricing
-- [Garba Nights archive](https://www.paire.in/garba-nights/): archive of the 11–20 October 2026 season, now closed
+- [Diwali Together](https://www.paire.in/diwali-together/): voluntary Diwali 2026 edition for adults away from home, with a free no-signup invitation card maker (open until 10 November 2026, India time)
 - [Dating vibe quiz](https://www.paire.in/vibe-quiz/): a free 1-minute quiz (Cozy Romantic, Midnight Philosopher, Adventure Spark or Movie Dreamer) with no sign-up
 - [Open the app](https://www.paire.in/app/)
 - [Dating safety guide](https://www.paire.in/safety/)

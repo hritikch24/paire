@@ -244,6 +244,18 @@ describe("profiles", () => {
     await assertFails(alexa.doc("users/alexa/private/settings").set({ garbaNights: Array.from({ length: 5 }, () => "2026-10-15") }, { merge: true }));
     await assertFails(alexa.doc("users/alexa/private/settings").set({ garbaNights: ["2026-10-15", { night: 1 }] }, { merge: true }));
     await assertFails(alexa.doc("users/alexa/private/settings").set({ garbaNights: ["tomorrow"] }, { merge: true }));
+    // Diwali Together: bounded dates and activities only, ownership enforced, withdrawable.
+    const plan = (patch: Record<string, unknown> = {}) => ({ diwaliPlan: { dates: ["2026-11-05", "2026-11-08"], vibes: ["chai", "bash"], ...patch } });
+    await assertSucceeds(alexa.doc("users/alexa/private/settings").set(plan(), { merge: true }));
+    await assertSucceeds(alexa.doc("users/alexa/private/settings").set(plan({ dates: ["2026-11-10"], vibes: ["chai", "mela", "lights"] }), { merge: true }));
+    for (const bad of [
+      { dates: [] }, { vibes: [] }, { dates: ["2026-11-04"] }, { dates: ["2026-11-11"] }, { dates: ["tomorrow"] }, { dates: "2026-11-08" },
+      { dates: ["2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08"] }, { vibes: ["chai", "mela", "lights", "meal"] },
+      { vibes: ["home-alone"] }, { vibes: "chai" }, { vibes: [{ chai: true }] }, { address: "12 Some Street" }, { livesAlone: true }
+    ]) await assertFails(alexa.doc("users/alexa/private/settings").set(plan(bad), { merge: true }));
+    await assertFails(alexa.doc("users/alexa/private/settings").set({ diwaliPlan: "chai" }, { merge: true }));
+    await assertFails(dbFor("jules").doc("users/alexa/private/settings").set(plan(), { merge: true }));
+    await assertSucceeds(alexa.doc("users/alexa/private/settings").set({ diwaliPlan: null }, { merge: true }));
     await assertFails(alexa.doc("users/alexa/private/settings").set({ showMe: ["cats"] }));
     await assertFails(alexa.doc("users/alexa/private/settings").set({ ageMin: 16 }));
     await assertSucceeds(

@@ -78,7 +78,8 @@ export function SetupNudge() {
       return;
     }
     if (nudge.id === "notifications" && Platform.OS === "web") {
-      navigation.navigate("Settings");
+      // Same friendly prompt as after sign-in (it explains when this browser can't do Web Push).
+      window.dispatchEvent(new Event("paire-open-notification-prompt"));
       return;
     }
     setBusy(true);

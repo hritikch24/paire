@@ -53,9 +53,10 @@ export async function remindMember(uid: string, now: number, preview = false): P
     const currentState = (current.data() ?? {}) as ReminderState;
     const latestActivity = Math.max(Number(latestProfile.get("lastActiveAt")) || 0, Number(latestIndex.get("lastActiveAt")) || 0);
     if (currentState.enabled !== true || latestProfile.get("isDiscoverable") === false || !reminderDue(preferences.data() as UserSettings | undefined, currentState, latestActivity, now)) return false;
-    if (plan.season && currentState.garbaSeason === plan.season) return false;
+    const seasonKey = plan.type === "diwali" ? "diwaliSeason" : "garbaSeason";
+    if (plan.season && currentState[seasonKey] === plan.season) return false;
     // Reserve before network delivery: overlapping scheduler invocations cannot double-send.
-    tx.set(stateSnap.ref, { recentAttempts: [...(currentState.recentAttempts ?? []).filter((at) => now - at < 7 * DAY_MS), now], latestId: id, latestType: plan.type, latestAttemptAt: now, openedAt: 0, ...(plan.season ? { garbaSeason: plan.season } : {}) }, { merge: true });
+    tx.set(stateSnap.ref, { recentAttempts: [...(currentState.recentAttempts ?? []).filter((at) => now - at < 7 * DAY_MS), now], latestId: id, latestType: plan.type, latestAttemptAt: now, openedAt: 0, ...(plan.season ? { [seasonKey]: plan.season } : {}) }, { merge: true });
     return true;
   });
   if (!claimed) return { status: "skipped", reason: "changed-or-capped" };
