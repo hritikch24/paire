@@ -8,7 +8,7 @@ const paireColumn = {
   notes: "Every like can carry a note",
   women: "Notes-only likes, I'll message first, incognito, private photos: all free",
   verify: "Confirmed email required; photo checks and current photo badges shown separately",
-  price: "Free; Plus ₹399/60 days, ₹20/day or ₹1,499 lifetime. More options: ₹99/week, ₹799/180 days. No auto-renewal",
+  price: "Free; Plus ₹399/60 days, ₹35/day or ₹1,499 lifetime. More options: ₹99/week, ₹799/180 days. No auto-renewal",
   india: "Built in India: no caste field, prices in rupees, Date Duet, Duos"
 };
 
@@ -23,7 +23,7 @@ export const compare = [
       "On Tinder, seeing who already likes you is part of paid tiers (Gold and above); on Paire it comes with a fixed-duration Plus pass.",
       "Paire likes can carry a note, so matches start with a reason, not just a swipe.",
       "Paire requires confirmed email; a current photo badge indicates a separate completed photo check.",
-      "Paire Plus passes are one-time payments from ₹20 that never auto-renew."
+      "Paire Plus passes are one-time payments from ₹35 that never auto-renew."
     ],
     body: `
 <h2>Side by side</h2>
@@ -42,7 +42,7 @@ export const compare = [
 <li>You're tired of matches that never turn into conversations: on Paire, likes can carry notes.</li>
 <li>You want short, fixed-duration Plus passes to reveal your likes.</li>
 <li>You want to see clear distinctions between confirmed email and optional photo-check badges.</li>
-<li>You'd rather pay ₹20 for a day of extra reach than sign up for a subscription.</li>
+<li>You'd rather pay ₹35 for a day of extra reach than sign up for a subscription.</li>
 <li>You're a woman who wants to filter out low-effort likes or message first.</li>
 </ul>
 ${NOTE}`,

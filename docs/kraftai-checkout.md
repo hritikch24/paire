@@ -114,3 +114,7 @@ The live KraftAI checkout project is `hritikchaudhary016-4858s-projects/myaiprod
 ## Offer update (2026-10-24)
 
 Current web quotes: ₹399/month (60 days with the bonus), ₹20/day, ₹1,499 lifetime; secondary ₹99/week and `halfyear` ₹799/180 days, plus the existing ₹49 messaging-only unlock. Old ₹29 day and ₹299 month server orders stay valid at their exact historical quotes. Catalog matching and deployment order are documented in `docs/plus-offers.md`. Do not edit old paid orders or reprice their recorded receipts.
+
+## Daily-price correction (2026-10-24)
+
+The owner subsequently set the new 24-hour web pass to **₹35 (3500 paise)**. Other plan prices and durations are unchanged. KraftAI continues to validate exact historical ₹20/₹29 day quotes and ₹299 monthly quotes, so previously issued checkouts and purchased time retain their original terms. Deploy the matching checkout before the three order-creation functions and browser UI.

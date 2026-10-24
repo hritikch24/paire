@@ -27,7 +27,7 @@ const admin = getFirestore();
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const chat = require("../src/chatAccess") as typeof import("../src/chatAccess");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { razorpayWebhook, createPlusOrder, confirmPlusPayment } = require("../src/razorpay") as typeof import("../src/razorpay");
+const { razorpayWebhook, createPlusOrder, confirmPlusPayment, grantWebPass } = require("../src/razorpay") as typeof import("../src/razorpay");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { syncChatAccess } = require("../src/chatEntitlement") as typeof import("../src/chatEntitlement");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -705,6 +705,28 @@ describe("Lifetime Plus", () => {
     await webhook("payment.captured", paymentEvent(duplicate));
     await webhook("refund.processed", { refund: { entity: { payment_id: duplicate.id } } });
     expect((await statusOf(uid)).lifetime).toBe(true); expect(fake.refunds.length - before).toBe(1);
+  });
+
+  test("a delayed older callback sees lifetime granted after its original timestamp", async () => {
+    const uid = await buyer(), first = await call(createPlusOrder, uid, { plan: "lifetime" });
+    await admin.doc(`lifetimePlusCheckout/${uid}`).update({ updatedAt: Date.now() - 7 * 3600000 });
+    const second = await call(createPlusOrder, uid, { plan: "lifetime" });
+    await confirmLifetime(uid, pay(first.orderId));
+    const grantedAt = (await admin.doc(`razorpayOrders/${first.orderId}`).get()).get("startsAt") as number;
+    const payment = pay(second.orderId), before = fake.refunds.length;
+    let clockTime = grantedAt - 1000;
+    const actualTransaction = admin.runTransaction.bind(admin);
+    const clock = jest.spyOn(Date, "now").mockImplementation(() => clockTime);
+    const transaction = jest.spyOn(admin, "runTransaction").mockImplementation((...args) => {
+      clockTime = grantedAt + 1000;
+      return actualTransaction(...args);
+    });
+    try { await grantWebPass(second.orderId, payment.id); }
+    finally { transaction.mockRestore(); clock.mockRestore(); }
+    expect((await admin.doc(`razorpayOrders/${second.orderId}`).get()).get("status")).toBe("duplicate");
+    expect(fake.refunds.length - before).toBe(1);
+    expect(fake.refunds.at(-1)?.amount).toBe(149900);
+    expect((await statusOf(uid)).lifetime).toBe(true);
   });
 
   test("a second captured attempt is refunded without ending the original lifetime entitlement", async () => {

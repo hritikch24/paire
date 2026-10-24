@@ -51,7 +51,7 @@ test("an active web member can extend by the selected days, retaining the curren
   const extension = () => tree.root.findByProps({ testID: "premium-extension" }).findAll(node => typeof node.props.children === "string").map(node => node.props.children).join(" ");
   expect(extension()).toContain(new Date(mockUntil + 60 * 86_400_000).toLocaleString("en-IN"));
   await act(async () => { tree.root.findByProps({ testID: "premium-plan-day" }).props.onPress(); });
-  expect(button().props.children).toBe("Extend Plus by 1 day · ₹20");
+  expect(button().props.children).toBe("Extend Plus by 1 day · ₹35");
   expect(extension()).toContain(new Date(mockUntil + 86_400_000).toLocaleString("en-IN"));
   await act(async () => { await button().props.onPress(); });
   expect(purchaseWebPass).toHaveBeenCalledWith("day", "#000");

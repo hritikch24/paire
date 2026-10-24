@@ -47,7 +47,7 @@ async function seed() {
         else {
           assert.deepEqual(await page.getByRole('radio').evaluateAll(nodes => nodes.map(node => node.dataset.testid)), ['premium-plan-month', 'premium-plan-day', 'premium-plan-lifetime']);
           assert((await page.getByTestId('premium-plan-month').innerText()).includes('₹399'));
-          assert((await page.getByTestId('premium-plan-day').innerText()).includes('₹20'));
+          assert((await page.getByTestId('premium-plan-day').innerText()).includes('₹35'));
           await page.getByTestId('premium-more-options').click();
           await page.getByTestId('premium-plan-halfyear').click();
           assert((await page.getByTestId('premium-plan-halfyear').innerText()).includes('₹799'));

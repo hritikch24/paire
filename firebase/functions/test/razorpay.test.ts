@@ -15,8 +15,8 @@ const DAY = 24 * 60 * 60 * 1000;
 const sign = (value: string | Buffer, secret: string) => createHmac("sha256", secret).update(value).digest("hex");
 
 describe("Paire Plus on the web", () => {
-  it("prices passes on the server: ₹20, ₹99, ₹399, ₹799 and ₹1,499", () => {
-    expect(PLUS_PASSES.day.amountPaise).toBe(2000);
+  it("prices passes on the server: ₹35, ₹99, ₹399, ₹799 and ₹1,499", () => {
+    expect(PLUS_PASSES.day.amountPaise).toBe(3500);
     expect(PLUS_PASSES.week).toMatchObject({ amountPaise: 9900, days: 7 });
     expect(PLUS_PASSES.month).toMatchObject({ amountPaise: 39900, days: 30 });
     // Web offer: buy 1 month, get 1 month free. Day and week passes have no bonus.

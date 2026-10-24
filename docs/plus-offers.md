@@ -1,11 +1,11 @@
 # Web offers — 24 October 2026
 
-The owner's requested priority is **₹399, ₹20, ₹1,499**. Total prices lead on the homepage and browser Plus screen. The monthly offer is initially selected; selecting a card never starts a payment. Existing lifetime owners see their included benefits without another sales offer.
+The current priority is **₹399, ₹35, ₹1,499**. The owner updated the 24-hour price to ₹35 after the initial ₹20 offer release. Total prices lead on the homepage and browser Plus screen. The monthly offer is initially selected; selecting a card never starts a payment. Existing lifetime owners see their included benefits without another sales offer.
 
 | Option | Total paid | Access | Regular likes | Messaging |
 | --- | --- | --- | --- | --- |
 | Monthly offer | ₹399 | 30 paid + 30 bonus days | Unlimited during its period | Included during its period |
-| Day | ₹20 | 24 hours | 100/day | Included during its period |
+| Day | ₹35 | 24 hours | 100/day | Included during its period |
 | Lifetime Plus | ₹1,499 | No scheduled expiry on this account while the Plus service operates | Unlimited | Included |
 | Week, secondary | ₹99 | 7 days | 100/day | Included during its period |
 | Six months, secondary | ₹799 | 180 days | Unlimited during its period | Included during its period |
@@ -23,8 +23,14 @@ Our product decision is to offer a low upfront trial, a medium-duration unlimite
 
 ## Pricing and compatibility
 
-New server orders: day 2000, week 9900, month 39900, `halfyear` 79900, lifetime 149900, chat 4900 paise. Browser catalog, public copy/structured data, backend catalog and KraftAI checkout must agree. Old server-created ₹29 day and ₹299 monthly orders remain payable at exactly their stored quotes. Previously purchased time is never repriced. Finite passes still queue, while unlimited-like benefits start with their own active period. Refund/revocation removes only its own source. Legacy direct-UPI orders retain their exact QR reconciliation amount.
+New server orders: day 3500, week 9900, month 39900, `halfyear` 79900, lifetime 149900, chat 4900 paise. Browser catalog, public copy/structured data, backend catalog and KraftAI checkout must agree. Old server-created ₹20/₹29 day and ₹299 monthly orders remain payable at exactly their stored quotes. Previously purchased time is never repriced. Finite passes still queue, while unlimited-like benefits start with their own active period. Refund/revocation removes only its own source. Legacy direct-UPI orders retain their exact QR reconciliation amount.
 
 Deploy the counterpart in `kanoon-simplified` through its existing GitHub integration first; its live Vercel project belongs to `hritikchaudhary016-4858s-projects/myaiproductss`, not Paire's Team-Rockstar account. Then deploy all Firebase entitlement writers/readers and push Paire main for the existing Vercel integration. No customer payments or production account logins are part of QA.
 
 Validation and deployment evidence are recorded in `docs/web-changes.md`.
+
+## Payment callback timing
+
+Razorpay grants read the current time after each transaction attempt's locked reads. An older callback can retry after a newer callback already granted Lifetime Plus; using its earlier request timestamp could incorrectly treat the completed lifetime purchase as future access. A deterministic integration regression reproduces the duplicate-grant failure with the old clock placement and passes with the updated attempt clock. The existing simultaneous-capture test remains strict. This correction does not rewrite historical receipts or initiate any production payment/refund as part of deployment.
+
+For the daily-price correction and this callback fix, deploy `createPlusOrder`, `createCcavenueOrder`, `createUpiUnlockOrder`, `confirmPlusPayment` and `razorpayWebhook` after KraftAI. No entitlement format, native product, rule or runtime-switch migration is needed.

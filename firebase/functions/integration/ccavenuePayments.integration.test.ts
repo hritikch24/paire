@@ -299,17 +299,17 @@ describe("CCAvenue replaces direct UPI", () => {
 });
 
 describe("Paire Plus through CCAvenue", () => {
-  test("previously issued ₹29 day orders still settle at their stored quote after the ₹20 price change", async () => {
+  test.each([20, 29])("previously issued ₹%i day orders still settle at their stored quote after the ₹35 price change", async (legacyPrice) => {
     const uid = await buyer();
     const { orderId, plain } = await start(uid, { plan: "day", amountPaise: 1 });
-    expect(plain.get("amount")).toBe("20.00");
-    expect((await orderOf(orderId))!.amountPaise).toBe(2000);
+    expect(plain.get("amount")).toBe("35.00");
+    expect((await orderOf(orderId))!.amountPaise).toBe(3500);
     // A pre-change quote retained in the database, with its real old amount.
-    await admin.doc(`ccavenueOrders/${orderId}`).update({ amountPaise: 2900 });
-    pay(orderId, { order_amt: 29 });
+    await admin.doc(`ccavenueOrders/${orderId}`).update({ amountPaise: legacyPrice * 100 });
+    pay(orderId, { order_amt: legacyPrice });
     await call(cc.confirmCcavenueOrder, uid, { orderId });
     const saved = (await orderOf(orderId))!;
-    expect(saved).toMatchObject({ status: "paid", amountPaise: 2900 });
+    expect(saved).toMatchObject({ status: "paid", amountPaise: legacyPrice * 100 });
     expect(saved.expiresAt - saved.startsAt).toBe(86_400_000);
   });
 
@@ -325,8 +325,8 @@ describe("Paire Plus through CCAvenue", () => {
     expect(saved.expiresAt - saved.startsAt).toBe(7 * 24 * 60 * 60 * 1000);
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(saved.expiresAt);
     const extension = await start(uid, { plan: "day" });
-    expect(extension.plain.get("amount")).toBe("20.00");
-    const extensionPayment = pay(extension.orderId, { order_amt: 20 });
+    expect(extension.plain.get("amount")).toBe("35.00");
+    const extensionPayment = pay(extension.orderId, { order_amt: 35 });
     await call(cc.confirmCcavenueOrder, uid, { orderId: extension.orderId });
     expect(await orderOf(extension.orderId)).toMatchObject({ startsAt: saved.expiresAt, expiresAt: saved.expiresAt + 86_400_000 });
     extensionPayment.order_status = "Refunded";

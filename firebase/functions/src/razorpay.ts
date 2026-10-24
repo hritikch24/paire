@@ -79,7 +79,7 @@ export async function grantWebPass(orderId: string, paymentId: string): Promise<
   const ref = db.doc(`razorpayOrders/${orderId}`), snap = await ref.get();
   if (!snap.exists) return null;
   const order = snap.data() as OrderRecord;
-  const now = Date.now(), storeExpiry = order.plan === "lifetime" ? 0 : await storeExpiryIfEnabled(order.uid, now);
+  const storeExpiry = order.plan === "lifetime" ? 0 : await storeExpiryIfEnabled(order.uid, Date.now());
   const ledgerRef = db.doc(`webPassLedger/${order.uid}`);
   const outcome = await db.runTransaction(async tx => {
     const [fresh, ledger, user, moderation] = await tx.getAll(ref, ledgerRef, db.doc(`users/${order.uid}`), db.doc(`moderation/${order.uid}`));
@@ -87,6 +87,10 @@ export async function grantWebPass(orderId: string, paymentId: string): Promise<
       tx.update(ref, { extraPaymentIds: FieldValue.arrayUnion(paymentId) }); return "extra";
     }
     if (fresh.get("status") !== "created") return "closed";
+    // Read the clock after this attempt's locked reads. An earlier callback can
+    // retry after a later callback granted lifetime; its old timestamp must not
+    // make that permanent purchase appear to start in the future.
+    const now = Date.now();
     const benefits = await webPassBenefits(order.uid, now, tx);
     const record = { paymentId, updatedAt: FieldValue.serverTimestamp() };
     if (!user.exists) { tx.update(ref, { ...record, status: "orphaned" }); return "orphaned"; }

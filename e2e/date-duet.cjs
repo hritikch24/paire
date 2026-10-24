@@ -33,7 +33,7 @@ const actions = [], server = createServer((req, res) => {
       await page.setViewportSize({ width: 390, height: 844 });
     }
     await page.goto(origin + '/'); await responsive('home');
-    assert.deepEqual(await page.locator('.primary-price-grid article h3').evaluateAll(nodes => nodes.map(node => node.firstChild.textContent)), ['₹399', '₹20', '₹1,499']);
+    assert.deepEqual(await page.locator('.primary-price-grid article h3').evaluateAll(nodes => nodes.map(node => node.firstChild.textContent)), ['₹399', '₹35', '₹1,499']);
     assert.equal(await page.locator('.other-passes').getAttribute('open'), null);
     await page.locator('.other-passes summary').click();
     assert.match(await page.locator('.other-pass-grid').innerText(), /₹799/);
