@@ -8,13 +8,16 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, XStack, YStack } from "tamagui";
+import { AcceptButtons } from "../components/AcceptButtons";
 import { Icon } from "../components/Icon";
 import { IconButton } from "../components/IconButton";
 import { PrimaryButton } from "../components/MuseButton";
 import { LockedLikes } from "../components/LockedLikes";
 import { EmptyState, LoadingView } from "../components/States";
 import { showToast } from "../components/Toast";
+import { useAcceptActions } from "../hooks/useAcceptActions";
 import { LIKES_YOU_KEY, useLikesYou } from "../hooks/useLikesYou";
+import { useSendPolicy } from "../hooks/useSendPolicy";
 import { sendSwipe } from "../services/discoveryService";
 import { friendlyError } from "../services/errors";
 import { offerPlusForLikeLimit } from "../services/likeLimitOffer";
@@ -35,7 +38,8 @@ function LikeCard({
   height,
   onOpen,
   onLikeBack,
-  busy
+  busy,
+  acceptable
 }: {
   profile: DiscoverProfile;
   width: number;
@@ -43,6 +47,8 @@ function LikeCard({
   onOpen: () => void;
   onLikeBack: () => void;
   busy: boolean;
+  /** She answers by accepting (buttons sit under the card), not by liking back. */
+  acceptable: boolean;
 }) {
   const { gradient, glow } = useThemeColors();
   // A note they wrote beats any reason we could compute.
@@ -140,7 +146,7 @@ function LikeCard({
           ) : null}
         </YStack>
 
-        <YStack position="absolute" right={10} bottom={10}>
+        {acceptable ? null : <YStack position="absolute" right={10} bottom={10}>
           <IconButton
             testID={`likes-gallery-like-${profile.uid}`}
             icon="heart"
@@ -152,7 +158,7 @@ function LikeCard({
             disabled={busy}
             onPress={onLikeBack}
           />
-        </YStack>
+        </YStack>}
       </YStack>
     </Pressable>
   );
@@ -166,6 +172,10 @@ export function LikesGalleryScreen() {
   const { gradient, glow } = useThemeColors();
   const likes = useLikesYou();
   const [busy, setBusy] = useState<string | null>(null);
+  const answers = useAcceptActions();
+  // Warms the send policy, so the chat she opens by accepting already knows she sends free.
+  useSendPolicy();
+  const acceptable = likes.data?.acceptable === true;
   const profiles = likes.data?.locked === false ? likes.data.profiles : [];
   const count = likes.data?.count ?? 0;
   const cardWidth = Math.floor((Math.min(width, 640) - 16 * 2 - GAP) / 2);
@@ -233,7 +243,7 @@ export function LikesGalleryScreen() {
           They like you
         </Text>
         <Text color="rgba(255,255,255,0.88)" fontSize="$3">
-          {likes.data?.locked !== false ? "Someone made the first move. Get Plus to reveal your likes." : "Notes and Super Likes first. Like someone back to match, even outside your search range."}
+          {likes.data?.locked !== false ? "Someone made the first move. Get Plus to reveal your likes." : acceptable ? "Notes and Super Likes first. Accept to match and start chatting, whenever you're ready." : "Notes and Super Likes first. Like someone back to match, even outside your search range."}
         </Text>
       </YStack>
     </LinearGradient>
@@ -267,15 +277,26 @@ export function LikesGalleryScreen() {
                   {profiles
                     .filter((_, index) => index % 2 === column)
                     .map((profile) => (
-                      <LikeCard
-                        key={profile.uid}
-                        profile={profile}
-                        width={cardWidth}
-                        height={cardHeight}
-                        busy={busy === profile.uid}
-                        onOpen={() => navigation.navigate("ProfileView", { source: "likes", profile })}
-                        onLikeBack={() => void likeBack(profile)}
-                      />
+                      <YStack key={profile.uid} width={cardWidth} gap={8}>
+                        <LikeCard
+                          profile={profile}
+                          width={cardWidth}
+                          height={cardHeight}
+                          busy={busy === profile.uid}
+                          acceptable={acceptable}
+                          onOpen={() => navigation.navigate("ProfileView", { source: "likes", profile })}
+                          onLikeBack={() => void likeBack(profile)}
+                        />
+                        {acceptable ? (
+                          <AcceptButtons
+                            profile={profile}
+                            idPrefix="likes-gallery"
+                            pending={answers.pendingUid !== null}
+                            onAccept={(target) => void answers.accept(target)}
+                            onNotNow={(target) => void answers.notNow(target)}
+                          />
+                        ) : null}
+                      </YStack>
                     ))}
                 </YStack>
               ))}

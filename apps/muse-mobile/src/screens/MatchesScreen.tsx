@@ -9,8 +9,11 @@ import { LikesYouRow } from "../components/LikesYouRow";
 import { MatchPresenceDot, matchPresence } from "../components/MatchPresence";
 import { PrimaryButton } from "../components/MuseButton";
 import { Screen } from "../components/Screen";
+import { WomanPlusOffer } from "../components/WomanPlusOffer";
 import { EmptyState, LoadingView } from "../components/States";
+import { useAcceptActions } from "../hooks/useAcceptActions";
 import { useLikesYou } from "../hooks/useLikesYou";
+import { useSendPolicy } from "../hooks/useSendPolicy";
 import { usePresence } from "../hooks/usePresence";
 import { chatTitle, otherParticipant, otherSide } from "../services/matchService";
 import { useAuthStore } from "../store/authStore";
@@ -43,6 +46,10 @@ export function MatchesScreen() {
   const uid = useAuthStore((state) => state.user?.uid) ?? "";
   const { matches, loaded, failed, retry } = useMatchesStore();
   const likes = useLikesYou().data;
+  const answers = useAcceptActions();
+  // Warms the send policy, so a chat opened from here already knows whether she sends free.
+  useSendPolicy();
+  const accepting = { acceptable: likes?.acceptable === true, pendingUid: answers.pendingUid, onAccept: (profile: DiscoverProfile) => void answers.accept(profile), onNotNow: (profile: DiscoverProfile) => void answers.notNow(profile) };
   const openLiker = (profile: DiscoverProfile) => navigation.navigate("ProfileView", { source: "likes", profile });
   const seeAllLikes = () => navigation.navigate("LikesGallery");
   /** One face for a match, two overlapping for a Duo chat. */
@@ -112,7 +119,7 @@ export function MatchesScreen() {
         </Text>
         {(likes?.count ?? 0) ? (
           <YStack paddingTop="$4">
-            <LikesYouRow profiles={likes?.profiles ?? []} count={likes?.count ?? 0} locked={likes?.locked !== false} hasMore={likes?.hasMore} onUpgrade={() => navigation.navigate("Premium")} onOpen={openLiker} onSeeAll={seeAllLikes} />
+            <LikesYouRow profiles={likes?.profiles ?? []} count={likes?.count ?? 0} locked={likes?.locked !== false} hasMore={likes?.hasMore} onUpgrade={() => navigation.navigate("Premium")} onOpen={openLiker} onSeeAll={seeAllLikes} {...accepting} />
           </YStack>
         ) : null}
         <EmptyState
@@ -146,7 +153,7 @@ export function MatchesScreen() {
             >
               Matches
             </Text>
-            <LikesYouRow profiles={likes?.profiles ?? []} count={likes?.count ?? 0} locked={likes?.locked !== false} hasMore={likes?.hasMore} onUpgrade={() => navigation.navigate("Premium")} onOpen={openLiker} onSeeAll={seeAllLikes} />
+            <LikesYouRow profiles={likes?.profiles ?? []} count={likes?.count ?? 0} locked={likes?.locked !== false} hasMore={likes?.hasMore} onUpgrade={() => navigation.navigate("Premium")} onOpen={openLiker} onSeeAll={seeAllLikes} {...accepting} />
             {fresh.length ? (
               <YStack gap="$2">
                 <Text
@@ -222,6 +229,8 @@ export function MatchesScreen() {
                     );
                   })}
                 </ScrollView>
+                {/* A woman who sends free and has no Plus: one quiet offer, for the newest match. */}
+                {Platform.OS === "web" && fresh[0] ? <WomanPlusOffer key={fresh[0].id} matchId={fresh[0].id} /> : null}
               </YStack>
             ) : null}
             {conversations.length ? (

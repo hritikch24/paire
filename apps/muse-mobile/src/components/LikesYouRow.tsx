@@ -2,6 +2,7 @@ import { Pressable, ScrollView } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { DiscoverProfile } from "../types/models";
 import { compatibilityLabel } from "../utils/insights";
+import { AcceptButtons } from "./AcceptButtons";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { LockedLikes } from "./LockedLikes";
@@ -14,7 +15,11 @@ export function LikesYouRow({
   hasMore,
   onUpgrade,
   onOpen,
-  onSeeAll
+  onSeeAll,
+  acceptable = false,
+  pendingUid = null,
+  onAccept,
+  onNotNow
 }: {
   profiles: DiscoverProfile[];
   count: number;
@@ -24,9 +29,16 @@ export function LikesYouRow({
   onOpen: (profile: DiscoverProfile) => void;
   /** Opens the full gallery. */
   onSeeAll?: () => void;
+  /** Women with the accept flow on: each person gets Accept and Not now, and nothing is locked. */
+  acceptable?: boolean;
+  /** The person whose answer is being sent; every button waits for it. */
+  pendingUid?: string | null;
+  onAccept?: (profile: DiscoverProfile) => void;
+  onNotNow?: (profile: DiscoverProfile) => void;
 }) {
+  const answers = acceptable && onAccept && onNotNow ? { onAccept, onNotNow } : null;
   if (!count) return null;
-  if (locked) return <LockedLikes count={count} hasMore={hasMore} onUpgrade={onUpgrade} />;
+  if (locked && !answers) return <LockedLikes count={count} hasMore={hasMore} onUpgrade={onUpgrade} />;
   return (
     <YStack gap="$2" testID="likes-you">
       <YStack paddingHorizontal="$4" gap={2}>
@@ -45,14 +57,14 @@ export function LikesYouRow({
         {profiles.map((profile) => {
           const match = compatibilityLabel(profile.compatibility);
           return (
+            <YStack key={profile.uid} width={answers ? 112 : undefined} gap="$2">
             <Pressable
-              key={profile.uid}
               testID={`liked-you-${profile.uid}`}
               accessibilityRole="button"
               accessibilityLabel={`${profile.displayName} liked you${profile.note ? " with a note" : ""}${match ? `, ${match}` : ""}. View profile`}
               onPress={() => onOpen(profile)}
             >
-              <YStack alignItems="center" gap={2} width={78}>
+              <YStack alignItems="center" gap={2} width={answers ? 112 : 78}>
                 <YStack>
                   <Avatar uri={profile.photoUrls[0]} name={profile.displayName} size={72} ring />
                   <YStack
@@ -88,6 +100,10 @@ export function LikesYouRow({
                 ) : null}
               </YStack>
             </Pressable>
+            {answers ? (
+              <AcceptButtons profile={profile} idPrefix="liked-you" pending={pendingUid !== null} onAccept={answers.onAccept} onNotNow={answers.onNotNow} />
+            ) : null}
+            </YStack>
           );
         })}
       </ScrollView>

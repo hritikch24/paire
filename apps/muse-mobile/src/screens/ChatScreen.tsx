@@ -23,6 +23,7 @@ import { getDailyPrompt } from "../data/musePrompts";
 import { rapidQuestionMap } from "../data/rapidQuestions";
 import { useChatAccess } from "../hooks/useChatAccess";
 import { useMemberProfile } from "../hooks/useMemberProfile";
+import { useSendPolicy } from "../hooks/useSendPolicy";
 import { usePresence } from "../hooks/usePresence";
 import { chatContactIssue } from "../utils/chatContact";
 import { fetchOpeners } from "../services/aiService";
@@ -50,7 +51,8 @@ import { setActiveChat } from "../services/notificationService";
 import { blockUser } from "../services/safetyService";
 import { useAuthStore } from "../store/authStore";
 import { ChatMessage, Match, MessageSafety } from "../types/models";
-import { draftFor, saveDraft, sendLocked } from "../utils/chatAccess";
+import { draftFor, saveDraft } from "../utils/chatAccess";
+import { sendLockedFor } from "../utils/sendPolicy";
 import { REPORT_REASON_FOR, safetyNotice } from "../utils/chatSafety";
 import { presenceLabel } from "../utils/presence";
 import { formatClockTime, formatDayLabel, isSameDay } from "../utils/time";
@@ -148,7 +150,9 @@ export function ChatScreen() {
   const mySpark = !group ? match?.sparks?.[uid] : undefined;
   // Sending needs your own Plus or Unlimited Chat once paid chat is on; reading never does.
   const chatAccess = useChatAccess();
-  const locked = active && sendLocked(chatAccess.data, match?.createdAt ?? 0);
+  // A woman sends free once the server says so (the rules decide); a man still needs Plus or Unlimited Chat.
+  const sendPolicy = useSendPolicy().data ?? undefined;
+  const locked = active && sendLockedFor(chatAccess.data, sendPolicy, match?.createdAt ?? 0);
   // Online / last active, only for people who share it (the server decides). Never a read receipt.
   const presence = usePresence(active && match ? otherParticipants(match, uid) : [], 30_000);
   const pairPresence = !group ? presenceLabel(presence.statusOf(otherUid)) : "";
@@ -235,7 +239,7 @@ export function ChatScreen() {
       if (errorCode(error) === "permission-denied") {
         // Perhaps a pass just ran out: show the current options (the message is kept).
         const latest = await chatAccess.refetch();
-        if (sendLocked(latest.data, match?.createdAt ?? 0)) return;
+        if (sendLockedFor(latest.data, sendPolicy, match?.createdAt ?? 0)) return;
       }
       showToast(friendlyError(error, "Message not sent. Please try again."), "error");
     } finally {
@@ -736,7 +740,7 @@ export function ChatScreen() {
         ) : active ? (
           <YStack>
             {/* Announced but not yet enforced: say so in advance, so nobody's access changes silently. */}
-            {!locked && chatAccess.data?.enforceFrom && !chatAccess.data.unlimited && !((chatAccess.data.premiumUntil ?? 0) > chatAccess.data.enforceFrom) ? (
+            {!locked && sendPolicy?.freeSender !== true && chatAccess.data?.enforceFrom && !chatAccess.data.unlimited && !((chatAccess.data.premiumUntil ?? 0) > chatAccess.data.enforceFrom) ? (
               <XStack testID="chat-access-notice" gap="$2" alignItems="flex-start" paddingHorizontal="$4" paddingTop="$2">
                 <Icon name="information-circle-outline" size={16} color="textMuted" />
                 <Text fontSize="$1" color="$textMuted" flex={1}>
