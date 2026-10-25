@@ -46,3 +46,4 @@ export { getWebPushConfig, registerWebPush, unregisterWebPush } from "./webPush"
 export { getSharedProfile } from "./sharedProfiles";
 export { sendEngagementReminders, recordReminderOpen } from "./reminders";
 export { acceptLike } from "./acceptLike";
+export { confirmGiftPayment, createGiftOrder, razorpayGiftWebhook } from "./giftPayments";
