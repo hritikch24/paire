@@ -27,6 +27,7 @@ const admin = getAdminFirestore();
 
 type Client = { uid: string; app: FirebaseApp; db: Firestore; call: <T = unknown>(name: string, data?: unknown) => Promise<T> };
 type Accepted = { matched: boolean; matchId: string };
+type Likes = { profiles: Array<{ uid: string; note?: string; superLikedYou?: boolean }>; count: number; locked: boolean; hasMore: boolean; expiresAt: number | null; acceptable: boolean };
 const clients: Client[] = [];
 let counter = 0;
 
@@ -216,6 +217,57 @@ describe("acceptLike", () => {
       await admin.doc(`swipes/${he.uid}/outgoing/${she.uid}`).delete();
       await expect(she.call("acceptLike", { targetUid: he.uid })).rejects.toMatchObject({ code: "functions/not-found" });
       expect((await matchesBetween(she, he)).length).toBe(0);
+    });
+  });
+
+  describe("the likes list for a woman without Plus", () => {
+    test("with acceptFlow on she sees the man, his note and acceptable:true, with no Plus expiry", async () => {
+      const { she, he } = await pair("list-on", "super", "Loved your canvas bio");
+      const likes = await she.call<Likes>("getLikesYou", {});
+      expect(likes).toMatchObject({ count: 1, locked: false, acceptable: true, expiresAt: null, hasMore: false });
+      expect(likes.profiles).toEqual([expect.objectContaining({ uid: he.uid, note: "Loved your canvas bio", superLikedYou: true })]);
+      // The card is what she accepts: acceptLike works on exactly this person.
+      expect(await she.call<Accepted>("acceptLike", { targetUid: he.uid })).toEqual({ matched: true, matchId: matchIdOf(she, he) });
+      expect((await she.call<Likes>("getLikesYou", {})).count).toBe(0);
+    });
+
+    test("with acceptFlow off it is today's anonymous count: locked, no identity, not acceptable", async () => {
+      const { she, he } = await pair("list-off", "like", "A private note");
+      await acceptFlow(false);
+      try {
+        const likes = await she.call<Likes>("getLikesYou", {});
+        expect(likes).toMatchObject({ count: 1, locked: true, profiles: [], acceptable: false, expiresAt: null });
+        for (const secret of [he.uid, "Dev list-off", "private note"]) expect(JSON.stringify(likes)).not.toContain(secret);
+      } finally { await acceptFlow(true); }
+    });
+
+    test("a man without Plus never sees who liked him, even with the switch on", async () => {
+      const { she } = await pair("list-man");
+      const he = await makeClient("list-man-other");
+      await onboard(he, "Dev other", "man");
+      await she.call("swipe", { targetUid: he.uid, type: "like", note: "Hello from her" });
+      const likes = await he.call<Likes>("getLikesYou", {});
+      expect(likes).toMatchObject({ count: 1, locked: true, profiles: [], acceptable: false });
+      for (const secret of [she.uid, "Asha list-man", "Hello from her"]) expect(JSON.stringify(likes)).not.toContain(secret);
+    });
+
+    test("blocked, hidden, banned and unverified likers stay out of her list and count", async () => {
+      const { she, he } = await pair("list-ok");
+      const [blocked, banned, unverified, hidden] = await Promise.all(["blk", "ban", "unv", "hid"].map(async (label) => {
+        const man = await makeClient(`list-${label}`);
+        await onboard(man, `Dev ${label}`, "man");
+        await man.call("swipe", { targetUid: she.uid, type: "like" });
+        return man;
+      }));
+      expect((await she.call<Likes>("getLikesYou", {})).count).toBe(5);
+      await she.call("blockUser", { targetUid: blocked.uid });
+      await admin.doc(`moderation/${banned.uid}`).set({ status: "banned" }, { merge: true });
+      await admin.doc(`moderation/${unverified.uid}`).set({ emailVerified: false }, { merge: true });
+      await admin.doc(`users/${hidden.uid}`).update({ isDiscoverable: false });
+      const likes = await she.call<Likes>("getLikesYou", {});
+      expect(likes.count).toBe(1);
+      expect(likes.profiles.map((p) => p.uid)).toEqual([he.uid]);
+      expect(likes).toMatchObject({ locked: false, acceptable: true });
     });
   });
 });

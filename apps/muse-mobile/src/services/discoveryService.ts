@@ -28,9 +28,14 @@ export function sendSwipe(targetUid: string, type: SwipeType, note?: string | nu
   return callFunction<SwipeResult>("swipe", note ? { targetUid, type, note } : { targetUid, type });
 }
 
-export type LikesYouResult = { profiles: DiscoverProfile[]; count: number; locked: boolean; hasMore: boolean; expiresAt: number | null };
+export type LikesYouResult = { profiles: DiscoverProfile[]; count: number; locked: boolean; hasMore: boolean; expiresAt: number | null; acceptable: boolean };
 /** Free members receive only an anonymous count. Identities are checked on the server. */
 export const fetchLikesYou = () => callFunction<LikesYouResult>("getLikesYou", {});
+
+/** Accepts a like: a woman answers one of the likes she can see, which makes the match. */
+export function acceptLike(targetUid: string): Promise<{ matched: true; matchId: string }> {
+  return callFunction<{ matched: true; matchId: string }>("acceptLike", { targetUid });
+}
 
 /** Brings back someone you passed on. */
 export function undoPass(targetUid: string): Promise<{ ok: boolean }> {

@@ -9,15 +9,16 @@ import { isValidLatLng } from "./lib/geo";
 import { isVisibleCandidate } from "./lib/prefs";
 import { compareLikes, IncomingLike } from "./lib/sparks";
 import { limitsFor } from "./premium";
+import { chatPolicy } from "./chatEntitlement";
 import { billingEnabled, syncPremium } from "./billing";
 import { validBillingSnapshot } from "./lib/billing";
 import { consumeDailyQuota } from "./quota";
 import { DiscoverProfile, LatLng, ModerationRecord, PublicProfile, UserSettings } from "./types";
 
 const SCAN_LIMIT = 300;
-export type LikesYouResult = { profiles: DiscoverProfile[]; count: number; locked: boolean; hasMore: boolean; expiresAt: number | null };
+export type LikesYouResult = { profiles: DiscoverProfile[]; count: number; locked: boolean; hasMore: boolean; expiresAt: number | null; acceptable: boolean };
 
-/** Pending likes ignore search filters. Identity is revealed only by the server for active Plus. */
+/** Pending likes ignore search filters. Identity is revealed only by the server, for active Plus or, once acceptFlow is on, to a woman (who can then accept). */
 export const getLikesYou = onCall({ region: REGION, timeoutSeconds: 30, secrets: ["REVENUECAT_SECRET_KEY", "RAZORPAY_KEY_SECRET"] }, async (request): Promise<LikesYouResult> => {
   const uid = await requireReadAuth(request);
   await requireVerifiedUsers([uid], undefined, uid, isSupportSession(request));
@@ -34,7 +35,10 @@ export const getLikesYou = onCall({ region: REGION, timeoutSeconds: 30, secrets:
     billed = (await db.doc(`billing/${uid}`).get()).data();
   }
   const plus = limitsFor(billed).priority;
-  const result: LikesYouResult = { profiles: [], count: 0, locked: !plus, hasMore: likesSnap.size === SCAN_LIMIT, expiresAt: plus && billed?.lifetime !== true ? Number(billed?.expiresAt) : null };
+  // A woman sees her whole list free once acceptFlow is on; a man still needs Plus.
+  const freeForHer = !plus && myProfile.get("gender") === "woman" && (await chatPolicy()).acceptFlow;
+  const reveal = plus || freeForHer;
+  const result: LikesYouResult = { profiles: [], count: 0, locked: !reveal, hasMore: likesSnap.size === SCAN_LIMIT, expiresAt: plus && billed?.lifetime !== true ? Number(billed?.expiresAt) : null, acceptable: freeForHer };
   if (!myProfile.exists) return result;
   const settings = mySettings.data() as UserSettings | undefined;
   const viewer = buildDiscoveryEntry(uid, myProfile.data() as PublicProfile, settings, myMod.data() as ModerationRecord | undefined);
@@ -59,8 +63,8 @@ export const getLikesYou = onCall({ region: REGION, timeoutSeconds: 30, secrets:
     const entry = buildDiscoveryEntry(id, profile.data() as PublicProfile, prefs.data() as UserSettings | undefined, mod.data() as ModerationRecord | undefined);
     if (!isVisibleCandidate(viewer, entry)) return;
     result.count++;
-    // No uid, name, note, photo, profile field or identifying thumbnail is sent to free members.
-    if (!plus) return;
+    // No uid, name, note, photo, profile field or identifying thumbnail is sent to members who may not see them.
+    if (!reveal) return;
     const card = toDiscoverProfile(profile.data() as PublicProfile, entry, location, superLikers.has(id), traits, Date.now());
     if (card) result.profiles.push(notes.has(id) ? { ...card, note: notes.get(id) } : card);
   });
