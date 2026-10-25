@@ -7,7 +7,8 @@ import { Text, XStack, YStack } from 'tamagui';
 import { useThemeColors } from '../theme/useThemeColors';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useChatAccess } from '../hooks/useChatAccess';
-import { sendLocked } from '../utils/chatAccess';
+import { useSendPolicy } from '../hooks/useSendPolicy';
+import { sendLockedFor } from '../utils/sendPolicy';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 import { GhostButton, SecondaryButton } from './MuseButton';
@@ -35,7 +36,8 @@ export function MatchMoment({ visible, me, them, onMessage, onClose, title, subt
   const reduced = useReducedMotion();
   // Paid chat: say up front what sending takes. Nothing opens a payment from here.
   const access = useChatAccess();
-  const locked = sendLocked(access.data, Date.now());
+  const policy = useSendPolicy().data ?? undefined;
+  const locked = sendLockedFor(access.data, policy, Date.now());
   const scale = useRef(new Animated.Value(0.85)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   // 0 → 1: the two photos slide in from the sides and meet; then the heart pops.

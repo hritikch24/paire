@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { fetchSendPolicy, type SendPolicy } from "../services/sendPolicyService";
 import { useAuthStore } from "../store/authStore";
 
@@ -26,9 +26,12 @@ export function useSendPolicy() {
     refetchOnWindowFocus: true
   });
   const { refetch } = query;
+  // Several screens mount this hook: on focus only refresh what has gone stale (read through a ref, so staleness itself never re-runs the effect).
+  const stale = useRef(query.isStale);
+  stale.current = query.isStale;
   useFocusEffect(
     useCallback(() => {
-      void refetch();
+      if (stale.current) void refetch();
     }, [refetch])
   );
   return query;
