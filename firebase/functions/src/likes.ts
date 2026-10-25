@@ -35,10 +35,10 @@ export const getLikesYou = onCall({ region: REGION, timeoutSeconds: 30, secrets:
     billed = (await db.doc(`billing/${uid}`).get()).data();
   }
   const plus = limitsFor(billed).priority;
-  // A woman sees her whole list free once acceptFlow is on; a man still needs Plus.
-  const freeForHer = !plus && myProfile.get("gender") === "woman" && (await chatPolicy()).acceptFlow;
-  const reveal = plus || freeForHer;
-  const result: LikesYouResult = { profiles: [], count: 0, locked: !reveal, hasMore: likesSnap.size === SCAN_LIMIT, expiresAt: plus && billed?.lifetime !== true ? Number(billed?.expiresAt) : null, acceptable: freeForHer };
+  // With acceptFlow on, a woman (Plus or not) sees her whole list and can accept; a man still needs Plus to see his.
+  const acceptable = myProfile.get("gender") === "woman" && (await chatPolicy()).acceptFlow;
+  const reveal = plus || acceptable;
+  const result: LikesYouResult = { profiles: [], count: 0, locked: !reveal, hasMore: likesSnap.size === SCAN_LIMIT, expiresAt: plus && billed?.lifetime !== true ? Number(billed?.expiresAt) : null, acceptable };
   if (!myProfile.exists) return result;
   const settings = mySettings.data() as UserSettings | undefined;
   const viewer = buildDiscoveryEntry(uid, myProfile.data() as PublicProfile, settings, myMod.data() as ModerationRecord | undefined);
