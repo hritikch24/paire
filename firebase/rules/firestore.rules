@@ -532,6 +532,17 @@ service cloud.firestore {
     match /ccavenueOrders/{orderId} {
       allow read, write: if false;
     }
+    // Gifted Plus passes. Orders are the payment audit trail (server-only); a gift is
+    // readable by the member who sent it and the member who received it. Only Cloud
+    // Functions create, claim, decline, expire or refund gifts.
+    match /giftOrders/{orderId} {
+      allow read, write: if false;
+    }
+    match /gifts/{giftId} {
+      allow read: if signedIn()
+        && (request.auth.uid == resource.data.fromUid || request.auth.uid == resource.data.toUid);
+      allow write: if false;
+    }
     match /runtime/{docId} {
       allow read, write: if false;
     }

@@ -916,6 +916,45 @@ describe("paid chat: Paire Plus or Unlimited Chat to send", () => {
   });
 });
 
+describe("gifts", () => {
+  test("giftOrders are server-only: no client can read or write them", async () => {
+    await seed({ "giftOrders/order_FAKE1234": { fromUid: "alexa", toUid: "jules", status: "created" } });
+    for (const uid of ["alexa", "jules", "sam"]) {
+      const db = dbFor(uid);
+      await assertFails(db.doc("giftOrders/order_FAKE1234").get());
+      await assertFails(db.doc("giftOrders/order_FAKE1234").set({ fromUid: uid, status: "paid" }));
+      await assertFails(db.doc("giftOrders/order_FAKE1234").update({ status: "paid" }));
+      await assertFails(db.doc("giftOrders/order_NEW00001").set({ fromUid: uid }));
+      await assertFails(db.doc("giftOrders/order_FAKE1234").delete());
+    }
+  });
+
+  test("only the sender and recipient can read a gift; nobody can write one", async () => {
+    await seed({ "gifts/g1": { fromUid: "alexa", toUid: "jules", matchId: "alexa_jules", plan: "week", amountPaise: 9900, status: "pending" } });
+    await assertSucceeds(dbFor("alexa").doc("gifts/g1").get());
+    await assertSucceeds(dbFor("jules").doc("gifts/g1").get());
+    await assertFails(dbFor("sam").doc("gifts/g1").get());
+    await assertFails(testEnv.unauthenticatedContext().firestore().doc("gifts/g1").get());
+    for (const uid of ["alexa", "jules", "sam"]) {
+      const db = dbFor(uid);
+      await assertFails(db.doc("gifts/g1").update({ status: "claimed" }));
+      await assertFails(db.doc("gifts/g1").set({ fromUid: uid, toUid: "jules", status: "pending" }));
+      await assertFails(db.doc("gifts/g2").set({ fromUid: uid, toUid: "jules", status: "pending" }));
+      await assertFails(db.doc("gifts/g1").delete());
+    }
+  });
+
+  test("members can query their own gifts but not other people's", async () => {
+    await seed({
+      "gifts/g1": { fromUid: "alexa", toUid: "jules", status: "pending" },
+      "gifts/g2": { fromUid: "sam", toUid: "kai", status: "pending" }
+    });
+    await assertSucceeds(dbFor("jules").collection("gifts").where("toUid", "==", "jules").get());
+    await assertSucceeds(dbFor("alexa").collection("gifts").where("fromUid", "==", "alexa").get());
+    await assertFails(dbFor("jules").collection("gifts").get());
+  });
+});
+
 describe("presence privacy", () => {
   test("presence is server-only: members can't read anyone's sessions, or write their own directly", async () => {
     await seed({ "matches/alexa_jules": matchDoc(), "presence/jules": { sessions: {}, lastActiveAt: 1 } });
