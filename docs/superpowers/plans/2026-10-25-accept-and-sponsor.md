@@ -144,7 +144,7 @@
 ### Task 7: Plan ladder on the Premium screen and the chat prompt
 
 **Files:**
-- Modify: `apps/muse-mobile/src/screens/PremiumScreen.tsx` (order: Month pre-selected "Most popular", 2 months [the existing `month` plan, retitled "2 months"], Week, Day, "More plans" for 6 months and Lifetime, then a separate "Priority boost" card), `apps/muse-mobile/src/config/premium.ts` (`webPlan` copy: `month` label "2 months" with per-day price; `MONTH_OFFER` text becomes "2 months for ₹399"), `apps/muse-mobile/src/components/ChatAccessCard.tsx` (Month pre-selected), `apps/muse-mobile/src/services/ccavenueService.ts` (purchase boost), `apps/web` pricing content only if it quotes plan names (grep `1 month` in `apps/web`; update copy, legal pages and `llms.txt` to match, run `node --test apps/web/test/*.test.mjs`)
+- Modify: `apps/muse-mobile/src/screens/PremiumScreen.tsx` (order: Month pre-selected "Most popular", 2 months [the existing `month` plan, retitled "2 months"], Week, Day, "More plans" for 6 months and Lifetime, then a separate "Priority boost" card), `apps/muse-mobile/src/config/premium.ts` (`webPlan` copy: `month` label "2 months" with per-day price; `MONTH_OFFER` text becomes "2 months for ₹399"), `apps/muse-mobile/src/components/ChatAccessCard.tsx` (Month pre-selected), `apps/muse-mobile/src/services/billingService.ts` (`purchaseBoost(theme)` and `purchaseWebPass` accepting `monthly`; both end in `leaveForHostedCheckout`), `apps/web` pricing content only if it quotes plan names (grep `1 month` in `apps/web`; update copy, legal pages and `llms.txt` to match, run `node --test apps/web/test/*.test.mjs`)
 - Test: app tests for `PremiumScreen` and `webPlan`; `apps/web/test`
 
 **Interfaces:**
