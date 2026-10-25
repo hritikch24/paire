@@ -1,6 +1,6 @@
 # Muse: project state
 
-Last updated: 2026-10-17
+Last updated: 2026-10-26
 
 ## Accept a like, women reply free, gifted Plus (2026-10-26, local branch, all switches off)
 - Branch `feat/accept-and-sponsor`, not pushed or deployed. New `runtime/trust` switches `acceptFlow`, `womenSendFree`, `giftSales`, default off. Women can Accept a like (`acceptLike`) and, with `womenSendFree`, reply free; men still need Plus or Unlimited Chat. A match can gift Day, Week or Month Plus at the existing prices (`createGiftOrder`, `confirmGiftPayment`, `razorpayGiftWebhook`, `claimGift`, `declineGift`, `expireGifts`).
