@@ -268,13 +268,25 @@ service cloud.firestore {
         || (docId == 'safetyPlan' && validSafetyPlan(d));
     }
 
+    // Gender decides who sends free (a woman, while runtime/trust.womenSendFree is on), so a client
+    // can't change one that is already set while that switch is on; support does it. An unchanged
+    // value and the first-time set are fine. The trust document is read only when gender changes.
+    function genderMayChange() {
+      let before = resource.data.get('gender', null);
+      return before == null
+        || request.resource.data.get('gender', null) == before
+        || get(/databases/$(database)/documents/runtime/trust) == null
+        || get(/databases/$(database)/documents/runtime/trust).data.get('womenSendFree', false) != true;
+    }
+
     match /users/{uid} {
       allow read: if isReadUser(uid) || (readSignedIn() && hasActiveMatchWith(uid));
       allow create: if mayWrite() && isUser(uid) && emailConfirmed() && validProfile(request.resource.data, uid);
       allow update: if mayWrite() && isUser(uid)
         && emailConfirmed()
         && validProfile(request.resource.data, uid)
-        && !changedKeys().hasAny(['uid', 'createdAt']);
+        && !changedKeys().hasAny(['uid', 'createdAt'])
+        && genderMayChange();
       // Accounts are deleted by the deleteAccount Cloud Function.
       allow delete: if false;
 

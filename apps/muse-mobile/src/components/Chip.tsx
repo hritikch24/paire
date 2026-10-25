@@ -59,9 +59,11 @@ type ChipGroupProps<T extends string> = {
   selected: T[];
   onToggle: (id: T) => void;
   testIDPrefix?: string;
+  /** Shows the options but ignores taps. */
+  disabled?: boolean;
 };
 
-export function ChipGroup<T extends string>({ options, selected, onToggle, testIDPrefix }: ChipGroupProps<T>) {
+export function ChipGroup<T extends string>({ options, selected, onToggle, testIDPrefix, disabled }: ChipGroupProps<T>) {
   return (
     <XStack gap="$2" flexWrap="wrap">
       {options.map((option) => (
@@ -71,6 +73,7 @@ export function ChipGroup<T extends string>({ options, selected, onToggle, testI
           label={option.label}
           emoji={option.emoji}
           selected={selected.includes(option.id)}
+          disabled={disabled}
           onPress={() => onToggle(option.id)}
         />
       ))}

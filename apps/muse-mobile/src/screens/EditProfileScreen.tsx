@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Keyboard } from "react-native";
 import { Text, YStack } from "tamagui";
 import { ChipGroup } from "../components/Chip";
+import { GenderPicker } from "../components/GenderPicker";
 import { AiSuggestions } from "../components/AiSuggestions";
 import { Icon } from "../components/Icon";
 import { GhostButton, PrimaryButton } from "../components/MuseButton";
@@ -22,13 +23,13 @@ import { ScreenHeader } from "../components/ScreenHeader";
 import { showToast } from "../components/Toast";
 import { datingIntentions } from "../data/datingIntentions";
 import { vibeOptions } from "../data/vibes";
+import { useSendPolicy } from "../hooks/useSendPolicy";
 import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import { fetchBioSuggestions } from "../services/aiService";
 import { friendlyError } from "../services/errors";
 import { updateProfile } from "../services/profileService";
 import { useAuthStore } from "../store/authStore";
-import { GENDERS, Gender, ProfileBasics } from "../types/models";
-import { GENDER_LABELS } from "../utils/profile";
+import { Gender, ProfileBasics } from "../types/models";
 
 /** Work is free text: trim it, and drop it when blank (the rules reject empty strings). */
 function withTrimmedWork(basics: ProfileBasics): ProfileBasics {
@@ -56,6 +57,7 @@ export function EditProfileScreen() {
   const navigation = useNavigation();
   const uid = useAuthStore((state) => state.user?.uid);
   const profile = useAuthStore((state) => state.profile);
+  const sendPolicy = useSendPolicy();
 
   const initial = useMemo(
     () => ({
@@ -165,11 +167,7 @@ export function EditProfileScreen() {
         </YStack>
 
         <Section title="Gender">
-          <ChipGroup
-            options={GENDERS.map((id) => ({ id, label: GENDER_LABELS[id] }))}
-            selected={[form.gender]}
-            onToggle={(id) => set("gender", id)}
-          />
+          <GenderPicker value={form.gender} onChange={(id) => set("gender", id)} locked={sendPolicy.data?.womenSendFree === true && Boolean(profile?.gender)} />
         </Section>
 
         <Section title="Languages I speak" hint="Up to 6. People who speak your language see it first.">

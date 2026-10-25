@@ -29,3 +29,26 @@ export function planFreeSenderBackfill(uids, mirrors) {
 export function freeSenderMerge(now) {
   return { chatAccess: { freeSender: true, updatedAt: now } };
 }
+
+/**
+ * Members whose mirror says freeSender but whose account is no longer a woman's (the gender
+ * was changed) lose it. `users` maps uid to { exists, gender }. A missing account is left alone:
+ * deleted accounts are never touched or recreated.
+ */
+export function planFreeSenderClear(flaggedUids, users) {
+  const toClear = [];
+  let kept = 0;
+  let skippedMissing = 0;
+  for (const uid of flaggedUids) {
+    const user = users.get(uid);
+    if (!user || user.exists === false) skippedMissing += 1;
+    else if (user.gender === "woman") kept += 1;
+    else toClear.push(uid);
+  }
+  return { toClear, kept, skippedMissing };
+}
+
+/** The merge that clears the flag; unlimited, premiumUntil and premiumLifetime stay as they are. */
+export function freeSenderClearMerge(now) {
+  return { chatAccess: { freeSender: false, updatedAt: now } };
+}

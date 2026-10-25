@@ -12,6 +12,9 @@ printf "== App: lint, typecheck, unit tests ==\n"
 printf "== Website: planner constraints, sharing and campaign expiry ==\n"
 node --test "$ROOT_DIR"/apps/web/test/*.test.mjs
 
+printf "== Scripts: runtime-flag helpers ==\n"
+node --test "$ROOT_DIR"/scripts/test/*.test.mjs
+
 printf "== Functions: lint, typecheck, unit tests, build ==\n"
 (cd "$FUNCTIONS_DIR" && npm run lint && npm run typecheck && npm test && npm run build)
 

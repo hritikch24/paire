@@ -151,6 +151,39 @@ describe("profiles", () => {
     await assertSucceeds(dbFor("alexa").doc("users/alexa").set(validProfile("alexa")));
   });
 
+  describe("gender is locked once women send free", () => {
+    const on = { "runtime/trust": { requireVerification: false, womenSendFree: true } };
+    test("with the switch on, changing an already-set gender is refused, even through a full rewrite", async () => {
+      await seed({ ...on, "users/alexa": validProfile("alexa") });
+      await assertFails(dbFor("alexa").doc("users/alexa").update({ gender: "man", updatedAt: 2 }));
+      await assertFails(dbFor("alexa").doc("users/alexa").set(validProfile("alexa", { gender: "man" })));
+    });
+
+    test("with the switch on, an unchanged gender and other edits are allowed", async () => {
+      await seed({ ...on, "users/alexa": validProfile("alexa") });
+      await assertSucceeds(dbFor("alexa").doc("users/alexa").update({ bio: "Changed", updatedAt: 2 }));
+      await assertSucceeds(dbFor("alexa").doc("users/alexa").update({ gender: "woman", city: "Pune", updatedAt: 3 }));
+    });
+
+    test("with the switch on, the first time a gender is set is allowed", async () => {
+      await assertSucceeds(dbFor("alexa").doc("users/alexa").set(validProfile("alexa")));
+      const { gender, ...noGender } = validProfile("jules");
+      void gender;
+      await seed({ ...on, "users/jules": noGender });
+      await assertSucceeds(dbFor("jules").doc("users/jules").set(validProfile("jules", { gender: "man" })));
+    });
+
+    test("with the switch off, absent, or no trust document, changing gender works as before", async () => {
+      await seed({ "runtime/trust": { requireVerification: false, womenSendFree: false }, "users/alexa": validProfile("alexa") });
+      await assertSucceeds(dbFor("alexa").doc("users/alexa").update({ gender: "man", updatedAt: 2 }));
+      await seed({ "runtime/trust": { requireVerification: false }, "users/alexa": validProfile("alexa") });
+      await assertSucceeds(dbFor("alexa").doc("users/alexa").update({ gender: "man", updatedAt: 2 }));
+      await testEnv.withSecurityRulesDisabled(async (context) => { await context.firestore().doc("runtime/trust").delete(); });
+      await seed({ "users/alexa": validProfile("alexa") });
+      await assertSucceeds(dbFor("alexa").doc("users/alexa").update({ gender: "man", updatedAt: 2 }));
+    });
+  });
+
   test("a profile needs a confirmed email", async () => {
     await assertFails(unconfirmedDbFor("alexa").doc("users/alexa").set(validProfile("alexa")));
     await seed({ "users/alexa": validProfile("alexa") });

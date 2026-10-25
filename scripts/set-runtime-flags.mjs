@@ -20,7 +20,7 @@
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --ccavenue-sales on --confirm # CCAvenue (chat + Plus)
  *
  *   # Accept likes and women reply free (both off by default; Gifts stay off until built and approved):
- *   node scripts/set-runtime-flags.mjs --project muse-352ba --backfill-free-sender --confirm # mirror freeSender for every woman, first
+ *   node scripts/set-runtime-flags.mjs --project muse-352ba --backfill-free-sender --confirm # mirror freeSender for every woman (and clear it for anyone no longer one), first
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --accept-flow on --confirm      # women can accept likes
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --women-send-free on --confirm  # women send free in all their chats
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --gift-sales on --confirm       # gifted Plus passes
@@ -36,7 +36,7 @@ import { createRequire } from "node:module";
 const require = createRequire(new URL("../firebase/functions/package.json", import.meta.url));
 const { initializeApp, applicationDefault } = require("firebase-admin/app");
 const { getFirestore, FieldValue, FieldPath } = require("firebase-admin/firestore");
-import { freeSenderMerge, planFreeSenderBackfill, womenUids } from "./lib/free-sender-backfill.mjs";
+import { freeSenderClearMerge, freeSenderMerge, planFreeSenderBackfill, planFreeSenderClear, womenUids } from "./lib/free-sender-backfill.mjs";
 
 const args = process.argv.slice(2);
 const value = (flag) => {
@@ -133,8 +133,10 @@ async function backfill() {
 
 /**
  * Mirrors freeSender = true onto moderation/{uid}.chatAccess for every woman (users.gender == "woman"),
- * so the rules can let her send free once womenSendFree is on. Existing unlimited, premiumUntil and
- * premiumLifetime are kept (merge). Only existing accounts: deleted ones have no users doc and get nothing.
+ * so the rules can let her send free once womenSendFree is on. It also CLEARS (sets false) freeSender for
+ * members whose mirror says true but whose users/{uid}.gender is no longer "woman". Existing unlimited,
+ * premiumUntil and premiumLifetime are kept (merge). Only existing accounts: deleted ones have no users
+ * doc and get nothing.
  */
 async function backfillFreeSender() {
   const now = Date.now();
@@ -162,6 +164,34 @@ async function backfillFreeSender() {
     after = page.docs[page.docs.length - 1];
   }
   console.log(`${confirm ? "Mirrored" : "Would mirror"} freeSender for ${written} of ${women} women (${alreadySet} already had it).`);
+
+  // Stale flags: the mirror says freeSender but the account is not a woman's any more.
+  let flagged = 0;
+  let cleared = 0;
+  let keptFlag = 0;
+  let missing = 0;
+  let afterFlag;
+  for (;;) {
+    let query = db.collection("moderation").where("chatAccess.freeSender", "==", true).orderBy(FieldPath.documentId()).select().limit(300);
+    if (afterFlag) query = query.startAfter(afterFlag);
+    const page = await query.get();
+    if (page.empty) break;
+    const uids = page.docs.map((doc) => doc.id);
+    const users = new Map();
+    for (const doc of await db.getAll(...uids.map((uid) => db.doc(`users/${uid}`)), { fieldMask: ["gender"] })) users.set(doc.id, { exists: doc.exists, gender: doc.get("gender") });
+    const plan = planFreeSenderClear(uids, users);
+    flagged += uids.length;
+    keptFlag += plan.kept;
+    missing += plan.skippedMissing;
+    if (confirm && plan.toClear.length) {
+      const batch = db.batch();
+      for (const uid of plan.toClear) batch.set(db.doc(`moderation/${uid}`), freeSenderClearMerge(now), { merge: true });
+      await batch.commit();
+    }
+    cleared += plan.toClear.length;
+    afterFlag = page.docs[page.docs.length - 1];
+  }
+  console.log(`${confirm ? "Cleared" : "Would clear"} freeSender for ${cleared} of ${flagged} flagged members who are no longer women (${keptFlag} still women, ${missing} without an account left alone).`);
 }
 
 if (has("--backfill-chat-access")) await backfill();
