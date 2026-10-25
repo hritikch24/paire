@@ -58,7 +58,11 @@ import { presenceLabel } from "../utils/presence";
 import { formatClockTime, formatDayLabel, isSameDay } from "../utils/time";
 import type { AppStackParamList } from "../navigation/types";
 
-/** Metro and Jest both resolve this when the sheet is first opened, so the chat screen itself starts without the payment modules. */
+/**
+ * The gift sheet is required when it is first opened, not imported at the top: its payment modules
+ * (billing, Firebase, expo-constants) must not load with the chat screen, because the existing
+ * composer-lock test renders this screen without them. Dynamic import() doesn't run under Jest.
+ */
 const loadGiftSheet = () => (require("../components/GiftSheet") as typeof import("../components/GiftSheet")).GiftSheet;
 
 const GROUP_GAP_MS = 5 * 60 * 1000;
@@ -402,7 +406,7 @@ export function ChatScreen() {
           { label: "Unmatch", icon: "heart-dislike-outline" as const, onPress: confirmUnmatch }
         ]
       : []),
-    ...(active && sendPolicy?.giftSales === true
+    ...(Platform.OS === "web" && active && sendPolicy?.giftSales === true
       ? [{ label: "Gift premium", icon: "gift-outline" as const, testID: "chat-gift-premium", onPress: () => setGiftOpen(true) }]
       : []),
     {
@@ -416,7 +420,7 @@ export function ChatScreen() {
 
   const menuOptions = group ? groupMenu : pairMenu;
   // The gift sheet (and the payment modules behind it) is only loaded once someone opens it.
-  const GiftSheetView = giftOpen && !group && sendPolicy?.giftSales === true ? loadGiftSheet() : null;
+  const GiftSheetView = Platform.OS === "web" && giftOpen && !group && sendPolicy?.giftSales === true ? loadGiftSheet() : null;
 
   // Written for this match by Paire AI; the local ones show while it loads or if it can't.
   const openers = useQuery({

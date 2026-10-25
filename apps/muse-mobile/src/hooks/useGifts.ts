@@ -13,7 +13,9 @@ export function useGifts() {
     queryKey: ["gifts", uid],
     queryFn: fetchGifts,
     enabled: Boolean(uid),
-    staleTime: 30_000,
+    // Shown on every Matches visit, so it costs at most one call every few minutes; actions refresh it by invalidation.
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
     retry: 1
   });
 }

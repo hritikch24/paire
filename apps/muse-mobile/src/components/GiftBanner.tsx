@@ -2,8 +2,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { useGifts } from "../hooks/useGifts";
+import { useAuthStore } from "../store/authStore";
 import { friendlyError } from "../services/errors";
-import { claimGift, declineGift } from "../services/giftService";
+import { claimGift, declineGift, type GiftList } from "../services/giftService";
 import { formatGiftDate, giftPlanLabel } from "../utils/gifts";
 import { GhostButton, PrimaryButton } from "./MuseButton";
 import { showToast } from "./Toast";
@@ -13,14 +14,18 @@ import { showToast } from "./Toast";
  * gift-sales switch says (a gift already paid for can always be accepted). Nothing
  * is owed for saying no.
  */
-export function GiftBanner() {
+export function GiftBanner({ spaced = false }: { spaced?: boolean }) {
   const queryClient = useQueryClient();
+  const uid = useAuthStore((state) => state.user?.uid);
   const gifts = useGifts().data;
   const [working, setWorking] = useState<"accept" | "decline" | null>(null);
   const inFlight = useRef(false);
   const pending = (gifts?.received ?? []).filter((gift) => gift.status === "pending").sort((a, b) => a.expiresAt - b.expiresAt)[0];
   if (!pending) return null;
 
+  // Until the refetch lands the cached gift would still read "pending" and invite a second tap.
+  const markAnswered = (status: "claimed" | "declined", endsAt?: number) =>
+    queryClient.setQueryData<GiftList>(["gifts", uid], (list) => list && { ...list, received: list.received.map((gift) => (gift.id === pending.id ? { ...gift, status, ...(endsAt ? { endsAt } : {}) } : gift)) });
   const refresh = (keys: string[]) => keys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key] }));
   const answer = async (choice: "accept" | "decline") => {
     if (inFlight.current) return;
@@ -30,10 +35,12 @@ export function GiftBanner() {
       if (choice === "accept") {
         const claimed = await claimGift(pending.id);
         showToast(`Gift added. Your Plus runs until ${formatGiftDate(claimed.endsAt)}.`, "success");
+        markAnswered("claimed", claimed.endsAt);
         refresh(["gifts", "premium", "chat-access", "daily-allowance", "send-policy"]);
       } else {
         await declineGift(pending.id);
         showToast("No problem. The gift has gone back to them.");
+        markAnswered("declined");
         refresh(["gifts"]);
       }
     } catch (error) {
@@ -47,7 +54,7 @@ export function GiftBanner() {
   };
 
   return (
-    <YStack testID="gift-banner" marginHorizontal="$4" padding="$4" gap="$3" borderRadius={18} backgroundColor="$primarySoft" accessible={false}>
+    <YStack testID="gift-banner" marginHorizontal="$4" marginTop={spaced ? "$4" : undefined} padding="$4" gap="$3" borderRadius={18} backgroundColor="$primarySoft" accessible={false}>
       <YStack gap={2}>
         <Text fontSize="$4" fontWeight="700" color="$primary" accessibilityRole="header">{`${pending.counterpartName} gifted you Paire Plus: ${giftPlanLabel(pending.plan)}`}</Text>
         <Text fontSize="$2" color="$textMuted">It's yours to accept whenever you like. Saying no is fine.</Text>

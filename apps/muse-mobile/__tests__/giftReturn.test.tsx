@@ -62,11 +62,21 @@ test("a payment the bank is still confirming says so and promises no second char
   expect(showToast).toHaveBeenCalledWith("Payment received. Your bank is still confirming it; you won't be charged again.");
 });
 
-test("a second payment that is being refunded is explained, and nothing polls", async () => {
+test("a second payment for a gift that already exists is explained as a second payment, and nothing polls", async () => {
   setUrl(paidQuery(orderId()));
   jest.mocked(confirmGiftPayment).mockResolvedValue({ status: "paid", giftId: "g", refunding: true });
   await mount();
+  expect(showToast).toHaveBeenCalledTimes(1);
   expect(showToast).toHaveBeenCalledWith("That was a second payment, and it is being refunded.");
+  expect(confirmGiftPayment).toHaveBeenCalledTimes(1);
+});
+
+test("the only payment for a gift that can't be delivered is never called a second payment", async () => {
+  setUrl(paidQuery(orderId()));
+  jest.mocked(confirmGiftPayment).mockResolvedValue({ status: "pending", giftId: "g", refunding: true });
+  await mount();
+  expect(showToast).toHaveBeenCalledTimes(1);
+  expect(showToast).toHaveBeenCalledWith("This payment is being refunded, and you won't be charged.");
   expect(confirmGiftPayment).toHaveBeenCalledTimes(1);
 });
 

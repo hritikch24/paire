@@ -6,9 +6,11 @@ import { claimGift, declineGift } from "../src/services/giftService";
 
 let mockGifts: unknown;
 const mockInvalidate = jest.fn();
+const mockSetData = jest.fn((_key: unknown, update: (list: unknown) => unknown) => { mockGifts = update(mockGifts); });
 jest.mock("react-native", () => ({ Platform: { OS: "web" } }));
 jest.mock("tamagui", () => ({ Text: "Text", XStack: "XStack", YStack: "YStack" }));
-jest.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: mockInvalidate }) }));
+jest.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: mockInvalidate, setQueryData: mockSetData }) }));
+jest.mock("../src/store/authStore", () => ({ useAuthStore: (select: (state: unknown) => unknown) => select({ user: { uid: "her" } }) }));
 jest.mock("../src/components/Toast", () => ({ showToast: jest.fn() }));
 jest.mock("../src/components/MuseButton", () => ({ PrimaryButton: "PrimaryButton", GhostButton: "GhostButton" }));
 jest.mock("../src/hooks/useGifts", () => ({ useGifts: () => ({ data: mockGifts }) }));
@@ -17,11 +19,12 @@ jest.mock("../src/hooks/useSendPolicy", () => ({ useSendPolicy: () => ({ data: {
 jest.mock("../src/services/giftService", () => ({ claimGift: jest.fn(), declineGift: jest.fn() }));
 
 const gift = (over: object) => ({ id: "order_G1", plan: "week", status: "pending", counterpartName: "Priya", createdAt: 1, expiresAt: Date.now() + 86_400_000, ...over });
-const mount = async () => {
+const mount = async (spaced = false) => {
   let tree!: renderer.ReactTestRenderer;
-  await act(async () => { tree = renderer.create(<GiftBanner />); });
+  await act(async () => { tree = renderer.create(<GiftBanner spaced={spaced} />); });
   return tree;
 };
+const rerender = (tree: renderer.ReactTestRenderer) => act(async () => { tree.update(<GiftBanner />); });
 const find = (tree: renderer.ReactTestRenderer, testID: string) => tree.root.findAllByProps({ testID });
 const words = (tree: renderer.ReactTestRenderer) => tree.root.findAll((node) => ["Text", "PrimaryButton", "GhostButton"].includes(node.type as string)).map((node) => [node.props.children].flat().join("")).join(" | ");
 beforeEach(() => { mockGifts = { received: [gift({})], sent: [] }; });
@@ -82,4 +85,39 @@ test("a gift that can no longer be accepted shows the server's message and refre
   jest.mocked(claimGift).mockResolvedValue({ status: "claimed", endsAt: 1 });
   await act(async () => { await find(tree, "gift-accept")[0].props.onPress(); });
   expect(claimGift).toHaveBeenCalledTimes(2);
+});
+
+test("once accepted, the cached gift no longer reads pending, so a quick second tap finds no button and calls nothing", async () => {
+  jest.mocked(claimGift).mockResolvedValue({ status: "claimed", endsAt: 1 });
+  const tree = await mount();
+  await act(async () => { await find(tree, "gift-accept")[0].props.onPress(); });
+  expect(mockSetData).toHaveBeenCalledWith(["gifts", "her"], expect.any(Function));
+  await rerender(tree);
+  expect(find(tree, "gift-accept")).toHaveLength(0);
+  expect(tree.toJSON()).toBeNull();
+  expect(claimGift).toHaveBeenCalledTimes(1);
+});
+
+test("once declined, the banner goes away at once, before the refetch", async () => {
+  jest.mocked(declineGift).mockResolvedValue({ status: "declined" });
+  const tree = await mount();
+  await act(async () => { await find(tree, "gift-decline")[0].props.onPress(); });
+  await rerender(tree);
+  expect(tree.toJSON()).toBeNull();
+});
+
+test("a failed answer leaves the cached gift pending so it can be retried", async () => {
+  jest.mocked(claimGift).mockRejectedValue(Object.assign(new Error("x"), { code: "functions/unavailable" }));
+  const tree = await mount();
+  await act(async () => { await find(tree, "gift-accept")[0].props.onPress(); });
+  expect(mockSetData).not.toHaveBeenCalled();
+  await rerender(tree);
+  expect(find(tree, "gift-accept")).toHaveLength(1);
+});
+
+test("the banner owns its top spacing, so a screen with no gift is unchanged", async () => {
+  expect((await mount(true)).root.findByProps({ testID: "gift-banner" }).props.marginTop).toBe("$4");
+  expect((await mount()).root.findByProps({ testID: "gift-banner" }).props.marginTop).toBeUndefined();
+  mockGifts = { received: [], sent: [] };
+  expect((await mount(true)).toJSON()).toBeNull();
 });

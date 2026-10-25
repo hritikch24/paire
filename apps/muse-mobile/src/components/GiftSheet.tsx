@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Modal, Pressable, ScrollView } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Modal, Platform, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, XStack, YStack } from "tamagui";
 import { webPlan } from "../config/premium";
@@ -33,6 +33,17 @@ export function GiftSheet({ visible, matchId, name, onClose }: GiftSheetProps) {
   const [busy, setBusy] = useState<GiftPlanId | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const starting = useRef(false);
+  // Back from the payment page can restore this page from the browser's back/forward cache with the sheet mid-checkout.
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const reset = (event: Event) => {
+      if (!(event as PageTransitionEvent).persisted) return;
+      starting.current = false;
+      setBusy(null);
+    };
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
   const first = name.split(" ")[0] || "them";
   const history = [...(gifts?.sent ?? []).map((gift) => ({ gift, side: "sent" as const })), ...(gifts?.received ?? []).map((gift) => ({ gift, side: "received" as const }))];
 
@@ -107,7 +118,7 @@ export function GiftSheet({ visible, matchId, name, onClose }: GiftSheetProps) {
                   {history.map(({ gift, side }) => <GiftRow key={`${side}-${gift.id}`} gift={gift} side={side} />)}
                 </YStack>
               ) : null}
-              <GhostButton testID="gift-close" onPress={onClose} disabled={busy !== null}>Close</GhostButton>
+              <GhostButton testID="gift-close" onPress={onClose}>Close</GhostButton>
             </YStack>
           </ScrollView>
         </YStack>

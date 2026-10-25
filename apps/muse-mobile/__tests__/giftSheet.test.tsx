@@ -81,3 +81,27 @@ test("with no gifts yet there is no empty list to read", async () => {
   mockGifts = { sent: [], received: [] };
   expect(words(await mount())).not.toContain("Your gifts");
 });
+
+test("Close stays usable while a payment page is opening, and Back from the browser's page cache frees the sheet again", async () => {
+  const listeners = new Map<string, (event: { persisted: boolean }) => void>();
+  (globalThis as { window?: unknown }).window = { addEventListener: (name: string, fn: (event: { persisted: boolean }) => void) => { listeners.set(name, fn); }, removeEventListener: (name: string) => { listeners.delete(name); } };
+  try {
+    jest.mocked(createGift).mockReturnValue(new Promise(() => undefined));
+    const onClose = jest.fn();
+    const tree = await mount(onClose);
+    await act(async () => { planButtons(tree)[0].props.onPress(); });
+    expect(planButtons(tree)[1].props.disabled).toBe(true);
+    expect(tree.root.findByProps({ testID: "gift-close" }).props.disabled).toBeUndefined();
+    // A normal page show changes nothing; one restored from the cache resets the sheet.
+    await act(async () => { listeners.get("pageshow")!({ persisted: false }); });
+    expect(planButtons(tree)[1].props.disabled).toBe(true);
+    await act(async () => { listeners.get("pageshow")!({ persisted: true }); });
+    expect(planButtons(tree)[1].props.disabled).toBe(false);
+    await act(async () => { planButtons(tree)[1].props.onPress(); });
+    expect(createGift).toHaveBeenLastCalledWith("her_him", "week");
+    await act(async () => { tree.unmount(); });
+    expect(listeners.has("pageshow")).toBe(false);
+  } finally {
+    delete (globalThis as { window?: unknown }).window;
+  }
+});

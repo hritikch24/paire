@@ -1,5 +1,6 @@
 import React from "react";
 import renderer, { act } from "react-test-renderer";
+import { Platform } from "react-native";
 import { ChatScreen } from "../src/screens/ChatScreen";
 import type { ChatAccess } from "../src/services/chatAccessService";
 
@@ -69,4 +70,16 @@ test.each([["a woman", true], ["a man", false]])("with gifts on, the chat menu o
 test.each([["switch off", { freeSender: false, giftSales: false }], ["policy unknown", undefined], ["policy without the field", { freeSender: true }]])("no Gift premium in the chat menu when %s", async (_name, policy) => {
   mockPolicy = policy;
   expect(menuLabels(await mount())).not.toContain("Gift premium");
+});
+
+test.each([["android"], ["ios"]])("on %s there is no Gift premium even when sales are on (gifts are web only)", async (os) => {
+  (Platform as { OS: string }).OS = os;
+  try {
+    mockPolicy = { freeSender: false, giftSales: true };
+    const tree = await mount();
+    expect(menuLabels(tree)).not.toContain("Gift premium");
+    expect(giftSheet(tree)).toHaveLength(0);
+  } finally {
+    (Platform as { OS: string }).OS = "web";
+  }
 });

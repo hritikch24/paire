@@ -60,7 +60,9 @@ export function useGiftReturn() {
     }
     void confirmGiftPayment(orderId, paymentId, signature)
       .then((outcome) => {
-        if (outcome.refunding) showToast("That was a second payment, and it is being refunded.");
+        // refunding with "paid" is a second payment for a gift that already exists; refunding with
+        // "pending" is the member's only payment for a gift that can't be delivered.
+        if (outcome.refunding) showToast(outcome.status === "paid" ? "That was a second payment, and it is being refunded." : "This payment is being refunded, and you won't be charged.");
         else if (outcome.status === "paid") showToast("Gift paid. They'll see it when they open Paire.", "success");
         else showToast("Payment received. Your bank is still confirming it; you won't be charged again.");
       })
