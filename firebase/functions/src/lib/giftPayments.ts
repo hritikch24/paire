@@ -36,8 +36,8 @@ export function giftDayStart(now: number): number {
 }
 
 /**
- * What a captured payment may do, decided again at capture time. An
- * ineligible recipient (deleted, banned, unmatched, blocked) orphans it; test
+ * What a captured payment may do, decided again at capture time. A sender or
+ * recipient who is gone or banned, or a match that ended or is blocked, orphans it; test
  * money never reaches a real account outside the emulator (as for Plus and
  * Unlimited Chat: only test-cohort accounts); either way it is refunded.
  */
@@ -48,6 +48,8 @@ export function giftCaptureVerdict(args: {
   blocked: boolean;
   recipientExists: boolean;
   recipientBanned: boolean;
+  senderExists: boolean;
+  senderBanned: boolean;
   mode: RazorpayMode | null;
   emulator: boolean;
   senderCohort: unknown;
@@ -55,7 +57,7 @@ export function giftCaptureVerdict(args: {
 }): "grant" | "orphaned" | "rejected" {
   const { match } = args;
   if (!match || !match.active || !match.participants.includes(args.fromUid) || !match.participants.includes(args.toUid)
-    || args.blocked || !args.recipientExists || args.recipientBanned) return "orphaned";
+    || args.blocked || !args.recipientExists || args.recipientBanned || !args.senderExists || args.senderBanned) return "orphaned";
   if (args.mode === "live" || args.emulator) return "grant";
   if (args.mode === "test" && args.senderCohort === "test" && args.recipientCohort === "test") return "grant";
   return "rejected";

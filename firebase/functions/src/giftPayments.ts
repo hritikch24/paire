@@ -28,7 +28,8 @@ import { WEB_PUSH_SECRETS } from "./webPush";
  * 2. confirmGiftPayment: checks Checkout's signature, re-reads the payment from
  *    Razorpay (paymentMatchesOrder), then grantGift creates gifts/{orderId} once.
  * 3. razorpayGiftWebhook: the same grant from Razorpay's signed events, on its
- *    own URL and secret (RAZORPAY_GIFT_WEBHOOK_SECRET). razorpayWebhook is untouched.
+ *    own URL (verified with the existing RAZORPAY_WEBHOOK_SECRET value, ruling R8).
+ *    razorpayWebhook is untouched.
  *
  * Server-only records: giftOrders/{orderId} (never razorpayOrders, so Plus
  * accounting, revenue and the Plus webhook never see a gift) and
@@ -54,6 +55,11 @@ type GiftOrderRecord = {
   mode: RazorpayMode | null;
   createdAt: number;
   paymentId?: string;
+  extraPaymentIds?: string[];
+  /** Payments Razorpay reported refunded (refund events); their money is already back. */
+  refundedPaymentIds?: string[];
+  refundId?: string | null;
+  refundError?: string;
 };
 
 type RazorpayPayment = { id?: string; order_id?: string; status?: string; amount?: number; currency?: string; amount_refunded?: number };
@@ -107,17 +113,16 @@ export const createGiftOrder = onCall({ region: REGION, secrets: SECRETS, timeou
 
   const now = Date.now();
   const checkoutRef = db.doc(`giftCheckout/${giftCheckoutKey(uid, matchId, plan)}`);
-  const [recipient, recipientModeration, blocked, blockedBy, checkout] = await db.getAll(
+  const [recipient, recipientModeration, blocked, blockedBy] = await db.getAll(
     db.doc(`users/${toUid}`),
     db.doc(`moderation/${toUid}`),
     db.doc(`blocks/${uid}/blocked/${toUid}`),
-    db.doc(`blocks/${toUid}/blocked/${uid}`),
-    checkoutRef
+    db.doc(`blocks/${toUid}/blocked/${uid}`)
   );
+  // Only gifts actually paid for today count: abandoned checkouts never lock anyone out
+  // (the 20 orders a day quota above still caps how many can be opened).
   const today = await db.collection("giftOrders").where("fromUid", "==", uid).where("createdAt", ">=", giftDayStart(now)).get();
-  // Reopening today's open checkout for this match and plan is not another gift.
-  const reusable = checkout.get("state") === "open" && now - (Number(checkout.get("updatedAt")) || 0) < GIFT_CHECKOUT_REUSE_MS ? checkout.get("orderId") : null;
-  const sentToday = today.docs.filter((doc) => ["created", "paid"].includes(doc.get("status")) && !(doc.id === reusable && doc.get("status") === "created")).length;
+  const sentToday = today.docs.filter((doc) => doc.get("status") === "paid").length;
   const verdict = canGift({
     fromUid: uid,
     toUid,
@@ -223,20 +228,33 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
   const ref = db.doc(`giftOrders/${orderId}`);
   const giftRef = db.doc(`gifts/${orderId}`);
   let order: GiftOrderRecord | undefined;
-  const outcome = await db.runTransaction(async (tx): Promise<GiftGrantOutcome> => {
+  const outcome = await db.runTransaction(async (tx): Promise<GiftGrantOutcome | "retry-refund"> => {
     const fresh = await tx.get(ref);
     if (!fresh.exists) return "closed";
     order = fresh.data() as GiftOrderRecord;
+    const known = [...(order.extraPaymentIds ?? []), ...(order.refundedPaymentIds ?? [])].includes(paymentId);
     if (order.status === "paid") {
-      if (order.paymentId === paymentId || ((fresh.get("extraPaymentIds") as string[] | undefined) ?? []).includes(paymentId)) return "duplicate";
+      if (order.paymentId === paymentId || known) return "duplicate";
+      tx.update(ref, { extraPaymentIds: FieldValue.arrayUnion(paymentId), updatedAt: FieldValue.serverTimestamp() });
+      return "extra";
+    }
+    if (order.status === "refunded" || order.status === "orphaned" || order.status === "rejected") {
+      if (order.paymentId === paymentId) {
+        // The refund after the transaction never ran (a crash, a timeout): try it again.
+        const refundPending = order.status !== "refunded" && !order.refundId && !order.refundError && !(order.refundedPaymentIds ?? []).includes(paymentId);
+        return refundPending ? "retry-refund" : "closed";
+      }
+      if (known) return "closed";
+      // Captured on an order that can no longer deliver a gift: never keep that money.
       tx.update(ref, { extraPaymentIds: FieldValue.arrayUnion(paymentId), updatedAt: FieldValue.serverTimestamp() });
       return "extra";
     }
     if (order.status !== "created") return "closed";
-    const [gift, recipient, recipientModeration, senderModeration, match, blocked, blockedBy] = await tx.getAll(
+    const [gift, recipient, recipientModeration, sender, senderModeration, match, blocked, blockedBy] = await tx.getAll(
       giftRef,
       db.doc(`users/${order.toUid}`),
       db.doc(`moderation/${order.toUid}`),
+      db.doc(`users/${order.fromUid}`),
       db.doc(`moderation/${order.fromUid}`),
       db.doc(`matches/${order.matchId}`),
       db.doc(`blocks/${order.fromUid}/blocked/${order.toUid}`),
@@ -251,6 +269,8 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
       blocked: blocked.exists || blockedBy.exists,
       recipientExists: recipient.exists,
       recipientBanned: recipientModeration.get("status") === "banned",
+      senderExists: sender.exists,
+      senderBanned: senderModeration.get("status") === "banned",
       mode: order.mode,
       emulator: emulator(),
       senderCohort: senderModeration.get("cohort"),
@@ -280,15 +300,22 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
     tx.update(ref, { ...record, status: "paid", paidAt: now, giftId: orderId });
     return "granted";
   });
+  if (order && outcome === "retry-refund") {
+    // Only orphaned or rejected orders get here; the reason matches the first attempt.
+    await refundGiftPayment(orderId, paymentId, order.amountPaise, order.status);
+    logger.info("Gift refund retried", { orderId });
+    return { outcome: order.status as "orphaned" | "rejected", toUid: order.toUid };
+  }
   if (order && (outcome === "orphaned" || outcome === "rejected" || outcome === "extra")) {
     await refundGiftPayment(orderId, paymentId, order.amountPaise, outcome === "extra" ? EXTRA_REASON : outcome);
   }
   if (order && outcome === "granted") await notifyRecipient(orderId, order);
   if (outcome !== "granted" && outcome !== "duplicate") logger.info("Gift payment not granted", { orderId, outcome });
-  return { outcome, toUid: order?.toUid };
+  return { outcome: outcome as GiftGrantOutcome, toUid: order?.toUid };
 }
 
-export type GiftConfirmResult = { status: "paid" | "pending"; giftId: string };
+/** `refunding`: this payment was a second charge for a gift already paid, and is being refunded. */
+export type GiftConfirmResult = { status: "paid" | "pending"; giftId: string; refunding?: true };
 
 export const confirmGiftPayment = onCall({ region: REGION, secrets: [...SECRETS, ...WEB_PUSH_SECRETS], timeoutSeconds: 30 }, async (request): Promise<GiftConfirmResult> => {
   const uid = requireAuth(request);
@@ -313,8 +340,11 @@ export const confirmGiftPayment = onCall({ region: REGION, secrets: [...SECRETS,
   }
   if (verdict === "pending") return { status: "pending", giftId: body.orderId };
   await grantGift(body.orderId, body.paymentId);
-  const status = (await db.doc(`giftOrders/${body.orderId}`).get()).get("status") as GiftOrderStatus;
-  if (status === "paid") return { status: "paid", giftId: body.orderId };
+  const settled = await db.doc(`giftOrders/${body.orderId}`).get();
+  const status = settled.get("status") as GiftOrderStatus;
+  if (status === "paid") {
+    return settled.get("paymentId") === body.paymentId ? { status: "paid", giftId: body.orderId } : { status: "paid", giftId: body.orderId, refunding: true };
+  }
   if (status === "rejected") throw new HttpsError("failed-precondition", "Test payments can't send gifts. Your payment is being refunded.", { reason: "test-payment" });
   if (status === "orphaned" || status === "refunded") {
     throw new HttpsError("failed-precondition", "This gift can't be delivered any more, so your payment is being refunded.", { reason: "refunded" });
@@ -349,25 +379,27 @@ export async function minimalGiftReversal(paymentId: unknown, orderId: unknown, 
     const [order, gift] = await tx.getAll(ref, giftRef);
     const now = Date.now();
     const note = { event, paymentId: typeof paymentId === "string" ? paymentId : null, at: now };
+    // Every refunded payment is remembered, so a re-delivered capture for it is never refunded again.
     const updatedAt = FieldValue.serverTimestamp();
+    const seen = isRazorpayId(paymentId, "pay") ? { refundedPaymentIds: FieldValue.arrayUnion(paymentId) } : {};
     const paidWith = order.get("paymentId");
     if (typeof paidWith === "string" && paidWith !== paymentId) {
-      tx.update(ref, { otherPaymentEvents: FieldValue.arrayUnion(note), updatedAt });
+      tx.update(ref, { ...seen, otherPaymentEvents: FieldValue.arrayUnion(note), updatedAt });
       return false;
     }
     if (!gift.exists) {
       // Never delivered: our own refund of an orphaned or rejected payment, or a refund that
       // arrived before the capture (the order is closed, so a late capture grants nothing).
-      tx.update(ref, { ...(order.get("status") === "created" ? { status: "refunded", refundedAt: now } : {}), refundEvents: FieldValue.arrayUnion(note), updatedAt });
+      tx.update(ref, { ...seen, ...(order.get("status") === "created" ? { status: "refunded", refundedAt: now } : {}), refundEvents: FieldValue.arrayUnion(note), updatedAt });
       return false;
     }
     if (gift.get("status") === "pending") {
       tx.update(giftRef, { status: "refunded", refundedAt: now });
-      tx.update(ref, { status: "refunded", refundedAt: now, refundEvents: FieldValue.arrayUnion(note), updatedAt });
+      tx.update(ref, { ...seen, status: "refunded", refundedAt: now, refundEvents: FieldValue.arrayUnion(note), updatedAt });
       return false;
     }
     if (gift.get("status") !== "refunded") tx.update(giftRef, { needsReview: true, needsReviewReason: event, needsReviewAt: now });
-    tx.update(ref, { refundEvents: FieldValue.arrayUnion(note), updatedAt });
+    tx.update(ref, { ...seen, refundEvents: FieldValue.arrayUnion(note), updatedAt });
     return gift.get("status") !== "refunded";
   });
   if (flagged) logger.warn("Gift payment reversed after the gift was used; needs review", { giftId: ref.id, event });
@@ -385,19 +417,20 @@ type WebhookPayload = {
 
 /**
  * Razorpay → Dashboard → Webhooks: a second webhook (the Plus one is unchanged)
- * pointing at this URL with the secret stored as RAZORPAY_GIFT_WEBHOOK_SECRET;
+ * pointing at this URL, with the same secret value as the Plus webhook (RAZORPAY_WEBHOOK_SECRET,
+ * ruling R8: a new secret would block every functions deploy until it exists);
  * events payment.captured, refund.processed, payment.dispute.created,
  * payment.dispute.lost, payment.dispute.won and payment.dispute.closed.
  * Orders that aren't gift orders are acknowledged and ignored.
  */
 export const razorpayGiftWebhook = onRequest(
-  { region: REGION, secrets: ["RAZORPAY_KEY_SECRET", "RAZORPAY_GIFT_WEBHOOK_SECRET", ...WEB_PUSH_SECRETS], timeoutSeconds: 60 },
+  { region: REGION, secrets: ["RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET", ...WEB_PUSH_SECRETS], timeoutSeconds: 60 },
   async (request, response) => {
     if (request.method !== "POST") {
       response.sendStatus(405);
       return;
     }
-    if (!validWebhookSignature(request.rawBody, request.get("x-razorpay-signature"), process.env.RAZORPAY_GIFT_WEBHOOK_SECRET)) {
+    if (!validWebhookSignature(request.rawBody, request.get("x-razorpay-signature"), process.env.RAZORPAY_WEBHOOK_SECRET)) {
       response.sendStatus(401);
       return;
     }

@@ -11,7 +11,7 @@ import { getFirestore } from "firebase-admin/firestore";
 
 process.env.RAZORPAY_KEY_ID = "rzp_test_PaireSandbox1";
 process.env.RAZORPAY_KEY_SECRET = "sandbox_key_secret";
-process.env.RAZORPAY_GIFT_WEBHOOK_SECRET = "sandbox_gift_webhook_secret";
+process.env.RAZORPAY_WEBHOOK_SECRET = "sandbox_webhook_secret";
 process.env.MUSE_BILLING_ENABLED = "true";
 process.env.MUSE_UNCACHED_RUNTIME = "true";
 process.env.KRAFTAI_CHECKOUT_URL = "https://kraftai.in/pay/start";
@@ -96,7 +96,7 @@ const call = <T,>(fn: { run: (request: any) => T }, uid: string, data: unknown =
   fn.run({ data, auth: { uid, token: { email: `${uid}@example.com`, email_verified: true } }, rawRequest: {}, acceptsStreaming: false });
 
 /** A signed Razorpay webhook delivery to the gift webhook; resolves with the HTTP status. */
-async function webhook(event: string, payload: Record<string, unknown>, secret = process.env.RAZORPAY_GIFT_WEBHOOK_SECRET!): Promise<number> {
+async function webhook(event: string, payload: Record<string, unknown>, secret = process.env.RAZORPAY_WEBHOOK_SECRET!): Promise<number> {
   const raw = Buffer.from(JSON.stringify({ event, payload }));
   const signature = createHmac("sha256", secret).update(raw).digest("hex");
   const headers: Record<string, string> = { "x-razorpay-signature": signature, "content-type": "application/json" };
@@ -215,8 +215,8 @@ describe("creating a gift order", () => {
     expect((await reasonOf(call(gifts.createGiftOrder, her, { matchId: "a/b", plan: "day" }))).code).toBe("invalid-argument");
   });
 
-  test("no match, an ended match, a block, an unavailable recipient, a 4th gift and a lifetime recipient each give their reason", async () => {
-    const { her, him, matchId } = await pair();
+  test("no match, an ended match, a block, an unavailable recipient and a lifetime recipient each give their reason", async () => {
+    const { her, him } = await pair();
     const stranger = await member("man");
     const elsewhere = await matchUp(him, stranger);
     const fail = (uid: string, data: unknown) => reasonOf(call(gifts.createGiftOrder, uid, data));
@@ -246,11 +246,24 @@ describe("creating a gift order", () => {
     await admin.doc(`lifetimePlusGrants/${lifer}`).set({ status: "active", startsAt: 0 });
     expect(await fail(her, { matchId: await matchUp(her, lifer), plan: "day" })).toEqual({ code: "failed-precondition", reason: "already-lifetime" });
 
+  });
+
+  test("only paid gifts count toward the 3 a day: abandoned checkouts never lock a member out", async () => {
+    const { her, matchId } = await pair();
+    const fail = (data: unknown) => reasonOf(call(gifts.createGiftOrder, her, data));
+    // Three checkouts opened and abandoned.
     for (const plan of ["day", "week", "month"]) await call(gifts.createGiftOrder, her, { matchId, plan });
-    const fourth = await member("man");
-    expect(await fail(her, { matchId: await matchUp(her, fourth), plan: "day" })).toEqual({ code: "failed-precondition", reason: "limit" });
-    // Reopening one of today's three checkouts is not a fourth gift.
-    expect((await call(gifts.createGiftOrder, her, { matchId, plan: "week" })).amount).toBe(9900);
+    const second = await member("man");
+    const secondMatch = await matchUp(her, second);
+    const fourthOrder = await call(gifts.createGiftOrder, her, { matchId: secondMatch, plan: "day" });
+    expect(fourthOrder.amount).toBe(3500);
+    // Three paid gifts: the next one is refused.
+    for (const plan of ["day", "week", "month"]) {
+      const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan });
+      expect(await confirm(her, pay(orderId))).toMatchObject({ status: "paid" });
+    }
+    const third = await member("man");
+    expect(await fail({ matchId: await matchUp(her, third), plan: "day" })).toEqual({ code: "failed-precondition", reason: "limit" });
   });
 });
 
@@ -351,6 +364,20 @@ describe("confirming a gift payment", () => {
     }
   });
 
+  test("a sender banned or deleted by capture time: orphaned and refunded", async () => {
+    for (const change of ["banned", "deleted"] as const) {
+      const { her, matchId } = await pair();
+      const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan: "day" });
+      if (change === "banned") await admin.doc(`moderation/${her}`).update({ status: "banned" });
+      if (change === "deleted") await admin.doc(`users/${her}`).delete();
+      const payment = pay(orderId);
+      expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
+      expect(await order(orderId)).toMatchObject({ status: "orphaned", paymentId: payment.id, refundReason: "orphaned" });
+      expect(fake.refunds.filter((refund) => refund.paymentId === payment.id)).toHaveLength(1);
+      expect(await gift(orderId)).toBeUndefined();
+    }
+  });
+
   test("a test-mode payment for a real (non-test-cohort) account is rejected and refunded", async () => {
     const her = await member("woman", { cohort: null }), him = await member("man");
     const matchId = await matchUp(her, him);
@@ -368,7 +395,7 @@ describe("confirming a gift payment", () => {
     const first = pay(orderId);
     await confirm(her, first);
     const second = pay(orderId);
-    await confirm(her, second);
+    expect(await confirm(her, second)).toEqual({ status: "paid", giftId: orderId, refunding: true });
     expect(await webhook("payment.captured", paymentEvent(second))).toBe(200);
     expect((await gift(orderId))!.paymentId).toBe(first.id);
     expect(await giftsFrom(her)).toBe(1);
@@ -431,6 +458,74 @@ describe("the gift webhook", () => {
     expect(await webhook("refund.processed", refundEvent(payment))).toBe(200);
     expect((await order(orderId))!.status).toBe("refunded");
     expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
+    expect(await gift(orderId)).toBeUndefined();
+    // Its own refund already returned that money: the re-delivered capture is not refunded again.
+    expect(await webhook("refund.processed", refundEvent(payment))).toBe(200);
+    expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
+    expect(fake.refunds.filter((refund) => refund.paymentId === payment.id)).toHaveLength(0);
+    expect((await order(orderId))!.refundedPaymentIds).toEqual([payment.id]);
+  });
+
+  test("payment A refunded, then payment B captured on the same order: B is refunded and nothing else changes", async () => {
+    const { her, matchId } = await pair();
+    const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan: "week" });
+    // A was captured, but its capture event is late; Razorpay refunds it first.
+    const a = pay(orderId);
+    expect(await webhook("refund.processed", refundEvent(a))).toBe(200);
+    const before = (await order(orderId))!;
+    expect(before).toMatchObject({ status: "refunded", refundedPaymentIds: [a.id] });
+    const b = pay(orderId);
+    expect(await webhook("payment.captured", paymentEvent(b))).toBe(200);
+    expect(fake.refunds.filter((refund) => refund.paymentId === b.id)).toEqual([{ paymentId: b.id, amount: 9900, notes: { reason: "second-payment-on-paid-order", product: "gift_plan" } }]);
+    const after = (await order(orderId))!;
+    expect(after).toMatchObject({ status: "refunded", extraPaymentIds: [b.id], refundedPaymentIds: [a.id] });
+    expect(after.paymentId).toBeUndefined();
+    expect(await gift(orderId)).toBeUndefined();
+    // Re-delivered: still one refund.
+    await gifts.grantGift(orderId, b.id);
+    expect(fake.refunds.filter((refund) => refund.paymentId === b.id)).toHaveLength(1);
+    expect((await reasonOf(confirm(her, b))).code).toBe("failed-precondition");
+  });
+
+  test("another payment captured on an orphaned order is refunded too", async () => {
+    const { her, him, matchId } = await pair();
+    const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan: "day" });
+    await admin.doc(`users/${him}`).delete();
+    const a = pay(orderId);
+    expect(await webhook("payment.captured", paymentEvent(a))).toBe(200);
+    expect((await order(orderId))!.status).toBe("orphaned");
+    const b = pay(orderId);
+    expect(await webhook("payment.captured", paymentEvent(b))).toBe(200);
+    expect(fake.refunds.filter((refund) => refund.paymentId === a.id)).toHaveLength(1);
+    expect(fake.refunds.filter((refund) => refund.paymentId === b.id)).toHaveLength(1);
+    expect(await order(orderId)).toMatchObject({ status: "orphaned", paymentId: a.id, extraPaymentIds: [b.id] });
+  });
+
+  test("an orphaned payment whose refund never ran (a crash after the transaction) is refunded on the next delivery, once", async () => {
+    const { her, matchId } = await pair();
+    const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan: "day" });
+    const payment = pay(orderId);
+    await admin.doc(`giftOrders/${orderId}`).update({ status: "orphaned", paymentId: payment.id });
+    expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
+    expect(fake.refunds.filter((refund) => refund.paymentId === payment.id)).toHaveLength(1);
+    expect((await order(orderId))!.refundId).toEqual(expect.any(String));
+    await gifts.grantGift(orderId, payment.id);
+    expect(fake.refunds.filter((refund) => refund.paymentId === payment.id)).toHaveLength(1);
+  });
+
+  test("the gift webhook fails closed without its secret", async () => {
+    const { her, matchId } = await pair();
+    const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan: "day" });
+    const payment = pay(orderId);
+    const saved = process.env.RAZORPAY_WEBHOOK_SECRET;
+    try {
+      process.env.RAZORPAY_WEBHOOK_SECRET = "disabled";
+      expect(await webhook("payment.captured", paymentEvent(payment), "disabled")).toBe(401);
+      delete process.env.RAZORPAY_WEBHOOK_SECRET;
+      expect(await webhook("payment.captured", paymentEvent(payment), "")).toBe(401);
+    } finally {
+      process.env.RAZORPAY_WEBHOOK_SECRET = saved;
+    }
     expect(await gift(orderId)).toBeUndefined();
   });
 

@@ -44,6 +44,8 @@ describe("gift capture verdict", () => {
     blocked: false,
     recipientExists: true,
     recipientBanned: false,
+    senderExists: true,
+    senderBanned: false,
     mode: "live" as const,
     emulator: false,
     senderCohort: undefined as unknown,
@@ -61,6 +63,8 @@ describe("gift capture verdict", () => {
     expect(giftCaptureVerdict({ ...ok, match: { active: false, participants: ["alexa", "jules"] } })).toBe("orphaned");
     expect(giftCaptureVerdict({ ...ok, match: { active: true, participants: ["alexa", "sam"] } })).toBe("orphaned");
     expect(giftCaptureVerdict({ ...ok, blocked: true })).toBe("orphaned");
+    expect(giftCaptureVerdict({ ...ok, senderExists: false })).toBe("orphaned");
+    expect(giftCaptureVerdict({ ...ok, senderBanned: true })).toBe("orphaned");
   });
 
   test("test-mode money only moves between test-cohort accounts outside the emulator", () => {
