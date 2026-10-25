@@ -739,6 +739,37 @@ describe("paid chat: Paire Plus or Unlimited Chat to send", () => {
     await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
   });
 
+  test("a free sender (woman) sends only while runtime/trust.womenSendFree is on; a sender without the flag is refused", async () => {
+    const woman = { unlimited: false, premiumUntil: 0, freeSender: true };
+    await seed({ ...enforced({ womenSendFree: true }), "matches/alexa_jules": matchDoc(), "moderation/jules": member(), "moderation/alexa": member(woman) });
+    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    // The recipient (a man with no pass, no flag) still can't reply.
+    await assertFails(sendBatch("jules", "alexa_jules", ["alexa"]));
+    // Switch off, absent or not exactly true: the flag alone grants nothing.
+    await seed(enforced({ womenSendFree: false }));
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed(enforced());
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    // Switch on but the mirror says she is not a free sender (or has no mirror).
+    await seed({ ...enforced({ womenSendFree: true }), "moderation/alexa": member({ unlimited: false, premiumUntil: 0, freeSender: false }) });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "moderation/alexa": member() });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+  });
+
+  test("freeSender does not bypass bans, ended matches or first-message controls, and clients can't set it", async () => {
+    const woman = { unlimited: false, premiumUntil: 0, freeSender: true };
+    await seed({ ...enforced({ womenSendFree: true }), "matches/alexa_jules": matchDoc(), "moderation/jules": member(), "moderation/alexa": member(woman, { status: "banned" }) });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "moderation/alexa": member(woman), "matches/alexa_jules": matchDoc(false) });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "matches/alexa_jules": { ...matchDoc(), firstMoveBy: "jules" } });
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await seed({ "moderation/alexa": member() });
+    await assertFails(dbFor("alexa").doc("moderation/alexa").set({ chatAccess: woman }, { merge: true }));
+    await assertFails(dbFor("alexa").doc("moderation/alexa").update({ "chatAccess.freeSender": true }));
+  });
+
   test("server-mirrored Lifetime Plus sends without expiry, while a revoked gift and bans stay enforced", async () => {
     await seed({ ...enforced(), "matches/alexa_jules": matchDoc(), "moderation/jules": member(), "moderation/alexa": member({ unlimited: true, premiumLifetime: true, premiumUntil: 0 }) });
     await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));

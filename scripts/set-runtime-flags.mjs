@@ -19,6 +19,12 @@
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --razorpay-plus off --confirm # stop new Razorpay Plus sales
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --ccavenue-sales on --confirm # CCAvenue (chat + Plus)
  *
+ *   # Accept likes and women reply free (both off by default; Gifts stay off until built and approved):
+ *   node scripts/set-runtime-flags.mjs --project muse-352ba --backfill-free-sender --confirm # mirror freeSender for every woman, first
+ *   node scripts/set-runtime-flags.mjs --project muse-352ba --accept-flow on --confirm      # women can accept likes
+ *   node scripts/set-runtime-flags.mjs --project muse-352ba --women-send-free on --confirm  # women send free in all their chats
+ *   node scripts/set-runtime-flags.mjs --project muse-352ba --gift-sales on --confirm       # gifted Plus passes
+ *
  *   # Roll back instantly (messages are never lost; sending is simply free again):
  *   node scripts/set-runtime-flags.mjs --project muse-352ba --paid-chat off --confirm
  *
@@ -29,7 +35,8 @@ import { createRequire } from "node:module";
 
 const require = createRequire(new URL("../firebase/functions/package.json", import.meta.url));
 const { initializeApp, applicationDefault } = require("firebase-admin/app");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue, FieldPath } = require("firebase-admin/firestore");
+import { freeSenderMerge, planFreeSenderBackfill, womenUids } from "./lib/free-sender-backfill.mjs";
 
 const args = process.argv.slice(2);
 const value = (flag) => {
@@ -45,7 +52,7 @@ const onOff = (flag) => {
 };
 function fail(message) {
   console.error(message);
-  console.error("Usage: node scripts/set-runtime-flags.mjs --project <id> [--status] [--presence on|off] [--idle-minutes N] [--paid-chat on|off] [--enforce-from ISO] [--legacy-grace-days N] [--unlock-sales on|off] [--upi-sales on|off] [--razorpay-plus on|off] [--ccavenue-sales on|off] [--backfill-chat-access] [--confirm]");
+  console.error("Usage: node scripts/set-runtime-flags.mjs --project <id> [--status] [--presence on|off] [--idle-minutes N] [--paid-chat on|off] [--enforce-from ISO] [--legacy-grace-days N] [--unlock-sales on|off] [--upi-sales on|off] [--razorpay-plus on|off] [--ccavenue-sales on|off] [--accept-flow on|off] [--women-send-free on|off] [--gift-sales on|off] [--backfill-chat-access] [--backfill-free-sender] [--confirm]");
   process.exit(1);
 }
 
@@ -90,13 +97,19 @@ const razorpayPlus = onOff("--razorpay-plus");
 if (razorpayPlus !== undefined) chat.razorpayPlusSales = razorpayPlus;
 const ccavenueSales = onOff("--ccavenue-sales");
 if (ccavenueSales !== undefined) chat.ccavenueSales = ccavenueSales;
+const acceptFlow = onOff("--accept-flow");
+if (acceptFlow !== undefined) chat.acceptFlow = acceptFlow;
+const womenSendFree = onOff("--women-send-free");
+if (womenSendFree !== undefined) chat.womenSendFree = womenSendFree;
+const giftSales = onOff("--gift-sales");
+if (giftSales !== undefined) chat.giftSales = giftSales;
 
 async function show() {
   const [presenceDoc, chatDoc] = await db.getAll(db.doc("runtime/presence"), db.doc("runtime/trust"));
   const iso = (ms) => (typeof ms === "number" && ms > 0 ? new Date(ms).toISOString() : "—");
   console.log(`runtime/presence on ${project}:`, presenceDoc.exists ? { ...presenceDoc.data(), updatedAt: undefined } : "(missing: presence is off)");
   const c = chatDoc.data() ?? {};
-  console.log(`paid chat (runtime/trust) on ${project}:`, chatDoc.exists ? { requireVerification: c.requireVerification, enforcePaidChat: c.enforcePaidChat === true, enforceFrom: iso(c.enforceFrom), legacyGraceUntil: iso(c.legacyGraceUntil), unlockSales: c.unlockSales === true, upiSales: c.upiSales === true, razorpayPlusSales: c.razorpayPlusSales !== false, ccavenueSales: c.ccavenueSales === true } : "(missing: sending is free)");
+  console.log(`paid chat (runtime/trust) on ${project}:`, chatDoc.exists ? { requireVerification: c.requireVerification, enforcePaidChat: c.enforcePaidChat === true, enforceFrom: iso(c.enforceFrom), legacyGraceUntil: iso(c.legacyGraceUntil), unlockSales: c.unlockSales === true, upiSales: c.upiSales === true, razorpayPlusSales: c.razorpayPlusSales !== false, ccavenueSales: c.ccavenueSales === true, acceptFlow: c.acceptFlow === true, womenSendFree: c.womenSendFree === true, giftSales: c.giftSales === true } : "(missing: sending is free)");
 }
 
 /** Mirrors every member's current Plus and Unlimited Chat onto moderation/{uid}.chatAccess (what the rules read). */
@@ -118,11 +131,45 @@ async function backfill() {
   console.log(`${confirm ? "Mirrored" : "Would mirror"} chat access for ${written} member(s) with Plus or Unlimited Chat.`);
 }
 
+/**
+ * Mirrors freeSender = true onto moderation/{uid}.chatAccess for every woman (users.gender == "woman"),
+ * so the rules can let her send free once womenSendFree is on. Existing unlimited, premiumUntil and
+ * premiumLifetime are kept (merge). Only existing accounts: deleted ones have no users doc and get nothing.
+ */
+async function backfillFreeSender() {
+  const now = Date.now();
+  let women = 0;
+  let alreadySet = 0;
+  let written = 0;
+  let after;
+  for (;;) {
+    let query = db.collection("users").where("gender", "==", "woman").orderBy(FieldPath.documentId()).select("gender").limit(300);
+    if (after) query = query.startAfter(after);
+    const page = await query.get();
+    if (page.empty) break;
+    const uids = womenUids(page.docs.map((doc) => ({ uid: doc.id, gender: doc.get("gender") })));
+    const mirrors = new Map();
+    for (const doc of uids.length ? await db.getAll(...uids.map((uid) => db.doc(`moderation/${uid}`)), { fieldMask: ["chatAccess"] }) : []) mirrors.set(doc.id, doc.get("chatAccess"));
+    const plan = planFreeSenderBackfill(uids, mirrors);
+    women += uids.length;
+    alreadySet += plan.alreadySet;
+    if (confirm && plan.toWrite.length) {
+      const batch = db.batch();
+      for (const uid of plan.toWrite) batch.set(db.doc(`moderation/${uid}`), freeSenderMerge(now), { merge: true });
+      await batch.commit();
+    }
+    written += plan.toWrite.length;
+    after = page.docs[page.docs.length - 1];
+  }
+  console.log(`${confirm ? "Mirrored" : "Would mirror"} freeSender for ${written} of ${women} women (${alreadySet} already had it).`);
+}
+
 if (has("--backfill-chat-access")) await backfill();
+if (has("--backfill-free-sender")) await backfillFreeSender();
 for (const [path, edits] of [["runtime/presence", presence], ["runtime/trust", chat]]) {
   if (!Object.keys(edits).length) continue;
   if (confirm) await db.doc(path).set({ ...edits, ...stamp }, { merge: true });
   console.log(`${confirm ? "Set" : "Would set"} ${path}:`, edits);
 }
-if (!confirm && (Object.keys(presence).length || Object.keys(chat).length || has("--backfill-chat-access"))) console.log("Dry run. Add --confirm to write.");
+if (!confirm && (Object.keys(presence).length || Object.keys(chat).length || has("--backfill-chat-access") || has("--backfill-free-sender"))) console.log("Dry run. Add --confirm to write.");
 await show();

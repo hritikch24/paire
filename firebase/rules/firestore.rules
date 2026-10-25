@@ -356,13 +356,15 @@ service cloud.firestore {
 
     // Unlimited Chat or a running Paire Plus pass, mirrored by the server onto the sender's
     // moderation record (already read by verifiedParticipants()); or an announced start date
-    // still ahead; or a chat from before the gate inside its grace period (0 = no grace).
+    // still ahead; or a chat from before the gate inside its grace period (0 = no grace); or a
+    // woman (the server mirrors freeSender from her profile) while runtime/trust.womenSendFree is on.
     function paidSendAllowed(chat, policy) {
       let now = request.time.toMillis();
       let access = get(/databases/$(database)/documents/moderation/$(request.auth.uid)).data.get('chatAccess', {});
       return now < policy.get('enforceFrom', 0)
         || access.get('unlimited', false) == true
         || access.get('premiumUntil', 0) > now
+        || (policy.get('womenSendFree', false) == true && access.get('freeSender', false) == true)
         || (now < policy.get('legacyGraceUntil', 0) && chat.createdAt is timestamp
           && chat.createdAt.toMillis() < policy.get('enforceFrom', 0));
     }

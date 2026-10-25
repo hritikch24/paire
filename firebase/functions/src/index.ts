@@ -36,6 +36,7 @@ export { createChatUnlockOrder, confirmChatUnlock, getChatAccess } from "./chatA
 export { ccavenueResponse, confirmCcavenueOrder, createCcavenueOrder } from "./ccavenue";
 export { createUpiUnlockOrder, getUpiReviewQueue, getUpiUnlockOrder, reviewUpiPayment, submitUpiPayment } from "./upiPayments";
 export { getPresence, presenceBeat, touchActivity } from "./presence";
+export { getSendPolicy } from "./sendPolicy";
 export { adminGetMember, adminListMembers } from "./memberAdmin";
 export { adminStartSupportSession, adminEndSupportSession, adminGetSupportHistory, getSupportSessionState, cleanupSupportSessions } from "./supportAdmin";
 export { createCallSession } from "./calls";

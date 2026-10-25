@@ -21,8 +21,14 @@ describe("Unlimited Chat product", () => {
 
 describe("chat policy", () => {
   it("is off unless explicitly enforced; malformed values are ignored", () => {
-    expect(parseChatPolicy(undefined)).toEqual({ enforcePaidChat: false, enforceFrom: 0, legacyGraceUntil: 0, unlockSales: false, upiSales: false, razorpayPlusSales: true, ccavenueSales: false });
-    expect(parseChatPolicy({ enforcePaidChat: "true", unlockSales: 1, upiSales: "yes", enforceFrom: "soon" })).toEqual({ enforcePaidChat: false, enforceFrom: 0, legacyGraceUntil: 0, unlockSales: false, upiSales: false, razorpayPlusSales: true, ccavenueSales: false });
+    expect(parseChatPolicy(undefined)).toEqual({ enforcePaidChat: false, enforceFrom: 0, legacyGraceUntil: 0, unlockSales: false, upiSales: false, razorpayPlusSales: true, ccavenueSales: false, acceptFlow: false, womenSendFree: false, giftSales: false });
+    expect(parseChatPolicy({ enforcePaidChat: "true", unlockSales: 1, upiSales: "yes", enforceFrom: "soon" })).toEqual({ enforcePaidChat: false, enforceFrom: 0, legacyGraceUntil: 0, unlockSales: false, upiSales: false, razorpayPlusSales: true, ccavenueSales: false, acceptFlow: false, womenSendFree: false, giftSales: false });
+  });
+
+  it("has the accept-flow, women-send-free and gift-sales switches, all off unless exactly true", () => {
+    expect(parseChatPolicy({})).toMatchObject({ acceptFlow: false, womenSendFree: false, giftSales: false });
+    expect(parseChatPolicy({ acceptFlow: "true", womenSendFree: 1, giftSales: "on" })).toMatchObject({ acceptFlow: false, womenSendFree: false, giftSales: false });
+    expect(parseChatPolicy({ acceptFlow: true, womenSendFree: true, giftSales: true })).toMatchObject({ acceptFlow: true, womenSendFree: true, giftSales: true });
   });
 
   it("starts the gate on its announced date", () => {
@@ -45,6 +51,18 @@ describe("who may send", () => {
   it("expired Plus locks sending unless Unlimited Chat is also owned (and Plus expiring never removes it)", () => {
     expect(entitled({ unlimited: false, premiumUntil: NOW - 1 }, NOW)).toBe(false);
     expect(entitled({ unlimited: true, premiumUntil: NOW - 1 }, NOW)).toBe(true);
+  });
+
+  it("a free sender (a woman, with the switch on) may send; without the switch or the mirror flag she may not", () => {
+    const free = parseChatPolicy({ enforcePaidChat: true, womenSendFree: true });
+    expect(maySend(free, { unlimited: false, premiumUntil: 0, freeSender: true }, NOW, NOW)).toBe(true);
+    expect(maySend(parseChatPolicy({ enforcePaidChat: true, womenSendFree: false }), { unlimited: false, premiumUntil: 0, freeSender: true }, NOW, NOW)).toBe(false);
+    // A man with no pass stays locked, and a missing mirror grants nothing.
+    expect(maySend(free, { unlimited: false, premiumUntil: 0, freeSender: false }, NOW, NOW)).toBe(false);
+    expect(maySend(free, { unlimited: false, premiumUntil: 0 }, NOW, NOW)).toBe(false);
+    expect(maySend(free, undefined, NOW, NOW)).toBe(false);
+    // The member's own entitlement (entitled) is untouched by freeSender.
+    expect(entitled({ unlimited: false, premiumUntil: 0, freeSender: true }, NOW)).toBe(false);
   });
 
   it("anyone may send while the gate is off", () => {

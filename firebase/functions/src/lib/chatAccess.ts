@@ -8,6 +8,7 @@ import { CHAT_UNLOCK } from "../config";
  *           || the sender owns Unlimited Chat (one-time, account-wide, no expiry)
  *           || the sender's Paire Plus pass is still running
  *           || the chat existed before enforcement and its grace period is running
+ *           || the sender is a woman and runtime/trust.womenSendFree is on
  *
  * Only the sender's own access counts: receiving and reading are always free,
  * and a paying member can message someone who hasn't paid. Payment never
@@ -36,9 +37,16 @@ export type ChatPolicy = {
   razorpayPlusSales: boolean;
   /** Unlimited Chat and Plus can be paid through CCAvenue (also needs MUSE_CCAVENUE_ENABLED and CCAvenue keys). */
   ccavenueSales: boolean;
+  /** Women can accept likes into a match (see Likes). Missing = off. */
+  acceptFlow: boolean;
+  /** Women may send in any of their chats without a pass, once a man has paid to reach her. Missing = off. */
+  womenSendFree: boolean;
+  /** Gifts of Paire Plus passes between matches can be bought. Missing = off. */
+  giftSales: boolean;
 };
 
-export type ChatAccessMirror = { unlimited: boolean; premiumUntil: number; premiumLifetime?: boolean };
+/** `freeSender`: the member is a woman, who sends free while runtime/trust.womenSendFree is on (it is no entitlement of her own). */
+export type ChatAccessMirror = { unlimited: boolean; premiumUntil: number; premiumLifetime?: boolean; freeSender?: boolean };
 
 const ms = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0);
 
@@ -51,7 +59,10 @@ export function parseChatPolicy(data: unknown): ChatPolicy {
     unlockSales: raw.unlockSales === true,
     upiSales: raw.upiSales === true,
     razorpayPlusSales: raw.razorpayPlusSales !== false,
-    ccavenueSales: raw.ccavenueSales === true
+    ccavenueSales: raw.ccavenueSales === true,
+    acceptFlow: raw.acceptFlow === true,
+    womenSendFree: raw.womenSendFree === true,
+    giftSales: raw.giftSales === true
   };
 }
 
@@ -71,7 +82,7 @@ export function inLegacyGrace(policy: ChatPolicy, chatCreatedAt: number, now: nu
 }
 
 export function maySend(policy: ChatPolicy, access: Partial<ChatAccessMirror> | undefined, chatCreatedAt: number, now: number): boolean {
-  return !paidChatEnforced(policy, now) || entitled(access, now) || inLegacyGrace(policy, chatCreatedAt, now);
+  return !paidChatEnforced(policy, now) || entitled(access, now) || inLegacyGrace(policy, chatCreatedAt, now) || (policy.womenSendFree && access?.freeSender === true);
 }
 
 export type RazorpayMode = "test" | "live";
