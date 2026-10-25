@@ -5,9 +5,8 @@ import { db } from "./admin";
 import { LIMITS, REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { pairId } from "./lib/ids";
-import { firstMoveOf, sparksOf } from "./lib/sparks";
 import { buildDiscoveryEntry } from "./lib/discovery";
-import { candidateLatLng, isCandidateForViewer, isVisibleCandidate } from "./lib/prefs";
+import { assertLikeEligible, buildMatchDoc } from "./lib/matchDoc";
 import { parseSwipeInput, parseTargetInput } from "./lib/validate";
 import { snippetOf } from "./profiles";
 import { sendPushToUser } from "./push";
@@ -98,18 +97,7 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
     if (isPositive(type)) {
       const mine = buildDiscoveryEntry(uid, meSnap.data() as Partial<PublicProfile>, mySettings.data() as UserSettings | undefined, myModeration.data() as ModerationRecord | undefined);
       const theirs = buildDiscoveryEntry(targetUid, targetSnap.data() as Partial<PublicProfile>, theirSettings.data() as UserSettings | undefined, theirModeration.data() as ModerationRecord | undefined);
-      const eligible = theyLikedMe ? isVisibleCandidate(mine, theirs) : isCandidateForViewer(mine, theirs, { viewerLocation: candidateLatLng(mine), sharedVibesOnly: mySettings.get("sharedVibesOnly") === true });
-      if (!mine.visible || !eligible) {
-        throw new HttpsError("not-found", "That profile is no longer available for matching.");
-      }
-      // Incognito members can only be liked back, never discovered.
-      if (theirs.incognito && !theyLikedMe) {
-        throw new HttpsError("not-found", "That profile is no longer available for matching.");
-      }
-      // "Notes only": a like needs a note, unless it answers their like.
-      if (theirs.requireNote && !note && !theyLikedMe) {
-        throw new HttpsError("failed-precondition", "They only accept likes with a note. Add one to say why you'd click.");
-      }
+      assertLikeEligible({ mine, theirs, theyLikedMe, mySettings: mySettings.data() as UserSettings | undefined, note });
     }
 
     const counter = COUNTER_FIELD[type];
@@ -150,30 +138,25 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
     const me = meSnap.data() as Partial<PublicProfile> | undefined;
     if (matched) {
       const target = targetSnap.data() as Partial<PublicProfile> | undefined;
-      const participants = [uid, targetUid].sort();
       const superLikedBy = [
         ...(type === "super" ? [uid] : []),
         ...(reciprocalType === "super" ? [targetUid] : [])
       ];
-      tx.set(matchRef, {
-        id: matchId,
-        participants,
-        active: true,
-        createdAt: FieldValue.serverTimestamp(),
-        lastActivityAt: FieldValue.serverTimestamp(),
-        profiles: { [uid]: snippetOf(me), [targetUid]: snippetOf(target) },
-        lastMessage: null,
-        unread: { [participants[0]]: 0, [participants[1]]: 0 },
-        lastReadAt: {},
-        superLikedBy,
-        // The notes sent with each like open the chat, so it never starts empty.
-        sparks: sparksOf({ [uid]: note, [targetUid]: reciprocalSnap.get("note") }),
-        // "I'll message first": set when exactly one of them chose it.
-        firstMoveBy: firstMoveOf({
-          [uid]: mySettings.get("firstMove") === true,
-          [targetUid]: theirSettings.get("firstMove") === true
-        })
-      });
+      tx.set(
+        matchRef,
+        buildMatchDoc({
+          uid,
+          targetUid,
+          me,
+          target,
+          superLikedBy,
+          notes: { [uid]: note ?? undefined, [targetUid]: reciprocalSnap.get("note") },
+          firstMove: {
+            [uid]: mySettings.get("firstMove") === true,
+            [targetUid]: theirSettings.get("firstMove") === true
+          }
+        }).data
+      );
     }
 
     return { matched, matchId: matched ? matchId : null, remaining: remaining(), me };
