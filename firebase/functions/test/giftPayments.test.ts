@@ -6,7 +6,8 @@ import {
   giftDayStart,
   giftOrderBody,
   giftPushCopy,
-  isMatchId
+  isMatchId,
+  refundRetryAllowed
 } from "../src/lib/giftPayments";
 import { dayKey } from "../src/lib/ids";
 
@@ -112,5 +113,33 @@ describe("gift checkout helpers", () => {
     const shown = giftPushCopy(true, "Alexa");
     expect(shown.body).toContain("Alexa");
     expect(giftPushCopy(true, undefined).body).toBe("Someone sent you a gift.");
+  });
+});
+
+describe("refund retry after a crash", () => {
+  const now = 1_761_000_000_000;
+  const orphaned = { status: "orphaned", paymentId: "pay_A1b2C3d4" };
+
+  test("an orphaned or rejected payment with no refund on record is retried", () => {
+    expect(refundRetryAllowed(orphaned, "pay_A1b2C3d4", now)).toBe(true);
+    expect(refundRetryAllowed({ ...orphaned, status: "rejected" }, "pay_A1b2C3d4", now)).toBe(true);
+  });
+
+  test("never while another delivery's attempt is under two minutes old; again after that", () => {
+    expect(refundRetryAllowed({ ...orphaned, refundAttemptAt: now - 1_000 }, "pay_A1b2C3d4", now)).toBe(false);
+    expect(refundRetryAllowed({ ...orphaned, refundAttemptAt: now - 119_999 }, "pay_A1b2C3d4", now)).toBe(false);
+    expect(refundRetryAllowed({ ...orphaned, refundAttemptAt: now - 120_000 }, "pay_A1b2C3d4", now)).toBe(true);
+  });
+
+  test("never once a refund, a refund error or a refund event is recorded, or for a refunded order", () => {
+    expect(refundRetryAllowed({ ...orphaned, refundId: "rfnd_1" }, "pay_A1b2C3d4", now)).toBe(false);
+    expect(refundRetryAllowed({ ...orphaned, refundError: "boom" }, "pay_A1b2C3d4", now)).toBe(false);
+    expect(refundRetryAllowed({ ...orphaned, refundedPaymentIds: ["pay_A1b2C3d4"] }, "pay_A1b2C3d4", now)).toBe(false);
+    expect(refundRetryAllowed({ ...orphaned, status: "refunded" }, "pay_A1b2C3d4", now)).toBe(false);
+    expect(refundRetryAllowed({ ...orphaned, status: "paid" }, "pay_A1b2C3d4", now)).toBe(false);
+  });
+
+  test("only for the order's own payment", () => {
+    expect(refundRetryAllowed(orphaned, "pay_Other123", now)).toBe(false);
   });
 });

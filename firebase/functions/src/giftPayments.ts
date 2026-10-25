@@ -8,8 +8,10 @@ import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { razorpayMode, RazorpayMode } from "./lib/chatAccess";
 import { canGift, GiftDenied, giftAmountPaise, GIFT_PENDING_MS, GiftPlan, isGiftPlan } from "./lib/gifts";
-import { GIFT_CHECKOUT_REUSE_MS, giftCaptureVerdict, giftCheckoutKey, giftDayStart, giftOrderBody, giftPushCopy, GIFT_PRODUCT, isMatchId } from "./lib/giftPayments";
+import { GIFT_CHECKOUT_REUSE_MS, giftCaptureVerdict, giftCheckoutKey, giftDayStart, giftOrderBody, giftPushCopy, isMatchId, refundRetryAllowed } from "./lib/giftPayments";
 import { pairId } from "./lib/ids";
+import { reverseGift } from "./giftLifecycle";
+import { EXTRA_REASON, refundGiftPayment } from "./giftRefunds";
 import { checkoutHost, requireHostedCheckout } from "./lib/kraftai";
 import { isRazorpayId, paymentMatchesOrder, PLUS_PASSES, validCheckoutSignature, validWebhookSignature } from "./lib/razorpay";
 import { sendPushToUser } from "./push";
@@ -40,7 +42,6 @@ import { WEB_PUSH_SECRETS } from "./webPush";
 // The same secrets as the Plus callables; confirming also sends the recipient's browser push.
 const SECRETS = ["RAZORPAY_KEY_SECRET", "REVENUECAT_SECRET_KEY"];
 const ORDERS_PER_DAY = 20;
-const EXTRA_REASON = "second-payment-on-paid-order";
 const emulator = () => process.env.FUNCTIONS_EMULATOR === "true";
 
 type GiftOrderStatus = "created" | "paid" | "refunded" | "orphaned" | "rejected";
@@ -60,7 +61,11 @@ type GiftOrderRecord = {
   refundedPaymentIds?: string[];
   refundId?: string | null;
   refundError?: string;
+  /** When a delivery last claimed the refund call (another delivery leaves it alone for 2 minutes). */
+  refundAttemptAt?: number;
 };
+
+export { refundGiftPayment };
 
 type RazorpayPayment = { id?: string; order_id?: string; status?: string; amount?: number; currency?: string; amount_refunded?: number };
 
@@ -177,31 +182,6 @@ export const createGiftOrder = onCall({ region: REGION, secrets: SECRETS, timeou
   return checkoutPayload(order.id, plan, email);
 });
 
-/**
- * Returns money for a gift payment that must not (or can no longer) buy a gift.
- * Written afresh after refundUnneededPass (razorpay.ts): the same Razorpay
- * refund call, and a failure is recorded on the order for support.
- */
-export async function refundGiftPayment(orderId: string, paymentId: string, amountPaise: number, reason: string): Promise<void> {
-  const ref = db.doc(`giftOrders/${orderId}`);
-  // A second payment on an order that's already paid is recorded on the side, never over the paid one.
-  const extra = reason === EXTRA_REASON;
-  try {
-    const refund = await razorpay<{ id?: string }>(`/payments/${paymentId}/refund`, {
-      method: "POST",
-      body: { amount: amountPaise, speed: "normal", notes: { reason, product: GIFT_PRODUCT } }
-    });
-    await ref.update(extra
-      ? { extraRefunds: FieldValue.arrayUnion({ paymentId, refundId: refund.id ?? null, at: Date.now() }) }
-      : { refundRequestedAt: Date.now(), refundId: refund.id ?? null, refundReason: reason });
-  } catch (error) {
-    logger.error("Gift refund failed", { orderId, reason, error: String(error) });
-    await ref.update(extra
-      ? { extraRefundErrors: FieldValue.arrayUnion({ paymentId, error: String(error).slice(0, 300), at: Date.now() }) }
-      : { refundError: String(error).slice(0, 300), refundReason: reason });
-  }
-}
-
 /** Tells the recipient. A push failure never fails the payment path. */
 async function notifyRecipient(orderId: string, order: GiftOrderRecord): Promise<void> {
   try {
@@ -240,9 +220,11 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
     }
     if (order.status === "refunded" || order.status === "orphaned" || order.status === "rejected") {
       if (order.paymentId === paymentId) {
-        // The refund after the transaction never ran (a crash, a timeout): try it again.
-        const refundPending = order.status !== "refunded" && !order.refundId && !order.refundError && !(order.refundedPaymentIds ?? []).includes(paymentId);
-        return refundPending ? "retry-refund" : "closed";
+        // The refund after the transaction never ran (a crash, a timeout): try it again, once.
+        // The claim is written here, so a second delivery at the same moment leaves it alone.
+        if (!refundRetryAllowed(order, paymentId, Date.now())) return "closed";
+        tx.update(ref, { refundAttemptAt: Date.now() });
+        return "retry-refund";
       }
       if (known) return "closed";
       // Captured on an order that can no longer deliver a gift: never keep that money.
@@ -277,12 +259,13 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
       recipientCohort: recipientModeration.get("cohort")
     });
     const record = { paymentId, updatedAt: FieldValue.serverTimestamp() };
+    // The refund below runs after the transaction; claiming it here keeps a retry from doubling it.
     if (verdict === "orphaned") {
-      tx.update(ref, { ...record, status: "orphaned" });
+      tx.update(ref, { ...record, status: "orphaned", refundAttemptAt: Date.now() });
       return "orphaned";
     }
     if (verdict === "rejected") {
-      tx.update(ref, { ...record, status: "rejected", rejectedReason: "test-mode-payment-for-real-account" });
+      tx.update(ref, { ...record, status: "rejected", rejectedReason: "test-mode-payment-for-real-account", refundAttemptAt: Date.now() });
       return "rejected";
     }
     const now = Date.now();
@@ -365,21 +348,22 @@ async function findGiftOrder(paymentId: unknown, orderId: unknown) {
 }
 
 /**
- * Minimal handling of a refund or a lost dispute on a gift payment (ruling R1).
- * Task 8 replaces this with reverseGift. An unclaimed (pending) gift is marked
- * refunded; a gift already claimed or declined is only flagged needsReview for
- * support. Events for another payment on the order (an extra we refunded) are
- * recorded on the side and change nothing. Returns false when it isn't a gift.
+ * A refund or a lost dispute reported for a gift order. Bookkeeping on the order
+ * first: every refunded payment is remembered (so a re-delivered capture for it
+ * is never refunded again); an event for another payment on the order (an extra
+ * we refunded) is recorded on the side and changes nothing; an order with no gift
+ * yet is closed (a refund before the capture, so a late capture grants nothing).
+ * For the gift's own payment, reverseGift then settles the gift itself.
+ * Returns false when it isn't a gift order.
  */
-export async function minimalGiftReversal(paymentId: unknown, orderId: unknown, event: string): Promise<boolean> {
+export async function handleGiftReversal(paymentId: unknown, orderId: unknown, event: string): Promise<boolean> {
   const ref = await findGiftOrder(paymentId, orderId);
   if (!ref) return false;
   const giftRef = db.doc(`gifts/${ref.id}`);
-  const flagged = await db.runTransaction(async (tx) => {
+  const giftPayment = await db.runTransaction(async (tx) => {
     const [order, gift] = await tx.getAll(ref, giftRef);
     const now = Date.now();
     const note = { event, paymentId: typeof paymentId === "string" ? paymentId : null, at: now };
-    // Every refunded payment is remembered, so a re-delivered capture for it is never refunded again.
     const updatedAt = FieldValue.serverTimestamp();
     const seen = isRazorpayId(paymentId, "pay") ? { refundedPaymentIds: FieldValue.arrayUnion(paymentId) } : {};
     const paidWith = order.get("paymentId");
@@ -393,16 +377,10 @@ export async function minimalGiftReversal(paymentId: unknown, orderId: unknown, 
       tx.update(ref, { ...seen, ...(order.get("status") === "created" ? { status: "refunded", refundedAt: now } : {}), refundEvents: FieldValue.arrayUnion(note), updatedAt });
       return false;
     }
-    if (gift.get("status") === "pending") {
-      tx.update(giftRef, { status: "refunded", refundedAt: now });
-      tx.update(ref, { ...seen, status: "refunded", refundedAt: now, refundEvents: FieldValue.arrayUnion(note), updatedAt });
-      return false;
-    }
-    if (gift.get("status") !== "refunded") tx.update(giftRef, { needsReview: true, needsReviewReason: event, needsReviewAt: now });
     tx.update(ref, { ...seen, refundEvents: FieldValue.arrayUnion(note), updatedAt });
-    return gift.get("status") !== "refunded";
+    return true;
   });
-  if (flagged) logger.warn("Gift payment reversed after the gift was used; needs review", { giftId: ref.id, event });
+  if (giftPayment) await reverseGift(ref.id, event === "payment.dispute.lost" ? "chargeback" : "refund");
   return true;
 }
 
@@ -449,7 +427,7 @@ export const razorpayGiftWebhook = onRequest(
           }
         }
       } else if (event === "refund.processed" || event === "payment.refunded" || event === "payment.dispute.lost") {
-        await minimalGiftReversal(paymentId, eventPayment?.order_id, event);
+        await handleGiftReversal(paymentId, eventPayment?.order_id, event);
       } else if (event.startsWith("payment.dispute.")) {
         logger.info("Gift webhook dispute update", { event, hasPayment: isRazorpayId(paymentId, "pay") });
       }

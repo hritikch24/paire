@@ -74,3 +74,23 @@ export function giftPushCopy(previews: unknown, senderName: unknown): { title: s
   }
   return { title: "Paire", body: "Someone sent you a gift." };
 }
+
+/** A refund call claimed by one delivery is left alone by the others for this long. */
+export const GIFT_REFUND_CLAIM_MS = 2 * 60_000;
+
+/**
+ * Crash window: an orphaned or rejected order whose own payment has no refund
+ * on record (no refund id, no refund error, no refund event) gets the refund
+ * retried, unless another delivery claimed that retry under two minutes ago.
+ */
+export function refundRetryAllowed(
+  order: { status?: unknown; paymentId?: unknown; refundId?: unknown; refundError?: unknown; refundedPaymentIds?: unknown; refundAttemptAt?: unknown },
+  paymentId: string,
+  now: number
+): boolean {
+  if (order.status !== "orphaned" && order.status !== "rejected") return false;
+  if (order.paymentId !== paymentId || order.refundId || order.refundError) return false;
+  if (Array.isArray(order.refundedPaymentIds) && order.refundedPaymentIds.includes(paymentId)) return false;
+  const claimedAt = typeof order.refundAttemptAt === "number" ? order.refundAttemptAt : 0;
+  return now - claimedAt >= GIFT_REFUND_CLAIM_MS;
+}
