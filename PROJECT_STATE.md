@@ -2,6 +2,12 @@
 
 Last updated: 2026-10-17
 
+## Accept a like, women reply free, gifted Plus (2026-10-26, local branch, all switches off)
+- Branch `feat/accept-and-sponsor`, not pushed or deployed. New `runtime/trust` switches `acceptFlow`, `womenSendFree`, `giftSales`, default off. Women can Accept a like (`acceptLike`) and, with `womenSendFree`, reply free; men still need Plus or Unlimited Chat. A match can gift Day, Week or Month Plus at the existing prices (`createGiftOrder`, `confirmGiftPayment`, `razorpayGiftWebhook`, `claimGift`, `declineGift`, `expireGifts`).
+- No existing Razorpay, billing or price file changed. KraftAI needs a small additive change (sibling repo `../kanoon-simplified`, branch `feat/paire-gift-plan`, commit `ca5eeba`, also not pushed) and a second Razorpay webhook at `https://kraftai.in/pay/notify/gift`.
+- Tested on emulators with a fake Razorpay (`integration/acceptAndSponsor.integration.test.ts` runs the whole story). Not tried with a real payment.
+- **Needs you:** the turn-on order and Razorpay/KraftAI steps in `docs/accept-and-sponsor.md`, a review of members before `womenSendFree` (gender is self-declared), legal review of the gift terms draft in that file, and one real low-value test payment and refund.
+
 ## Monthly offer: buy 1 month, get 1 month free (2026-10-18)
 - The ₹299 month pass runs **60 days** when bought on the web (`PLUS_PASSES.month.bonusDays = 30` in `firebase/functions/src/lib/razorpay.ts`; set it to 0 to end the offer). Store passes in the app are unchanged.
 - The web pushes monthly: it's selected first on the Plus screen with a "Buy 1 month, get 1 month free · SAVE 75%" ribbon and per-day prices for every plan (₹5, ₹14, ₹20 a day); the end-of-Discover offer leads with "Get 2 months · ₹299" and still mentions the ₹20 day pass. Website pricing, content pages, llms.txt, Terms and Refunds describe the offer.
