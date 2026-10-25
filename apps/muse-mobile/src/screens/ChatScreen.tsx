@@ -58,6 +58,9 @@ import { presenceLabel } from "../utils/presence";
 import { formatClockTime, formatDayLabel, isSameDay } from "../utils/time";
 import type { AppStackParamList } from "../navigation/types";
 
+/** Metro and Jest both resolve this when the sheet is first opened, so the chat screen itself starts without the payment modules. */
+const loadGiftSheet = () => (require("../components/GiftSheet") as typeof import("../components/GiftSheet")).GiftSheet;
+
 const GROUP_GAP_MS = 5 * 60 * 1000;
 
 /** Ready-made goodbyes: closure is kinder than silence, and costs one tap. */
@@ -123,6 +126,7 @@ export function ChatScreen() {
   const contactDialogOpen = useRef(false);
   const contactIssue = Platform.OS === "web" ? chatContactIssue(text) : null;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [giftOpen, setGiftOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set());
   const [warnings, setWarnings] = useState<ReadonlyMap<string, MessageSafety>>(() => new Map());
@@ -398,6 +402,9 @@ export function ChatScreen() {
           { label: "Unmatch", icon: "heart-dislike-outline" as const, onPress: confirmUnmatch }
         ]
       : []),
+    ...(active && sendPolicy?.giftSales === true
+      ? [{ label: "Gift premium", icon: "gift-outline" as const, testID: "chat-gift-premium", onPress: () => setGiftOpen(true) }]
+      : []),
     {
       label: `Report ${name}`,
       icon: "flag-outline",
@@ -408,6 +415,8 @@ export function ChatScreen() {
   ];
 
   const menuOptions = group ? groupMenu : pairMenu;
+  // The gift sheet (and the payment modules behind it) is only loaded once someone opens it.
+  const GiftSheetView = giftOpen && !group && sendPolicy?.giftSales === true ? loadGiftSheet() : null;
 
   // Written for this match by Paire AI; the local ones show while it loads or if it can't.
   const openers = useQuery({
@@ -830,6 +839,7 @@ export function ChatScreen() {
       </KeyboardAvoidingView>
 
       <ActionSheet visible={menuOpen} onClose={() => setMenuOpen(false)} options={menuOptions} />
+      {GiftSheetView ? <GiftSheetView visible matchId={matchId} name={name} onClose={() => setGiftOpen(false)} /> : null}
       <ActionSheet
         visible={closeOpen}
         title={`Send ${name.split(" ")[0]} a kind goodbye, then end the match`}

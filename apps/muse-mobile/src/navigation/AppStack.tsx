@@ -14,6 +14,7 @@ import { useLocationHeartbeat } from "../hooks/useLocationHeartbeat";
 import { usePresenceSession } from "../hooks/usePresence";
 import { usePaymentNotice } from "../hooks/usePaymentNotice";
 import { useCcavenueReturn } from "../hooks/useCcavenueReturn";
+import { useGiftReturn } from "../hooks/useGiftReturn";
 import { useKraftaiReturn } from "../hooks/useKraftaiReturn";
 import { CallScreen } from "../screens/CallScreen";
 import { ChatMembersScreen } from "../screens/ChatMembersScreen";
@@ -49,6 +50,7 @@ export function AppStack() {
   usePresenceSession();
   usePaymentNotice();
   useCcavenueReturn();
+  useGiftReturn();
   useKraftaiReturn();
   useLocationHeartbeat();
 

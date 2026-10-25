@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { FlatList, Platform, Pressable, ScrollView } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { AvatarPair } from "../components/Avatar";
+import { GiftBanner } from "../components/GiftBanner";
 import { Icon } from "../components/Icon";
 import { LikesYouRow } from "../components/LikesYouRow";
 import { MatchPresenceDot, matchPresence } from "../components/MatchPresence";
@@ -117,6 +118,7 @@ export function MatchesScreen() {
         <Text fontSize="$8" fontWeight="700" testID="matches-title" accessibilityRole="header" paddingHorizontal="$4">
           Matches
         </Text>
+        {Platform.OS === "web" ? <YStack paddingTop="$4"><GiftBanner /></YStack> : null}
         {(likes?.count ?? 0) ? (
           <YStack paddingTop="$4">
             <LikesYouRow profiles={likes?.profiles ?? []} count={likes?.count ?? 0} locked={likes?.locked !== false} hasMore={likes?.hasMore} onUpgrade={() => navigation.navigate("Premium")} onOpen={openLiker} onSeeAll={seeAllLikes} {...accepting} />
@@ -153,6 +155,7 @@ export function MatchesScreen() {
             >
               Matches
             </Text>
+            {Platform.OS === "web" ? <GiftBanner /> : null}
             <LikesYouRow profiles={likes?.profiles ?? []} count={likes?.count ?? 0} locked={likes?.locked !== false} hasMore={likes?.hasMore} onUpgrade={() => navigation.navigate("Premium")} onOpen={openLiker} onSeeAll={seeAllLikes} {...accepting} />
             {fresh.length ? (
               <YStack gap="$2">
