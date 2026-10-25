@@ -53,6 +53,8 @@ const { createPlusOrder, confirmPlusPayment } = require("../src/razorpay") as ty
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { adminGrantPlusMonth } = require("../src/adminPremium") as typeof import("../src/adminPremium");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const { refundGiftPayment } = require("../src/giftRefunds") as typeof import("../src/giftRefunds");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { pairId } = require("../src/lib/ids") as typeof import("../src/lib/ids");
 
 const DAY = 86_400_000;
@@ -190,6 +192,12 @@ async function failure(promise: Promise<unknown>): Promise<{ code: string; reaso
   throw new Error("expected the call to fail");
 }
 const giftOf = async (id: string) => (await admin.doc(`gifts/${id}`).get()).data()!;
+/** All a member may read on gifts/{id} (the rules let both members read the whole doc). */
+const MEMBER_FIELDS = ["claimedAt", "createdAt", "expiresAt", "fromUid", "matchId", "plan", "status", "toUid"];
+async function expectMemberFieldsOnly(id: string) {
+  const fields = Object.keys(await giftOf(id));
+  expect(fields.filter((field) => !MEMBER_FIELDS.includes(field))).toEqual([]);
+}
 const orderOf = async (id: string) => (await admin.doc(`giftOrders/${id}`).get()).data()!;
 const compOf = async (uid: string) => (await admin.doc(`complimentaryPlusGrants/${uid}`).get()).data();
 const billingOf = async (uid: string) => (await admin.doc(`billing/${uid}`).get()).data();
@@ -209,8 +217,11 @@ describe("claiming a gift", () => {
     const before = Date.now();
     const result = await call(life.claimGift, him, { giftId });
     expect(result.status).toBe("claimed");
-    const saved = await giftOf(giftId);
-    expect(saved).toMatchObject({ status: "claimed", previousCompExpiry: 0, previousCompStatus: null, endsAt: result.endsAt });
+    expect(await giftOf(giftId)).toMatchObject({ status: "claimed", claimedAt: expect.any(Number) });
+    await expectMemberFieldsOnly(giftId);
+    // The reversal's bookkeeping lives only on the server-only order.
+    const saved = await orderOf(giftId);
+    expect(saved).toMatchObject({ previousCompExpiry: 0, previousCompStatus: null, previousCompLastGiftId: null, endsAt: result.endsAt });
     expect(saved.startsAt).toBeGreaterThanOrEqual(before);
     expect(saved.endsAt - saved.startsAt).toBe(7 * DAY);
     expect(typeof saved.claimedAt).toBe("number");
@@ -239,7 +250,7 @@ describe("claiming a gift", () => {
     const { her, him, matchId } = await pair();
     const { giftId } = await paidGift(her, matchId, "month");
     await call(life.claimGift, him, { giftId });
-    const saved = await giftOf(giftId);
+    const saved = await orderOf(giftId);
     expect(saved.endsAt - saved.startsAt).toBe(60 * DAY);
   });
 
@@ -252,7 +263,7 @@ describe("claiming a gift", () => {
     const again = await call(life.claimGift, him, { giftId });
     expect(again).toEqual(one);
     expect((await compOf(him))!.expiresAt).toBe(one.endsAt);
-    expect((await giftOf(giftId)).endsAt - (await giftOf(giftId)).startsAt).toBe(7 * DAY);
+    expect((await orderOf(giftId)).endsAt - (await orderOf(giftId)).startsAt).toBe(7 * DAY);
     expect(pushes.filter((push) => push.uid === her)).toHaveLength(1);
   });
 
@@ -312,7 +323,7 @@ describe("claiming a gift", () => {
     expect(bought.expiresAt - bought.startsAt).toBe(60 * DAY);
     const { giftId } = await paidGift(her, matchId, "week");
     const result = await call(life.claimGift, him, { giftId });
-    const saved = await giftOf(giftId);
+    const saved = await orderOf(giftId);
     expect(saved.startsAt).toBe(bought.expiresAt);
     expect(result.endsAt).toBe(bought.expiresAt + 7 * DAY);
     expect((await admin.doc(`razorpayOrders/${orderId}`).get()).data()).toEqual(bought);
@@ -327,7 +338,7 @@ describe("claiming a gift", () => {
     const granted = await call(adminGrantPlusMonth, owner, { email, requestId: randomUUID() });
     const { giftId } = await paidGift(her, matchId, "day");
     const result = await call(life.claimGift, him, { giftId });
-    expect(await giftOf(giftId)).toMatchObject({ previousCompExpiry: granted.expiresAt, previousCompStatus: "active", startsAt: granted.expiresAt });
+    expect(await orderOf(giftId)).toMatchObject({ previousCompExpiry: granted.expiresAt, previousCompStatus: "active", startsAt: granted.expiresAt });
     expect(result.endsAt).toBe(granted.expiresAt + DAY);
     expect(await compOf(him)).toMatchObject({ status: "active", expiresAt: result.endsAt, grantedBy: owner });
   });
@@ -359,8 +370,9 @@ describe("declining a gift", () => {
     expect(await webhook("refund.processed", refundEvent(payment))).toBe(200);
     expect(await webhook("payment.refunded", paymentRefunded(payment))).toBe(200);
     expect(refundsFor(payment)).toHaveLength(1);
-    expect((await giftOf(giftId)).needsReview).toBeUndefined();
+    expect((await orderOf(giftId)).needsReview).toBeUndefined();
     expect((await giftOf(giftId)).status).toBe("declined");
+    await expectMemberFieldsOnly(giftId);
     expect((await orderOf(giftId)).status).toBe("refunded");
   });
 
@@ -396,7 +408,8 @@ describe("the daily expiry sweep", () => {
     for (const gift of [b, c, d]) expect((await giftOf(gift.giftId)).status).toBe("void");
     for (const gift of [a, b, c, d]) {
       expect(refundsFor(gift.payment)).toHaveLength(1);
-      expect((await giftOf(gift.giftId)).refundDue).toBeUndefined();
+      expect((await orderOf(gift.giftId)).refundDue).toBeUndefined();
+      await expectMemberFieldsOnly(gift.giftId);
     }
     expect((await giftOf(e.giftId)).status).toBe("pending");
     expect((await giftOf(f.giftId)).status).toBe("claimed");
@@ -410,16 +423,17 @@ describe("the daily expiry sweep", () => {
     const crashed = await paidGift(one.her, one.matchId, "day");
     const inFlight = await paidGift(two.her, two.matchId, "day");
     // As if declineGift's transaction committed and the process died before the refund call.
-    await admin.doc(`gifts/${crashed.giftId}`).update({ status: "declined", declinedAt: Date.now() - DAY, refundDue: true });
+    await admin.doc(`gifts/${crashed.giftId}`).update({ status: "declined" });
+    await admin.doc(`giftOrders/${crashed.giftId}`).update({ refundDue: true });
     // Another worker claimed this refund a moment ago.
-    await admin.doc(`gifts/${inFlight.giftId}`).update({ status: "declined", declinedAt: Date.now(), refundDue: true });
-    await admin.doc(`giftOrders/${inFlight.giftId}`).update({ refundAttemptAt: Date.now() });
+    await admin.doc(`gifts/${inFlight.giftId}`).update({ status: "declined" });
+    await admin.doc(`giftOrders/${inFlight.giftId}`).update({ refundDue: true, refundAttemptAt: Date.now() });
     await life.runGiftExpiry(Date.now());
     await life.runGiftExpiry(Date.now());
     expect(refundsFor(crashed.payment)).toEqual([{ paymentId: crashed.payment.id, amount: 3500, notes: { reason: "declined", product: "gift_plan" } }]);
-    expect((await giftOf(crashed.giftId)).refundDue).toBeUndefined();
+    expect((await orderOf(crashed.giftId)).refundDue).toBeUndefined();
     expect(refundsFor(inFlight.payment)).toHaveLength(0);
-    expect((await giftOf(inFlight.giftId)).refundDue).toBe(true);
+    expect((await orderOf(inFlight.giftId)).refundDue).toBe(true);
   });
 });
 
@@ -429,9 +443,9 @@ describe("reversing a gift (refund or chargeback after payment)", () => {
     const { giftId, payment } = await paidGift(her, matchId, "week");
     await call(life.claimGift, him, { giftId });
     expect(await webhook("refund.processed", refundEvent(payment))).toBe(200);
-    const saved = await giftOf(giftId);
-    expect(saved.status).toBe("refunded");
-    expect(saved.needsReview).toBeUndefined();
+    expect((await giftOf(giftId)).status).toBe("refunded");
+    expect((await orderOf(giftId)).needsReview).toBeUndefined();
+    await expectMemberFieldsOnly(giftId);
     expect(await compOf(him)).toMatchObject({ status: "ended", expiresAt: 0 });
     expect((await billingOf(him))!.expiresAt).toBe(0);
     expect(await mirrorOf(him)).toMatchObject({ premiumUntil: 0 });
@@ -439,7 +453,7 @@ describe("reversing a gift (refund or chargeback after payment)", () => {
     // The same refund reported again, and a dispute: no review flag, nothing else moves.
     expect(await webhook("payment.refunded", paymentRefunded(payment))).toBe(200);
     expect(await webhook("payment.dispute.lost", disputeLost(payment))).toBe(200);
-    expect((await giftOf(giftId)).needsReview).toBeUndefined();
+    expect((await orderOf(giftId)).needsReview).toBeUndefined();
     expect(refundsFor(payment)).toHaveLength(0);
   });
 
@@ -452,7 +466,8 @@ describe("reversing a gift (refund or chargeback after payment)", () => {
     expect(await webhook("payment.dispute.lost", disputeLost(payment))).toBe(200);
     expect(await compOf(him)).toMatchObject({ status: "active", expiresAt: granted.expiresAt });
     expect((await billingOf(him))!.expiresAt).toBe(granted.expiresAt);
-    expect((await giftOf(giftId))).toMatchObject({ status: "refunded", reversalReason: "chargeback" });
+    expect((await giftOf(giftId)).status).toBe("refunded");
+    expect(await orderOf(giftId)).toMatchObject({ reversalReason: "chargeback", revokedAt: expect.any(Number) });
   });
 
   test("changed since (the owner granted a month after the claim): flagged for review, the grant is left alone", async () => {
@@ -462,7 +477,9 @@ describe("reversing a gift (refund or chargeback after payment)", () => {
     await call(life.claimGift, him, { giftId });
     const granted = await call(adminGrantPlusMonth, owner, { email: (await getAuth().getUser(him)).email!, requestId: randomUUID() });
     expect(await webhook("refund.processed", refundEvent(payment))).toBe(200);
-    expect(await giftOf(giftId)).toMatchObject({ status: "claimed", needsReview: true });
+    expect((await giftOf(giftId)).status).toBe("claimed");
+    expect(await orderOf(giftId)).toMatchObject({ needsReview: true, needsReviewReason: "refund" });
+    await expectMemberFieldsOnly(giftId);
     expect(await compOf(him)).toMatchObject({ status: "active", expiresAt: granted.expiresAt });
     expect((await billingOf(him))!.expiresAt).toBe(granted.expiresAt);
     expect(await webhook("payment.refunded", paymentRefunded(payment))).toBe(200);
@@ -477,7 +494,8 @@ describe("reversing a gift (refund or chargeback after payment)", () => {
     const second = await call(life.claimGift, him, { giftId: newer.giftId });
     expect(second.endsAt).toBe(first.endsAt + 7 * DAY);
     expect(await webhook("refund.processed", refundEvent(older.payment))).toBe(200);
-    expect(await giftOf(older.giftId)).toMatchObject({ status: "claimed", needsReview: true });
+    expect((await giftOf(older.giftId)).status).toBe("claimed");
+    expect((await orderOf(older.giftId)).needsReview).toBe(true);
     expect((await compOf(him))!.expiresAt).toBe(second.endsAt);
     expect(await webhook("refund.processed", refundEvent(newer.payment))).toBe(200);
     expect((await giftOf(newer.giftId)).status).toBe("refunded");
@@ -508,6 +526,101 @@ describe("reversing a gift (refund or chargeback after payment)", () => {
   });
 });
 
+describe("reversal: the revoke condition and repeat events", () => {
+  test("refunding the newer gift first, then the older one, unwinds both completely", async () => {
+    const { her, him, matchId } = await pair();
+    const older = await paidGift(her, matchId, "day");
+    const newer = await paidGift(her, matchId, "week");
+    const first = await call(life.claimGift, him, { giftId: older.giftId });
+    await call(life.claimGift, him, { giftId: newer.giftId });
+    expect(await webhook("refund.processed", refundEvent(newer.payment))).toBe(200);
+    expect(await compOf(him)).toMatchObject({ status: "active", expiresAt: first.endsAt, lastGiftId: older.giftId });
+    expect(await webhook("refund.processed", refundEvent(older.payment))).toBe(200);
+    expect(await compOf(him)).toMatchObject({ status: "ended", expiresAt: 0 });
+    expect((await orderOf(older.giftId)).needsReview).toBeUndefined();
+    expect((await billingOf(him))!.expiresAt).toBe(0);
+  });
+
+  test("same expiry but last set by something else, or no longer active: flagged for review, the grant is left alone", async () => {
+    const { her, him, matchId } = await pair();
+    const relabelled = await paidGift(her, matchId, "day");
+    await call(life.claimGift, him, { giftId: relabelled.giftId });
+    await admin.doc(`complimentaryPlusGrants/${him}`).update({ lastGiftId: "order_SomethingElse1" });
+    expect(await webhook("refund.processed", refundEvent(relabelled.payment))).toBe(200);
+    expect(await orderOf(relabelled.giftId)).toMatchObject({ needsReview: true });
+    expect(await compOf(him)).toMatchObject({ status: "active", lastGiftId: "order_SomethingElse1", expiresAt: (await orderOf(relabelled.giftId)).endsAt });
+
+    const other = await pair();
+    const switchedOff = await paidGift(other.her, other.matchId, "day");
+    await call(life.claimGift, other.him, { giftId: switchedOff.giftId });
+    await admin.doc(`complimentaryPlusGrants/${other.him}`).update({ status: "ended" });
+    expect(await webhook("refund.processed", refundEvent(switchedOff.payment))).toBe(200);
+    expect(await orderOf(switchedOff.giftId)).toMatchObject({ needsReview: true });
+    expect((await compOf(other.him))!.status).toBe("ended");
+  });
+
+  test("a premium sync that failed during the reversal is redone by the next delivery of the event", async () => {
+    const { her, him, matchId } = await pair();
+    const { giftId, payment } = await paidGift(her, matchId, "week");
+    const { endsAt } = await call(life.claimGift, him, { giftId });
+    expect(await webhook("refund.processed", refundEvent(payment))).toBe(200);
+    // As if syncPremium had failed after the restore: the cached pass and the chat mirror are stale.
+    await admin.doc(`billing/${him}`).set({ expiresAt: endsAt, checkedAt: Date.now() });
+    await admin.doc(`moderation/${him}`).set({ chatAccess: { premiumUntil: endsAt } }, { merge: true });
+    expect(await webhook("refund.processed", refundEvent(payment))).toBe(200);
+    expect((await billingOf(him))!.expiresAt).toBe(0);
+    expect(await mirrorOf(him)).toMatchObject({ premiumUntil: 0 });
+    expect((await orderOf(giftId)).needsReview).toBeUndefined();
+  });
+});
+
+describe("refunds left in flight at capture", () => {
+  async function orphanedOrder() {
+    const { her, matchId } = await pair();
+    const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan: "day" });
+    const payment = pay(orderId);
+    return { her, orderId, payment };
+  }
+  const captured = (payment: FakePayment) => ({ payment: { entity: { id: payment.id, order_id: payment.order_id } } });
+
+  test("a delivery that finds another delivery's refund claim held, with nothing recorded, answers 503 so Razorpay redelivers; confirm says it's being refunded", async () => {
+    const { her, orderId, payment } = await orphanedOrder();
+    await admin.doc(`giftOrders/${orderId}`).update({ status: "orphaned", paymentId: payment.id, refundAttemptAt: Date.now() });
+    expect(await webhook("payment.captured", captured(payment))).toBe(503);
+    expect((await gifts.grantGift(orderId, payment.id)).outcome).toBe("refund-in-flight");
+    expect(await call(gifts.confirmGiftPayment, her, { orderId, paymentId: payment.id, signature: checkoutSignature(orderId, payment.id) }))
+      .toEqual({ status: "pending", giftId: orderId, refunding: true });
+    expect(refundsFor(payment)).toHaveLength(0);
+  });
+
+  test("the sweep refunds an orphaned or rejected order whose claim went stale, once; a fresh claim is left alone", async () => {
+    const stale = await orphanedOrder(), rejected = await orphanedOrder(), fresh = await orphanedOrder();
+    await admin.doc(`giftOrders/${stale.orderId}`).update({ status: "orphaned", paymentId: stale.payment.id, refundAttemptAt: Date.now() - 3 * 60_000 });
+    await admin.doc(`giftOrders/${rejected.orderId}`).update({ status: "rejected", paymentId: rejected.payment.id, refundAttemptAt: Date.now() - DAY });
+    await admin.doc(`giftOrders/${fresh.orderId}`).update({ status: "orphaned", paymentId: fresh.payment.id, refundAttemptAt: Date.now() });
+    await life.runGiftExpiry(Date.now());
+    await life.runGiftExpiry(Date.now());
+    expect(refundsFor(stale.payment)).toEqual([{ paymentId: stale.payment.id, amount: 3500, notes: { reason: "orphaned", product: "gift_plan" } }]);
+    expect(refundsFor(rejected.payment)).toEqual([{ paymentId: rejected.payment.id, amount: 3500, notes: { reason: "rejected", product: "gift_plan" } }]);
+    expect((await orderOf(stale.orderId)).refundId).toEqual(expect.any(String));
+    expect(refundsFor(fresh.payment)).toHaveLength(0);
+    expect((await orderOf(fresh.orderId)).refundId).toBeUndefined();
+  });
+
+  test("a refund that failed with an error on record is left for support, as before: no automatic retry", async () => {
+    const { orderId, payment } = await orphanedOrder();
+    await admin.doc(`giftOrders/${orderId}`).update({ status: "orphaned", paymentId: payment.id, refundAttemptAt: Date.now() - DAY, refundError: "Razorpay down" });
+    expect(await webhook("payment.captured", captured(payment))).toBe(200);
+    expect((await gifts.grantGift(orderId, payment.id)).outcome).toBe("closed");
+    await life.runGiftExpiry(Date.now());
+    expect(refundsFor(payment)).toHaveLength(0);
+    // Support refunds it by hand through the same helper, which records the result.
+    await refundGiftPayment(orderId, payment.id, 3500, "orphaned");
+    expect(refundsFor(payment)).toHaveLength(1);
+    expect((await orderOf(orderId)).refundId).toEqual(expect.any(String));
+  });
+});
+
 describe("the crash-window refund retry at capture (carried from Task 7)", () => {
   test("two deliveries at once for an orphaned payment call Razorpay's refund once", async () => {
     const { her, him, matchId } = await pair();
@@ -534,7 +647,8 @@ describe("the crash-window refund retry at capture (carried from Task 7)", () =>
     const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan: "day" });
     const payment = pay(orderId);
     await admin.doc(`giftOrders/${orderId}`).update({ status: "orphaned", paymentId: payment.id, refundAttemptAt: Date.now() });
-    expect((await gifts.grantGift(orderId, payment.id)).outcome).toBe("closed");
+    // Held by another delivery, nothing recorded yet: in flight (the webhook answers 503), no second call.
+    expect((await gifts.grantGift(orderId, payment.id)).outcome).toBe("refund-in-flight");
     expect(refundsFor(payment)).toHaveLength(0);
     await admin.doc(`giftOrders/${orderId}`).update({ refundAttemptAt: Date.now() - 3 * 60_000 });
     await gifts.grantGift(orderId, payment.id);
@@ -554,12 +668,15 @@ describe("listing gifts", () => {
     const mine = await call(life.listGifts, her);
     expect(mine.received).toEqual([]);
     expect(mine.sent.map((view) => view.id)).toEqual([claimed.giftId, pending.giftId]);
-    expect(mine.sent[0]).toEqual({ id: claimed.giftId, plan: "week", status: "claimed", counterpartName: "Jules Verne", createdAt: expect.any(Number), expiresAt: expect.any(Number), endsAt: result.endsAt });
+    // The gifter never learns when the recipient's access ends (it would show what they had before).
+    expect(mine.sent[0]).toEqual({ id: claimed.giftId, plan: "week", status: "claimed", counterpartName: "Jules Verne", createdAt: expect.any(Number), expiresAt: expect.any(Number) });
+    expect("endsAt" in mine.sent[0]).toBe(false);
     // Overdue but not yet swept: it reads as expired.
     expect(mine.sent[1]).toEqual({ id: pending.giftId, plan: "day", status: "expired", counterpartName: "Jules Verne", createdAt: expect.any(Number), expiresAt: expect.any(Number) });
     const his = await call(life.listGifts, him);
     expect(his.sent).toEqual([]);
     expect(his.received.map((view) => view.counterpartName)).toEqual(["Alexa Rao", "Alexa Rao"]);
+    expect(his.received[0]).toMatchObject({ id: claimed.giftId, status: "claimed", endsAt: result.endsAt });
     const text = JSON.stringify([mine, his]);
     expect(text).not.toContain("@");
     expect(text).not.toContain("paymentId");

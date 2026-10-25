@@ -79,18 +79,28 @@ export function giftPushCopy(previews: unknown, senderName: unknown): { title: s
 export const GIFT_REFUND_CLAIM_MS = 2 * 60_000;
 
 /**
- * Crash window: an orphaned or rejected order whose own payment has no refund
- * on record (no refund id, no refund error, no refund event) gets the refund
- * retried, unless another delivery claimed that retry under two minutes ago.
+ * Crash window for an orphaned or rejected order's own payment (the refund runs
+ * after the transaction that closed the order):
+ * - "retry": no refund on record (no refund id, no refund error, no refund event)
+ *   and no claim younger than two minutes, so the refund may be called again;
+ * - "in-flight": nothing on record yet, but another delivery claimed the refund
+ *   under two minutes ago (its call may still be running, or it died);
+ * - "settled": a refund or a refund error is on record, or it isn't that case at all.
+ * A recorded refund error is left for support, as for every other refund.
  */
-export function refundRetryAllowed(
+export function orderRefundState(
   order: { status?: unknown; paymentId?: unknown; refundId?: unknown; refundError?: unknown; refundedPaymentIds?: unknown; refundAttemptAt?: unknown },
   paymentId: string,
   now: number
-): boolean {
-  if (order.status !== "orphaned" && order.status !== "rejected") return false;
-  if (order.paymentId !== paymentId || order.refundId || order.refundError) return false;
-  if (Array.isArray(order.refundedPaymentIds) && order.refundedPaymentIds.includes(paymentId)) return false;
+): "retry" | "in-flight" | "settled" {
+  if (order.status !== "orphaned" && order.status !== "rejected") return "settled";
+  if (order.paymentId !== paymentId || order.refundId || order.refundError) return "settled";
+  if (Array.isArray(order.refundedPaymentIds) && order.refundedPaymentIds.includes(paymentId)) return "settled";
   const claimedAt = typeof order.refundAttemptAt === "number" ? order.refundAttemptAt : 0;
-  return now - claimedAt >= GIFT_REFUND_CLAIM_MS;
+  return now - claimedAt >= GIFT_REFUND_CLAIM_MS ? "retry" : "in-flight";
+}
+
+/** The refund may be called again now (orderRefundState is "retry"). */
+export function refundRetryAllowed(order: Parameters<typeof orderRefundState>[0], paymentId: string, now: number): boolean {
+  return orderRefundState(order, paymentId, now) === "retry";
 }

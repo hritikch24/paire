@@ -293,10 +293,12 @@ describe("confirming a gift payment", () => {
     expect(await confirm(her, payment)).toEqual({ status: "paid", giftId: orderId });
     const saved = (await order(orderId))!;
     expect(saved).toMatchObject({ status: "paid", paymentId: payment.id });
+    // Only what both members may read: the payment and the price stay on the server-only order.
     expect(await gift(orderId)).toEqual({
-      fromUid: her, toUid: him, matchId, plan: "week", amountPaise: 9900, status: "pending",
-      createdAt: saved.paidAt, expiresAt: saved.paidAt + 7 * 86_400_000, paymentId: payment.id
+      fromUid: her, toUid: him, matchId, plan: "week", status: "pending",
+      createdAt: saved.paidAt, expiresAt: saved.paidAt + 7 * 86_400_000
     });
+    expect(saved).toMatchObject({ amountPaise: 9900, paymentId: payment.id });
     expect(pushes).toHaveLength(1);
     expect(pushes[0].uid).toBe(him);
     expect(pushes[0].message.kind).toBe("matches");
@@ -397,7 +399,7 @@ describe("confirming a gift payment", () => {
     const second = pay(orderId);
     expect(await confirm(her, second)).toEqual({ status: "paid", giftId: orderId, refunding: true });
     expect(await webhook("payment.captured", paymentEvent(second))).toBe(200);
-    expect((await gift(orderId))!.paymentId).toBe(first.id);
+    expect((await order(orderId))!.paymentId).toBe(first.id);
     expect(await giftsFrom(her)).toBe(1);
     expect(fake.refunds.filter((refund) => refund.paymentId === second.id)).toHaveLength(1);
     expect(fake.refunds.filter((refund) => refund.paymentId === first.id)).toHaveLength(0);
@@ -429,7 +431,8 @@ describe("the gift webhook", () => {
     const payment = pay(orderId);
     expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
     expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
-    expect(await gift(orderId)).toMatchObject({ toUid: him, plan: "month", amountPaise: 39900, status: "pending" });
+    expect(await gift(orderId)).toMatchObject({ toUid: him, plan: "month", status: "pending" });
+    expect((await order(orderId))!.amountPaise).toBe(39900);
     expect(pushes.filter((push) => push.uid === him)).toHaveLength(1);
     expect(await confirm(her, payment)).toEqual({ status: "paid", giftId: orderId });
   });
@@ -448,7 +451,8 @@ describe("the gift webhook", () => {
     await confirm(her, claimedPayment);
     await admin.doc(`gifts/${claimed.orderId}`).update({ status: "claimed" });
     expect(await webhook("payment.dispute.lost", { dispute: { entity: { payment_id: claimedPayment.id } } })).toBe(200);
-    expect(await gift(claimed.orderId)).toMatchObject({ status: "claimed", needsReview: true });
+    expect((await gift(claimed.orderId))!.status).toBe("claimed");
+    expect(await order(claimed.orderId)).toMatchObject({ needsReview: true });
   });
 
   test("a refund that lands before the capture is granted stops a later capture from creating the gift", async () => {
@@ -536,6 +540,6 @@ describe("the gift webhook", () => {
     await confirm(her, payment);
     expect(await webhook("payment.dispute.created", { dispute: { entity: { payment_id: payment.id } } })).toBe(200);
     expect((await gift(orderId))!.status).toBe("pending");
-    expect((await gift(orderId))!.needsReview).toBeUndefined();
+    expect((await order(orderId))!.needsReview).toBeUndefined();
   });
 });

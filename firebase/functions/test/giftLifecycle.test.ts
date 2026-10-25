@@ -34,37 +34,44 @@ describe("giftWindow", () => {
 });
 
 describe("the revoke condition", () => {
-  const claimed = { status: "claimed", endsAt: now + 7 * DAY, previousCompExpiry: now + 2 * DAY, previousCompStatus: "active" };
+  const claimed = { id: "order_Gift1", status: "claimed", endsAt: now + 7 * DAY, previousCompExpiry: now + 2 * DAY, previousCompStatus: "active", previousCompLastGiftId: "order_Gift0" };
+  const unchanged = { status: "active", lastGiftId: "order_Gift1", expiresAt: claimed.endsAt };
 
-  test("revoke only while the complimentary expiry is still exactly what this gift set", () => {
-    expect(shouldRevokeGift(claimed, { expiresAt: claimed.endsAt })).toBe(true);
-    expect(shouldRevokeGift(claimed, { expiresAt: claimed.endsAt + DAY })).toBe(false);
-    expect(shouldRevokeGift(claimed, { expiresAt: claimed.endsAt - 1 })).toBe(false);
+  test("revoke only while the grant is active, last set by this gift and still ends where it put it", () => {
+    expect(shouldRevokeGift(claimed, unchanged)).toBe(true);
+    expect(shouldRevokeGift(claimed, { ...unchanged, expiresAt: claimed.endsAt + DAY })).toBe(false);
+    expect(shouldRevokeGift(claimed, { ...unchanged, expiresAt: claimed.endsAt - 1 })).toBe(false);
+    expect(shouldRevokeGift(claimed, { ...unchanged, lastGiftId: "order_Other" })).toBe(false);
+    expect(shouldRevokeGift(claimed, { ...unchanged, lastGiftId: undefined })).toBe(false);
+    expect(shouldRevokeGift(claimed, { ...unchanged, status: "ended" })).toBe(false);
     expect(shouldRevokeGift(claimed, undefined)).toBe(false);
   });
 
-  test("a gift without a recorded end never matches (not even a missing expiry)", () => {
-    expect(shouldRevokeGift({ status: "claimed" }, {})).toBe(false);
+  test("a gift without a recorded end or id never matches (not even a missing expiry)", () => {
+    expect(shouldRevokeGift({ id: "order_Gift1", status: "claimed" }, { status: "active", lastGiftId: "order_Gift1" })).toBe(false);
+    expect(shouldRevokeGift({ status: "claimed", endsAt: 5 }, { status: "active", expiresAt: 5 })).toBe(false);
     expect(shouldRevokeGift({ status: "claimed" }, undefined)).toBe(false);
-    expect(shouldRevokeGift({ status: "pending", endsAt: 5 }, { expiresAt: 5 })).toBe(false);
+    expect(shouldRevokeGift({ id: "order_Gift1", status: "pending", endsAt: 5 }, { status: "active", lastGiftId: "order_Gift1", expiresAt: 5 })).toBe(false);
   });
 
-  test("claimed and unchanged: restore the previous expiry and status", () => {
-    expect(giftReversal(claimed, { expiresAt: claimed.endsAt })).toEqual({ action: "restore", expiresAt: now + 2 * DAY, status: "active" });
+  test("claimed and unchanged: restore the previous expiry, status and last gift", () => {
+    expect(giftReversal(claimed, unchanged)).toEqual({ action: "restore", expiresAt: now + 2 * DAY, status: "active", lastGiftId: "order_Gift0" });
   });
 
   test("restoring is clamped: it never extends the grant", () => {
     const odd = { ...claimed, previousCompExpiry: claimed.endsAt + 9 * DAY };
-    expect(giftReversal(odd, { expiresAt: claimed.endsAt })).toEqual({ action: "restore", expiresAt: claimed.endsAt, status: "active" });
+    expect(giftReversal(odd, unchanged)).toEqual({ action: "restore", expiresAt: claimed.endsAt, status: "active", lastGiftId: "order_Gift0" });
   });
 
   test("no complimentary record before the gift: restore to nothing", () => {
-    const fresh = { status: "claimed", endsAt: claimed.endsAt, previousCompExpiry: 0, previousCompStatus: null };
-    expect(giftReversal(fresh, { expiresAt: claimed.endsAt })).toEqual({ action: "restore", expiresAt: 0, status: "ended" });
+    const fresh = { id: "order_Gift1", status: "claimed", endsAt: claimed.endsAt, previousCompExpiry: 0, previousCompStatus: null, previousCompLastGiftId: null };
+    expect(giftReversal(fresh, unchanged)).toEqual({ action: "restore", expiresAt: 0, status: "ended", lastGiftId: null });
   });
 
-  test("changed since (owner grant, another gift): flag for review and leave the grant", () => {
-    expect(giftReversal(claimed, { expiresAt: claimed.endsAt + 30 * DAY })).toEqual({ action: "review" });
+  test("changed since (owner grant, another gift, switched off): flag for review and leave the grant", () => {
+    expect(giftReversal(claimed, { ...unchanged, expiresAt: claimed.endsAt + 30 * DAY })).toEqual({ action: "review" });
+    expect(giftReversal(claimed, { ...unchanged, lastGiftId: "order_Other" })).toEqual({ action: "review" });
+    expect(giftReversal(claimed, { ...unchanged, status: "ended" })).toEqual({ action: "review" });
     expect(giftReversal({ status: "claimed" }, undefined)).toEqual({ action: "review" });
   });
 

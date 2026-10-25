@@ -8,7 +8,7 @@ import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { razorpayMode, RazorpayMode } from "./lib/chatAccess";
 import { canGift, GiftDenied, giftAmountPaise, GIFT_PENDING_MS, GiftPlan, isGiftPlan } from "./lib/gifts";
-import { GIFT_CHECKOUT_REUSE_MS, giftCaptureVerdict, giftCheckoutKey, giftDayStart, giftOrderBody, giftPushCopy, isMatchId, refundRetryAllowed } from "./lib/giftPayments";
+import { GIFT_CHECKOUT_REUSE_MS, giftCaptureVerdict, giftCheckoutKey, giftDayStart, giftOrderBody, giftPushCopy, isMatchId, orderRefundState } from "./lib/giftPayments";
 import { pairId } from "./lib/ids";
 import { reverseGift } from "./giftLifecycle";
 import { EXTRA_REASON, refundGiftPayment } from "./giftRefunds";
@@ -194,7 +194,11 @@ async function notifyRecipient(orderId: string, order: GiftOrderRecord): Promise
   }
 }
 
-export type GiftGrantOutcome = "granted" | "duplicate" | "extra" | "orphaned" | "rejected" | "closed";
+/**
+ * "refund-in-flight": this payment's refund was claimed by another delivery under two
+ * minutes ago and nothing is recorded yet; the webhook answers 503 so Razorpay comes back.
+ */
+export type GiftGrantOutcome = "granted" | "duplicate" | "extra" | "orphaned" | "rejected" | "closed" | "refund-in-flight";
 
 /**
  * Creates gifts/{orderId} for a payment Razorpay reported captured (callers
@@ -221,8 +225,11 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
     if (order.status === "refunded" || order.status === "orphaned" || order.status === "rejected") {
       if (order.paymentId === paymentId) {
         // The refund after the transaction never ran (a crash, a timeout): try it again, once.
-        // The claim is written here, so a second delivery at the same moment leaves it alone.
-        if (!refundRetryAllowed(order, paymentId, Date.now())) return "closed";
+        // The claim is written here, so a second delivery at the same moment leaves it alone;
+        // while that claim is held and nothing is recorded, the delivery is told to come back.
+        const state = orderRefundState(order, paymentId, Date.now());
+        if (state === "in-flight") return "refund-in-flight";
+        if (state !== "retry") return "closed";
         tx.update(ref, { refundAttemptAt: Date.now() });
         return "retry-refund";
       }
@@ -269,16 +276,16 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
       return "rejected";
     }
     const now = Date.now();
+    // Only what both members may read (the rules let both read the whole doc). The price,
+    // the payment and all refund or reversal bookkeeping stay on the server-only order.
     tx.set(giftRef, {
       fromUid: order.fromUid,
       toUid: order.toUid,
       matchId: order.matchId,
       plan: order.plan,
-      amountPaise: order.amountPaise,
       status: "pending",
       createdAt: now,
-      expiresAt: now + GIFT_PENDING_MS,
-      paymentId
+      expiresAt: now + GIFT_PENDING_MS
     });
     tx.update(ref, { ...record, status: "paid", paidAt: now, giftId: orderId });
     return "granted";
@@ -293,11 +300,14 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
     await refundGiftPayment(orderId, paymentId, order.amountPaise, outcome === "extra" ? EXTRA_REASON : outcome);
   }
   if (order && outcome === "granted") await notifyRecipient(orderId, order);
-  if (outcome !== "granted" && outcome !== "duplicate") logger.info("Gift payment not granted", { orderId, outcome });
+  if (outcome !== "granted" && outcome !== "duplicate" && outcome !== "refund-in-flight") logger.info("Gift payment not granted", { orderId, outcome });
   return { outcome: outcome as GiftGrantOutcome, toUid: order?.toUid };
 }
 
-/** `refunding`: this payment was a second charge for a gift already paid, and is being refunded. */
+/**
+ * `refunding`: this payment is being refunded (a second charge for a gift already paid,
+ * or a gift that can't be delivered whose refund another delivery is making right now).
+ */
 export type GiftConfirmResult = { status: "paid" | "pending"; giftId: string; refunding?: true };
 
 export const confirmGiftPayment = onCall({ region: REGION, secrets: [...SECRETS, ...WEB_PUSH_SECRETS], timeoutSeconds: 30 }, async (request): Promise<GiftConfirmResult> => {
@@ -322,7 +332,9 @@ export const confirmGiftPayment = onCall({ region: REGION, secrets: [...SECRETS,
     throw new HttpsError("failed-precondition", "That payment doesn't match your order. Contact support if you were charged.");
   }
   if (verdict === "pending") return { status: "pending", giftId: body.orderId };
-  await grantGift(body.orderId, body.paymentId);
+  const granted = await grantGift(body.orderId, body.paymentId);
+  // Another delivery is refunding this payment right now: not an error for the gifter.
+  if (granted.outcome === "refund-in-flight") return { status: "pending", giftId: body.orderId, refunding: true };
   const settled = await db.doc(`giftOrders/${body.orderId}`).get();
   const status = settled.get("status") as GiftOrderStatus;
   if (status === "paid") {
@@ -423,7 +435,12 @@ export const razorpayGiftWebhook = onRequest(
           // Re-read the payment: events can arrive late, twice or out of order (e.g. after a refund).
           const payment = await razorpay<RazorpayPayment>(`/payments/${eventPayment.id}`);
           if (payment.id === eventPayment.id && paymentMatchesOrder(payment, { orderId: eventPayment.order_id, amountPaise: order.get("amountPaise") }) === "captured") {
-            await grantGift(eventPayment.order_id, eventPayment.id);
+            const { outcome } = await grantGift(eventPayment.order_id, eventPayment.id);
+            if (outcome === "refund-in-flight") {
+              // Not acknowledged: Razorpay redelivers, and a later delivery (or the sweep) retries the refund.
+              response.sendStatus(503);
+              return;
+            }
           }
         }
       } else if (event === "refund.processed" || event === "payment.refunded" || event === "payment.dispute.lost") {

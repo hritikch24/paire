@@ -7,6 +7,7 @@ import {
   giftOrderBody,
   giftPushCopy,
   isMatchId,
+  orderRefundState,
   refundRetryAllowed
 } from "../src/lib/giftPayments";
 import { dayKey } from "../src/lib/ids";
@@ -141,5 +142,24 @@ describe("refund retry after a crash", () => {
 
   test("only for the order's own payment", () => {
     expect(refundRetryAllowed(orphaned, "pay_Other123", now)).toBe(false);
+  });
+});
+
+describe("orderRefundState", () => {
+  const now = 1_761_000_000_000;
+  const orphaned = { status: "orphaned", paymentId: "pay_A1b2C3d4" };
+
+  test("a claim held by another delivery with nothing recorded yet is in flight", () => {
+    expect(orderRefundState({ ...orphaned, refundAttemptAt: now - 1_000 }, "pay_A1b2C3d4", now)).toBe("in-flight");
+    expect(orderRefundState({ ...orphaned, status: "rejected", refundAttemptAt: now }, "pay_A1b2C3d4", now)).toBe("in-flight");
+  });
+
+  test("no claim, or a stale one: retry; anything recorded: settled", () => {
+    expect(orderRefundState(orphaned, "pay_A1b2C3d4", now)).toBe("retry");
+    expect(orderRefundState({ ...orphaned, refundAttemptAt: now - 120_000 }, "pay_A1b2C3d4", now)).toBe("retry");
+    expect(orderRefundState({ ...orphaned, refundAttemptAt: now, refundId: "rfnd_1" }, "pay_A1b2C3d4", now)).toBe("settled");
+    expect(orderRefundState({ ...orphaned, refundAttemptAt: now, refundError: "down" }, "pay_A1b2C3d4", now)).toBe("settled");
+    expect(orderRefundState({ ...orphaned, refundError: "down" }, "pay_A1b2C3d4", now)).toBe("settled");
+    expect(orderRefundState({ ...orphaned, status: "paid" }, "pay_A1b2C3d4", now)).toBe("settled");
   });
 });

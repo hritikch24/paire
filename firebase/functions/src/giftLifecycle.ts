@@ -5,7 +5,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { db } from "./admin";
 import { syncPremium, webPassBenefits } from "./billing";
 import { REGION } from "./config";
-import { refundGiftPayment } from "./giftRefunds";
+import { refundGiftPayment, retryStuckOrderRefunds } from "./giftRefunds";
 import { requireAuth } from "./lib/auth";
 import { giftAcceptedPushCopy, giftClaimVerdict, GiftClaimVerdict, giftReversal, giftSweepVerdict, giftWindow, REFUND_CLAIM_MS } from "./lib/giftLifecycle";
 import { giftDays, giftState, GiftPlan, GiftStateName, isGiftPlan } from "./lib/gifts";
@@ -32,9 +32,15 @@ import { WEB_PUSH_SECRETS } from "./webPush";
  * None of this depends on runtime/trust.giftSales: a gift already paid for can
  * always be claimed, declined or refunded.
  *
- * Refunds after a gift ends unused are claimed in a transaction: the gift gets
- * refundDue in the same write that ends it, the order gets refundAttemptAt when a
- * worker takes the refund, and the sweep retries any refundDue left by a crash.
+ * Privacy: both members can read gifts/{id}, so it holds only what both may see
+ * (fromUid, toUid, matchId, plan, status, createdAt, expiresAt, claimedAt). Every
+ * piece of bookkeeping (the claimed window, the recipient's previous grant, review
+ * and reversal fields, refundDue, refundAttemptAt) lives on the server-only
+ * giftOrders/{id} record; endsAt is shown only to the recipient.
+ *
+ * Refunds after a gift ends unused are claimed in a transaction: the order gets
+ * refundDue in the same write that ends the gift, and refundAttemptAt when a
+ * worker takes the refund; the sweep retries any refundDue left by a crash.
  */
 
 const LIST_LIMIT = 50;
@@ -46,17 +52,16 @@ const SWEEP_PAGES = 10;
 const SWEEP_CHUNK = 10;
 const ENDED_UNUSED = ["declined", "expired", "void"];
 
+/** gifts/{id}: what both members may read. */
 type GiftDoc = {
   fromUid: string;
   toUid: string;
   matchId: string;
   plan: GiftPlan;
-  amountPaise: number;
   status: string;
   createdAt: number;
   expiresAt: number;
-  paymentId: string;
-  endsAt?: number;
+  claimedAt?: number;
 };
 
 const finite = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) ? value : 0);
@@ -76,13 +81,13 @@ export async function refundEndedGift(giftId: string): Promise<boolean> {
   const giftRef = db.doc(`gifts/${giftId}`), orderRef = db.doc(`giftOrders/${giftId}`);
   const claim = await db.runTransaction(async (tx) => {
     const [gift, order] = await tx.getAll(giftRef, orderRef);
-    if (!gift.exists || gift.get("refundDue") !== true) return null;
-    const paymentId = gift.get("paymentId");
+    if (!order.exists || order.get("refundDue") !== true) return null;
+    const paymentId = order.get("paymentId");
     const refundedIds = (order.get("refundedPaymentIds") as unknown[] | undefined) ?? [];
-    const settled = !order.exists || !ENDED_UNUSED.includes(gift.get("status")) || order.get("paymentId") !== paymentId
-      || Boolean(order.get("refundId")) || Boolean(order.get("refundError")) || order.get("status") === "refunded" || refundedIds.includes(paymentId);
+    const settled = !gift.exists || !ENDED_UNUSED.includes(gift.get("status")) || typeof paymentId !== "string" || order.get("status") !== "paid"
+      || Boolean(order.get("refundId")) || Boolean(order.get("refundError")) || refundedIds.includes(paymentId);
     if (settled) {
-      tx.update(giftRef, { refundDue: FieldValue.delete() });
+      tx.update(orderRef, { refundDue: FieldValue.delete() });
       return null;
     }
     const now = Date.now();
@@ -92,7 +97,7 @@ export async function refundEndedGift(giftId: string): Promise<boolean> {
   });
   if (!claim) return false;
   await refundGiftPayment(giftId, claim.paymentId, claim.amountPaise, claim.reason);
-  await giftRef.update({ refundDue: FieldValue.delete(), refundRequestedAt: Date.now() });
+  await orderRef.update({ refundDue: FieldValue.delete() });
   return true;
 }
 
@@ -121,7 +126,7 @@ const CLAIM_REFUSED: Record<Exclude<GiftClaimVerdict, "ok" | "already-claimed">,
 export const claimGift = onCall({ region: REGION, secrets: ["RAZORPAY_KEY_SECRET", "REVENUECAT_SECRET_KEY", ...WEB_PUSH_SECRETS], timeoutSeconds: 30 }, async (request): Promise<{ status: "claimed"; endsAt: number }> => {
   const uid = requireAuth(request);
   const giftId = giftIdFrom(request.data);
-  const giftRef = db.doc(`gifts/${giftId}`);
+  const giftRef = db.doc(`gifts/${giftId}`), orderRef = db.doc(`giftOrders/${giftId}`);
   const compRef = db.doc(`complimentaryPlusGrants/${uid}`);
   const outcome = await db.runTransaction(async (tx): Promise<{ verdict: GiftClaimVerdict; endsAt?: number; gift?: GiftDoc }> => {
     const snap = await tx.get(giftRef);
@@ -129,7 +134,8 @@ export const claimGift = onCall({ region: REGION, secrets: ["RAZORPAY_KEY_SECRET
     // Nothing about the gift (or anyone's access) is read for someone it isn't for.
     if (!snap.exists || !gift) return { verdict: "not-found" };
     if (gift.toUid !== uid) return { verdict: "not-recipient" };
-    const [match, user, moderation, billing, ledger, comp] = await tx.getAll(
+    const [order, match, user, moderation, billing, ledger, comp] = await tx.getAll(
+      orderRef,
       db.doc(`matches/${gift.matchId}`),
       db.doc(`users/${uid}`),
       db.doc(`moderation/${uid}`),
@@ -137,6 +143,8 @@ export const claimGift = onCall({ region: REGION, secrets: ["RAZORPAY_KEY_SECRET
       db.doc(`webPassLedger/${uid}`),
       compRef
     );
+    // Every gift is created from its order; without one there is nothing to claim.
+    if (!order.exists) return { verdict: "closed" };
     const now = Date.now();
     const benefits = await webPassBenefits(uid, now, tx);
     const participants = (match.get("participants") as unknown[] | undefined)?.filter((p): p is string => typeof p === "string") ?? [];
@@ -149,10 +157,11 @@ export const claimGift = onCall({ region: REGION, secrets: ["RAZORPAY_KEY_SECRET
       lifetime: benefits.lifetime || billing.get("lifetime") === true,
       now
     });
-    if (verdict === "already-claimed") return { verdict, endsAt: gift.endsAt };
+    if (verdict === "already-claimed") return { verdict, endsAt: finite(order.get("endsAt")) };
     if (verdict === "expired" || verdict === "no-match" || verdict === "unavailable" || verdict === "lifetime") {
       // Ended unused: refunded right after this transaction (and by the sweep if that never runs).
-      tx.update(giftRef, { status: verdict === "expired" ? "expired" : "void", endedAt: now, endReason: verdict, refundDue: true });
+      tx.update(giftRef, { status: verdict === "expired" ? "expired" : "void" });
+      tx.update(orderRef, { giftEndedAt: now, giftEndReason: verdict, refundDue: true });
       return { verdict };
     }
     if (verdict !== "ok") return { verdict };
@@ -164,14 +173,16 @@ export const claimGift = onCall({ region: REGION, secrets: ["RAZORPAY_KEY_SECRET
       days: giftDays(gift.plan)
     });
     tx.set(compRef, { status: "active", expiresAt: window.endsAt, updatedAt: now, lastSource: "gift", lastGiftId: giftId }, { merge: true });
-    tx.update(giftRef, {
-      status: "claimed",
+    tx.update(giftRef, { status: "claimed", claimedAt: now });
+    tx.update(orderRef, {
       claimedAt: now,
       startsAt: window.startsAt,
       endsAt: window.endsAt,
-      // What the reversal restores, if the payment is ever refunded.
+      // What the reversal restores, if the payment is ever refunded (server-only: it shows
+      // what the recipient had before, which the gifter must never see).
       previousCompExpiry: finite(comp.get("expiresAt")),
-      previousCompStatus: comp.exists && typeof comp.get("status") === "string" ? comp.get("status") : null
+      previousCompStatus: comp.exists && typeof comp.get("status") === "string" ? comp.get("status") : null,
+      previousCompLastGiftId: typeof comp.get("lastGiftId") === "string" ? comp.get("lastGiftId") : null
     });
     return { verdict, endsAt: window.endsAt, gift };
   });
@@ -197,14 +208,15 @@ export const claimGift = onCall({ region: REGION, secrets: ["RAZORPAY_KEY_SECRET
 export const declineGift = onCall({ region: REGION, secrets: ["RAZORPAY_KEY_SECRET"], timeoutSeconds: 30 }, async (request): Promise<{ status: "declined" }> => {
   const uid = requireAuth(request);
   const giftId = giftIdFrom(request.data);
-  const giftRef = db.doc(`gifts/${giftId}`);
+  const giftRef = db.doc(`gifts/${giftId}`), orderRef = db.doc(`giftOrders/${giftId}`);
   const verdict = await db.runTransaction(async (tx) => {
-    const gift = await tx.get(giftRef);
+    const [gift, order] = await tx.getAll(giftRef, orderRef);
     if (!gift.exists) return "not-found" as const;
     if (gift.get("toUid") !== uid) return "not-recipient" as const;
     if (gift.get("status") === "declined") return "declined" as const;
     if (gift.get("status") !== "pending") return "closed" as const;
-    tx.update(giftRef, { status: "declined", declinedAt: Date.now(), refundDue: true });
+    tx.update(giftRef, { status: "declined" });
+    if (order.exists) tx.update(orderRef, { giftEndedAt: Date.now(), giftEndReason: "declined", refundDue: true });
     return "declined" as const;
   });
   if (verdict === "not-found") throw new HttpsError("not-found", "We couldn't find that gift.");
@@ -228,6 +240,10 @@ export const listGifts = onCall({ region: REGION, timeoutSeconds: 30 }, async (r
     .sort((a, b) => finite(b.createdAt) - finite(a.createdAt) || (a.id < b.id ? 1 : -1))
     .slice(0, LIST_LIMIT);
   const received = recent(receivedSnap.docs), sent = recent(sentSnap.docs);
+  // When a claimed gift ends is shown to the recipient only (read from the server-only order).
+  const claimedIds = received.filter((gift) => gift.status === "claimed").map((gift) => gift.id);
+  const orders = claimedIds.length ? await db.getAll(...claimedIds.map((id) => db.doc(`giftOrders/${id}`))) : [];
+  const endsAtOf = new Map(orders.map((order) => [order.id, order.get("endsAt")]));
   const counterpart = (gift: GiftDoc) => (gift.toUid === uid ? gift.fromUid : gift.toUid);
   const all = [...received, ...sent];
 
@@ -247,8 +263,9 @@ export const listGifts = onCall({ region: REGION, timeoutSeconds: 30 }, async (r
   };
 
   const now = Date.now();
-  const view = (gift: GiftDoc & { id: string }): GiftView => {
+  const view = (gift: GiftDoc & { id: string }, side: "received" | "sent"): GiftView => {
     const status = giftState({ status: gift.status, expiresAt: finite(gift.expiresAt) }, now);
+    const endsAt = side === "received" && status === "claimed" ? endsAtOf.get(gift.id) : undefined;
     return {
       id: gift.id,
       plan: gift.plan,
@@ -256,10 +273,10 @@ export const listGifts = onCall({ region: REGION, timeoutSeconds: 30 }, async (r
       counterpartName: nameOf(gift).slice(0, 80),
       createdAt: finite(gift.createdAt),
       expiresAt: finite(gift.expiresAt),
-      ...(status === "claimed" && typeof gift.endsAt === "number" ? { endsAt: gift.endsAt } : {})
+      ...(typeof endsAt === "number" ? { endsAt } : {})
     };
   };
-  return { received: received.map(view), sent: sent.map(view) };
+  return { received: received.map((gift) => view(gift, "received")), sent: sent.map((gift) => view(gift, "sent")) };
 });
 
 /** Ends one pending gift if it's overdue or can no longer be delivered; true when it ended. */
@@ -269,7 +286,8 @@ async function sweepGift(giftId: string, now: number): Promise<boolean> {
     const gift = await tx.get(giftRef);
     if (!gift.exists || gift.get("status") !== "pending") return false;
     const toUid = String(gift.get("toUid"));
-    const [match, user, moderation] = await tx.getAll(db.doc(`matches/${gift.get("matchId")}`), db.doc(`users/${toUid}`), db.doc(`moderation/${toUid}`));
+    const [match, user, moderation, order] = await tx.getAll(db.doc(`matches/${gift.get("matchId")}`), db.doc(`users/${toUid}`), db.doc(`moderation/${toUid}`), db.doc(`giftOrders/${giftId}`));
+    if (!order.exists) return false;
     const verdict = giftSweepVerdict({
       status: gift.get("status"),
       expiresAt: gift.get("expiresAt"),
@@ -280,7 +298,8 @@ async function sweepGift(giftId: string, now: number): Promise<boolean> {
     });
     if (verdict === "keep") return false;
     const endReason = verdict === "expire" ? "expired" : !match.exists || match.get("active") === false ? "no-match" : "unavailable";
-    tx.update(giftRef, { status: verdict === "expire" ? "expired" : "void", endedAt: Date.now(), endReason, refundDue: true });
+    tx.update(giftRef, { status: verdict === "expire" ? "expired" : "void" });
+    tx.update(order.ref, { giftEndedAt: Date.now(), giftEndReason: endReason, refundDue: true });
     return true;
   });
   if (ended) await refundEndedGift(giftId);
@@ -308,10 +327,15 @@ export async function runGiftExpiry(now = Date.now()): Promise<{ ended: number; 
     if (snap.size < SWEEP_PAGE) break;
     last = snap.docs[snap.docs.length - 1];
   }
-  const due = await db.collection("gifts").where("refundDue", "==", true).limit(SWEEP_PAGE).get();
+  const due = await db.collection("giftOrders").where("refundDue", "==", true).limit(SWEEP_PAGE).get();
   for (const doc of due.docs) {
     if (await refundEndedGift(doc.id).catch(() => false)) retried += 1;
   }
+  // Orphaned or rejected payments whose refund never ran (a crash after the capture's transaction).
+  retried += await retryStuckOrderRefunds(now).catch((error) => {
+    logger.error("Gift order refund sweep failed", { error: String(error) });
+    return 0;
+  });
   if (ended || retried) logger.info("Gift sweep", { ended, retried });
   return { ended, retried };
 }
@@ -324,36 +348,57 @@ export const expireGifts = onSchedule({ region: REGION, schedule: "15 4 * * *", 
  * Settles a gift whose payment Razorpay refunded (reason "refund") or whose
  * dispute the gifter won ("chargeback"). Called by razorpayGiftWebhook for the
  * gift's own payment, in one transaction (reads first). Never touches a
- * purchased pass, and never refunds anything itself.
+ * purchased pass, and never refunds anything itself. The bookkeeping it reads and
+ * writes is on the server-only order; the gift only changes status.
  */
 export async function reverseGift(orderId: string, reason: "refund" | "chargeback"): Promise<void> {
   const giftRef = db.doc(`gifts/${orderId}`), orderRef = db.doc(`giftOrders/${orderId}`);
   const result = await db.runTransaction(async (tx) => {
     const [gift, order] = await tx.getAll(giftRef, orderRef);
-    if (!gift.exists) return null;
+    if (!gift.exists || !order.exists) return null;
     const toUid = String(gift.get("toUid"));
     const compRef = db.doc(`complimentaryPlusGrants/${toUid}`);
     const [comp, user] = await tx.getAll(compRef, db.doc(`users/${toUid}`));
     const now = Date.now();
-    let plan = giftReversal(gift.data()!, comp.exists ? comp.data() : undefined);
+    // A repeat of the event after a restore: redo the premium sync (idempotent), in case it failed last time.
+    if (gift.get("status") === "refunded" && order.get("revokedAt")) return { sync: user.exists ? toUid : null, review: false };
+    const record = {
+      id: orderId,
+      status: gift.get("status"),
+      endsAt: order.get("endsAt"),
+      needsReview: order.get("needsReview"),
+      previousCompExpiry: order.get("previousCompExpiry"),
+      previousCompStatus: order.get("previousCompStatus"),
+      previousCompLastGiftId: order.get("previousCompLastGiftId")
+    };
+    let plan = giftReversal(record, comp.exists ? comp.data() : undefined);
     // A recipient whose account is gone has nothing left to take back.
     if (plan.action === "review" && gift.get("status") === "claimed" && !user.exists) plan = { action: "refund-pending" };
     if (plan.action === "none") return null;
-    if (order.exists && order.get("status") !== "refunded") tx.update(orderRef, { status: "refunded", refundedAt: now, updatedAt: FieldValue.serverTimestamp() });
+    const settled = order.get("status") !== "refunded" ? { status: "refunded", refundedAt: now } : {};
+    const updatedAt = FieldValue.serverTimestamp();
     switch (plan.action) {
       case "refund-pending":
-        tx.update(giftRef, { status: "refunded", refundedAt: now, reversalReason: reason });
+        tx.update(giftRef, { status: "refunded" });
+        tx.update(orderRef, { ...settled, reversalReason: reason, updatedAt });
         return null;
       case "close":
         // Our own refund of a declined, expired or void gift, reported back: nothing to undo.
-        if (!gift.get("refundedAt")) tx.update(giftRef, { refundedAt: now });
+        if (Object.keys(settled).length) tx.update(orderRef, { ...settled, updatedAt });
         return null;
       case "restore":
-        tx.set(compRef, { status: plan.status, expiresAt: plan.expiresAt, updatedAt: now, lastSource: "gift-reversal", lastGiftId: orderId }, { merge: true });
-        tx.update(giftRef, { status: "refunded", refundedAt: now, revokedAt: now, reversalReason: reason });
+        tx.set(compRef, {
+          status: plan.status,
+          expiresAt: plan.expiresAt,
+          updatedAt: now,
+          lastSource: "gift-reversal",
+          lastGiftId: plan.lastGiftId ?? FieldValue.delete()
+        }, { merge: true });
+        tx.update(giftRef, { status: "refunded" });
+        tx.update(orderRef, { ...settled, revokedAt: now, reversalReason: reason, updatedAt });
         return { sync: user.exists ? toUid : null, review: false };
       case "review":
-        tx.update(giftRef, { needsReview: true, needsReviewReason: reason, needsReviewAt: now });
+        tx.update(orderRef, { ...settled, needsReview: true, needsReviewReason: reason, needsReviewAt: now, updatedAt });
         return { sync: null, review: true };
     }
   });

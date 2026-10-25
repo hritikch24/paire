@@ -22,23 +22,37 @@ export function giftWindow(args: { now: number; billingExpiresAt: number; compli
   return { startsAt, endsAt: startsAt + args.days * DAY_MS };
 }
 
-type GiftRecord = { status?: unknown; endsAt?: unknown; needsReview?: unknown; previousCompExpiry?: unknown; previousCompStatus?: unknown };
-type CompRecord = { expiresAt?: unknown } | undefined;
+/**
+ * A gift as the reversal sees it: the gift's id and status (gifts/{id}) plus the
+ * server-only bookkeeping kept on giftOrders/{id} (never shown to either member).
+ */
+type GiftRecord = {
+  id?: unknown;
+  status?: unknown;
+  endsAt?: unknown;
+  needsReview?: unknown;
+  previousCompExpiry?: unknown;
+  previousCompStatus?: unknown;
+  previousCompLastGiftId?: unknown;
+};
+type CompRecord = { expiresAt?: unknown; status?: unknown; lastGiftId?: unknown } | undefined;
 
 /**
  * The revoke condition: a claimed gift may be taken back only while the
- * complimentary grant still ends exactly where this gift put it. If the owner
- * or another gift has moved it since, a person has to decide.
+ * complimentary grant is still active, still ends exactly where this gift put it,
+ * and was last set by this gift. If the owner or another gift has changed it
+ * since, a person has to decide.
  */
 export function shouldRevokeGift(gift: GiftRecord, comp: CompRecord): boolean {
-  return gift.status === "claimed" && typeof gift.endsAt === "number" && Number.isFinite(gift.endsAt) && comp?.expiresAt === gift.endsAt;
+  return gift.status === "claimed" && typeof gift.id === "string" && typeof gift.endsAt === "number" && Number.isFinite(gift.endsAt)
+    && comp?.status === "active" && comp.lastGiftId === gift.id && comp.expiresAt === gift.endsAt;
 }
 
 export type GiftReversal =
   | { action: "refund-pending" }
   | { action: "close" }
   | { action: "none" }
-  | { action: "restore"; expiresAt: number; status: string }
+  | { action: "restore"; expiresAt: number; status: string; lastGiftId: string | null }
   | { action: "review" };
 
 /**
@@ -63,7 +77,8 @@ export function giftReversal(gift: GiftRecord, comp: CompRecord): GiftReversal {
       return {
         action: "restore",
         expiresAt: Math.min(finite(gift.previousCompExpiry), finite(comp?.expiresAt)),
-        status: typeof gift.previousCompStatus === "string" ? gift.previousCompStatus : "ended"
+        status: typeof gift.previousCompStatus === "string" ? gift.previousCompStatus : "ended",
+        lastGiftId: typeof gift.previousCompLastGiftId === "string" ? gift.previousCompLastGiftId : null
       };
     default:
       return { action: "review" };
