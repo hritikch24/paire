@@ -25,5 +25,6 @@ export function closeDiwali(html, now = Date.now()) {
   if (diwaliOpen(now)) return html;
   return html
     .replace(/<!--open-->[\s\S]*?<!--\/open-->/g, "")
+    .replace(/<h2 id="closed-title">([\s\S]*?)<\/h2>/, '<h1 id="closed-title">$1</h1>')
     .replace(/<html\b/, '<html data-campaign="closed"');
 }

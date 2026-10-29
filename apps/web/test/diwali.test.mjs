@@ -59,7 +59,8 @@ test('the card sky is stable for a plan',()=>{const a=seeded('chai'),b=seeded('c
 
 test('the page states the facts and the honest limits',()=>{
   assert.match(page,/<h1[^>]*>Diwali is better with <em>someone<\/em> to share the chai\.<\/h1>/);
-  assert.equal((page.match(/<h1\b/g)||[]).length,2); // open hero + closed hero; only one is ever shown
+  assert.equal((page.match(/<h1\b/g)||[]).length,1);
+  assert.match(page,/<h2 id="closed-title">/); // fallback survives until runtime expiry
   assert.match(page,/Sunday 8 November 2026/);
   assert.match(page,/Open now through 10 November, IST\./);
   assert.match(page,/We don’t show who has joined, and we can’t promise matches/);
@@ -90,8 +91,12 @@ test('no user text is ever written with innerHTML',()=>{
 test('after 10 November IST the campaign copy is removed from the static page',()=>{
   const open=Date.parse('2026-11-10T18:29:00Z'),closed=Date.parse('2026-11-10T18:30:00Z');
   assert.equal(diwaliOpen(open),true);assert.equal(diwaliOpen(closed),false);
-  assert.equal(closeDiwali(page,open),page);
+  const active = closeDiwali(page,open);
+  assert.equal((active.match(/<h1\b/g)||[]).length,1);
+  assert.match(active,/<h2 id="closed-title">Diwali 2026 has passed/);
+  assert.match(active,/id="invite-form"/);
   const out=closeDiwali(page,closed);
+  assert.equal((out.match(/<h1\b/g)||[]).length,1);
   assert.match(out,/<html data-campaign="closed"/);
   assert.match(out,/Diwali 2026 has passed\. <em>Paire is still here\.<\/em>/);
   for(const text of['Diwali is better with','Open now through 10 November','id="invite-form"','id="card"','Spend Diwali with'])assert(!out.includes(text),text);

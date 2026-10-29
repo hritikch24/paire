@@ -15,8 +15,8 @@ const paireColumn = {
 export const compare = [
   {
     path: "compare/tinder/", parent, crumb: "Paire vs Tinder", published: D, updated: "2026-10-23", eyebrow: "COMPARE · TINDER",
-    title: "Paire vs Tinder in India — A Tinder Alternative With Notes and Short Plus Passes",
-    description: "Looking for a Tinder alternative in India? Paire Plus reveals who likes you, lets likes carry notes, requires confirmed email before liking or chatting, and its passes never auto-renew.",
+    title: "Paire vs Tinder in India — Notes, Privacy & Plus Passes",
+    description: "Compare Paire and Tinder in India: likes with notes, privacy controls, verification and optional Plus passes. See how the apps approach dating.",
     h1: "Paire vs <em>Tinder</em>",
     lede: "Tinder is the world's best-known dating app and has a huge user base in India. Paire is smaller and newer, built for people who want fewer, better matches and more control.",
     summary: [

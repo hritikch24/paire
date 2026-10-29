@@ -23,11 +23,15 @@ export function renderPage(page, { origin, pages, extraHead = "" }) {
   const appHref = `/${esc(page.appPath ?? "app/")}`;
   const crumbs = [{ name: "Paire", path: "app/" }, ...(page.parent ? [page.parent] : []), { name: page.crumb ?? page.h1, path: page.path }];
   const related = (page.related ?? []).map((path) => pages.find((p) => p.path === path)).filter(Boolean);
-  const isArticle = page.type !== "hub";
+  const isArticle = page.type !== "hub" && /^(guides|compare)\//.test(page.path);
+  const pageType = isArticle ? "Article" : page.type === "hub" ? "CollectionPage" : page.path === "about/" ? "AboutPage" : "WebPage";
   const graph = [
+    { "@context": "https://schema.org", "@type": "Organization", "@id": `${origin}/#org`, name: "Paire", url: `${origin}/`, logo: `${origin}/icon-512.png` },
+    { "@context": "https://schema.org", "@type": "WebSite", "@id": `${origin}/#website`, name: "Paire", url: `${origin}/`, inLanguage: "en-IN", publisher: { "@id": `${origin}/#org` } },
     {
       "@context": "https://schema.org",
-      "@type": isArticle ? "Article" : "CollectionPage",
+      "@type": pageType,
+      "@id": `${url}#page`,
       headline: page.h1.replace(/<[^>]+>/g, ""),
       name: page.title,
       description: page.description,
@@ -45,7 +49,7 @@ export function renderPage(page, { origin, pages, extraHead = "" }) {
     {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
-      itemListElement: crumbs.map((crumb, i) => ({ "@type": "ListItem", position: i + 1, name: crumb.name, item: `${origin}/${crumb.path}` }))
+      itemListElement: crumbs.map((crumb, i) => ({ "@type": "ListItem", position: i + 1, name: stripHtml(crumb.name), item: i === 0 ? `${origin}/` : `${origin}/${crumb.path}` }))
     },
     ...(page.faq?.length ? [{
       "@context": "https://schema.org",
@@ -61,6 +65,7 @@ export function renderPage(page, { origin, pages, extraHead = "" }) {
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#faf6f0">
 <title>${esc(page.title)}</title><meta name="description" content="${esc(page.description)}">
+<meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="${url}"><link rel="alternate" hreflang="en-IN" href="${url}"><link rel="alternate" hreflang="x-default" href="${url}">
 <link rel="icon" href="/favicon.png" type="image/png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/site.css">
 <meta property="og:site_name" content="Paire"><meta property="og:type" content="${isArticle ? "article" : "website"}"><meta property="og:title" content="${esc(page.ogTitle ?? page.title)}"><meta property="og:description" content="${esc(page.description)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${origin}/og-image.png"><meta property="og:locale" content="en_IN">${isArticle ? `<meta property="article:modified_time" content="${page.updated}">` : ""}

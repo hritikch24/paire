@@ -13,6 +13,17 @@ if (status) {
 }
 if (state === 'closed') {
   document.title = 'Diwali Together has ended | Paire';
+  // An old build must still close correctly without waiting for a deployment.
+  // Keep one document H1 when the alternate hero becomes the primary content.
+  for (const [selector, tag] of [['#hero-title', 'h2'], ['#closed-title', 'h1']]) {
+    const current = $(selector);
+    if (current && current.tagName.toLowerCase() !== tag) {
+      const heading = document.createElement(tag);
+      heading.id = current.id;
+      heading.replaceChildren(...current.childNodes);
+      current.replaceWith(heading);
+    }
+  }
   $('#invite-form')?.closest('section')?.setAttribute('hidden', '');
 }
 

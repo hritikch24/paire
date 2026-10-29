@@ -26,7 +26,7 @@ Build: `node apps/web/scripts/build.mjs` writes `apps/web/dist`. `vercel.json` a
    | `EXPO_PUBLIC_FIREBASE_API_KEY`, `_AUTH_DOMAIN`, `_PROJECT_ID`, `_STORAGE_BUCKET`, `_MESSAGING_SENDER_ID`, `_APP_ID` | Only to use a different Firebase project than `muse-352ba` (the default baked into `src/config/env.ts`). |
    | `PAIRE_SUPPORT_EMAIL`, `PAIRE_POSTAL_ADDRESS`, `PAIRE_JURISDICTION_CITY` | **Required for launch.** Fill the legal, refund and contact pages, and remove the draft banner. |
    | `PAIRE_SITE_URL` | Your custom domain, such as `https://yourbrand.in`. Legal links inside the app use it. It defaults to the Vercel production URL. |
-   | `PAIRE_ALLOW_INDEXING` | `true` only at public launch. Until then `robots.txt` blocks search engines. |
+   | `PAIRE_ALLOW_INDEXING` | Production indexes public pages by default; set `false` for an explicit launch hold, `true` for launch. Preview/development builds remain noindex even if they inherit `true`. Sitemap generation no longer depends on the flag. |
 
 4. **Allow the domain in Firebase.** Firebase console → Authentication → Settings → **Authorized domains** → add `your-project.vercel.app` and any custom domain. Without this, sign-in fails on the web.
 5. **Storage CORS for photo uploads.** Allow your web origin on the Storage bucket:

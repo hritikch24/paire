@@ -6,7 +6,7 @@ function city({ slug, name, region, intro, ideas, getting, safety, extra = "", f
   return {
     path: `dating/${slug}/`, parent, crumb: `Dating in ${name}`, published: D, updated: D, eyebrow: `CITIES · ${name.toUpperCase()}`,
     title: `Dating in ${name} — First-Date Ideas & a Safer Dating App | Paire`,
-    description: `Dating in ${name}: first-date ideas at places locals love, how to stay safe, and how to meet verified singles in ${name} on Paire, where every like comes with a note.`,
+    description: `Explore public first-date spots in ${name}, local travel tips and dating safety advice. Meet adult singles on Paire with likes, notes and privacy controls.`,
     h1: `Dating in <em>${name}</em>`,
     lede: intro,
     about: { "@type": "City", name, containedInPlace: { "@type": "State", name: region } },

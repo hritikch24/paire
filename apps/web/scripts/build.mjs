@@ -20,6 +20,7 @@ import { guidesA } from "../content/guides-a.mjs";
 import { guidesB } from "../content/guides-b.mjs";
 import { closeDiwali, diwaliOpen, expireCampaigns } from "./seasonal.mjs";
 import { FOOTER, renderPage, stripHtml } from "./render-pages.mjs";
+import { seoConfig, sitemapXml } from "./seo.mjs";
 
 const web = resolve(import.meta.dirname, "..");
 const app = resolve(web, "../muse-mobile");
@@ -34,11 +35,7 @@ if (!existsSync(resolve(app, "node_modules/expo"))) {
 }
 
 // Legal links inside the app point at this same site when we know its address.
-const siteUrl = (
-  siteVar("SITE_URL") ||
-  process.env.MUSE_SITE_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "")
-).replace(/\/+$/, "");
+const { origin: siteUrl, indexable } = seoConfig();
 
 const env = {
   ...process.env,
@@ -169,7 +166,7 @@ for (const page of ["privacy", "terms", "community-guidelines", "safety", "delet
     if (value) html = html.split(placeholder).join(escapeHtml(value));
   }
   if (!missing.length) html = html.replace(DRAFT_BANNER, "");
-  html = html.replace("</head>", `<link rel="canonical" href="${escapeHtml(origin)}/${page}/"><meta name="description" content="${escapeHtml(legalDescriptions[page])}">${visitBeacon}</head>`);
+  html = html.replace("</head>", `<link rel="canonical" href="${escapeHtml(origin)}/${page}/"><meta name="description" content="${escapeHtml(legalDescriptions[page])}">${missing.length ? '<meta name="robots" content="noindex, follow">' : ""}<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": page === "contact" ? "ContactPage" : "WebPage", name: html.match(/<title>([^<]+)<\/title>/)?.[1] || "Paire", url: `${origin}/${page}/`, inLanguage: "en-IN", isPartOf: { "@id": `${origin}/#website` } }).replace(/</g, "\\u003c")}</script>${visitBeacon}</head>`);
   mkdirSync(resolve(output, page), { recursive: true });
   writeFileSync(resolve(output, page, "index.html"), html);
 }
@@ -178,36 +175,28 @@ if (missing.length) {
 }
 cpSync(resolve(web, "legal/styles.css"), resolve(output, "styles.css"));
 
-// Search engines stay out until the public launch (set PAIRE_ALLOW_INDEXING=true then).
+// Public production pages index by default; an explicit false flag keeps a launch
+// hold. Preview/development builds stay noindex even with inherited true flags.
 // The founder dashboard is deliberately not named here: it opens only at /metrics?key=admin
 // (a vercel.json rewrite), carries noindex, and needs an allowed Google account.
-const indexable = (siteVar("ALLOW_INDEXING") ?? process.env.MUSE_ALLOW_INDEXING) === "true";
 writeFileSync(
   resolve(output, "robots.txt"),
   indexable
-    ? // Search engines and AI answer engines (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…) are all welcome.
-      `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /auth/\n\n${["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "PerplexityBot", "Google-Extended", "Applebot-Extended", "Bingbot"]
-        .map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /app/\nDisallow: /auth/\n`)
-        .join("\n")}\n${siteUrl ? `Sitemap: ${siteUrl}/sitemap.xml\n` : ""}`
+    ? `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /auth/\nDisallow: /metrics\nDisallow: /_d6ad65113cb02b1461f/\nDisallow: /pay/\n\nSitemap: ${siteUrl}/sitemap.xml\n`
     : "User-agent: *\nDisallow: /\n"
 );
-if (indexable && siteUrl) {
-  const today = new Date().toISOString().slice(0, 10);
-  const entries = [
-    ["", today, "1.0", "daily"],
-    ...(diwaliOpen() ? [["diwali-together/", today, "0.9", "weekly"]] : []),
-    ["vibe-quiz/", today, "0.8", "monthly"],
-    ["date-duet/", today, "0.8", "monthly"],
-    ...contentPages.map((page) => [page.path, page.updated ?? today, page.type === "hub" ? "0.8" : page.path.startsWith("guides/") || page.path.startsWith("compare/") ? "0.8" : "0.7", "monthly"]),
-    ...["safety/", "community-guidelines/", "contact/", "terms/", "privacy/", "refunds/"].map((page) => [page, today, page === "safety/" ? "0.6" : "0.3", "yearly"])
-  ];
-  writeFileSync(
-    resolve(output, "sitemap.xml"),
-    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries
-      .map(([page, lastmod, priority, changefreq]) => `  <url><loc>${siteUrl}/${page}</loc><lastmod>${lastmod}</lastmod><changefreq>${changefreq}</changefreq><priority>${priority}</priority></url>`)
-      .join("\n")}\n</urlset>\n`
-  );
-  writeFileSync(resolve(output, "urls.txt"), entries.map(([page]) => `${siteUrl}/${page}`).join("\n") + "\n");
+const publicPaths = ["/", ...(diwaliOpen() ? ["/diwali-together/"] : []), "/vibe-quiz/", "/date-duet/", ...contentPages.map((page) => `/${page.path}`), ...(!missing.length ? ["safety/", "community-guidelines/", "contact/", "terms/", "privacy/", "refunds/", "delete-account/"].map((page) => `/${page}`) : [])];
+writeFileSync(resolve(output, "sitemap.xml"), sitemapXml(origin, publicPaths));
+writeFileSync(resolve(output, "urls.txt"), publicPaths.map((path) => `${origin}${path}`).join("\n") + "\n");
+if (!indexable) {
+  const noindexPages = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const file = resolve(dir, entry.name);
+      if (entry.isDirectory()) noindexPages(file);
+      else if (entry.name.endsWith(".html")) writeFileSync(file, readFileSync(file, "utf8").replace(/<meta name="robots"[^>]*>/g, "").replace("</head>", '<meta name="robots" content="noindex, follow"></head>'));
+    }
+  };
+  noindexPages(output);
 }
 
 // llms.txt (a map for AI assistants) lists every page; llms-full.txt carries their full text.

@@ -43,7 +43,7 @@ export const core = [
   },
   {
     path: "pricing/", crumb: "Pricing", published: D, updated: "2026-10-24", eyebrow: "PRICING",
-    title: "Paire Pricing — Free Dating App, Plus Passes from ₹35 (No Auto-Renew)",
+    title: "Paire Pricing — Plus from ₹35, No Auto-Renewal",
     description: "Paire Plus: ₹399 for 60 days, ₹35 for a day or ₹1,499 lifetime. Compare ₹99 weekly, ₹799 six-month and ₹49 chat-only options. No auto-renewal.",
     h1: "Free first. <em>Fair always.</em>",
     lede: "Joining, matching and safety on Paire are free. To send messages, choose a short Paire Plus pass or a one-time ₹49 Unlimited Chat unlock. Both end or stay on their own terms: nothing to cancel, no surprise renewals.",
@@ -96,8 +96,8 @@ export const core = [
   },
   {
     path: "features/", crumb: "Features", published: D, updated: "2026-10-24", eyebrow: "FEATURES",
-    title: "Paire Features — Notes With Likes, Women-First Controls, Vibe First & Duos",
-    description: "Everything Paire does: likes with notes, 'who likes you' with Plus, women-first privacy controls, Vibe First, Duos double dates, blind date mode, Paire AI icebreakers and selfie verification.",
+    title: "Paire Features — Notes, Privacy, Vibe First & Duos",
+    description: "Explore Paire's likes with notes, Plus likes reveal, free privacy controls, Vibe First, Duos and photo-check badges. Dating for adults across India.",
     h1: "Everything <em>Paire</em> does",
     lede: "Paire is built around conversations that start well and people who are who they say they are. Here is every feature, and what it costs (mostly nothing).",
     body: `
@@ -152,14 +152,14 @@ export const core = [
   {
     path: "guides/", crumb: "Dating guides", type: "hub", eyebrow: "GUIDES",
     title: "Dating Guides for India: Safety, Profiles & First Dates | Paire",
-    description: "Practical dating guides for India: the best dating apps, staying safe, spotting fake profiles and scams, writing a bio, first messages, first dates and dating with serious intentions.",
+    description: "Practical dating guides for India: compare apps, spot scams, write a profile, start conversations and plan public first dates with clear intentions.",
     h1: "Dating <em>guides</em>",
     lede: "Honest, practical advice for dating in India, from choosing an app to your first date. Written by the Paire team and kept up to date."
   },
   {
     path: "dating/", crumb: "Dating in your city", type: "hub", eyebrow: "CITIES",
     title: "Dating in Indian Cities: Date Ideas & Safe Places | Paire",
-    description: "Dating in Delhi, Gurugram, Noida, Mumbai, Bengaluru, Pune, Hyderabad, Chennai, Kolkata, Ahmedabad and Jaipur: first-date ideas, safe public places and how to meet people on Paire.",
+    description: "Find public first-date ideas, local travel tips and dating advice for Delhi, Mumbai, Bengaluru and more Indian cities. Explore Paire's city guides.",
     h1: "Dating in <em>your city</em>",
     lede: "First-date ideas, safe places to meet and local tips for India's biggest cities. Paire is open across India."
   },
