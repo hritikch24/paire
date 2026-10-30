@@ -18,7 +18,7 @@ Also in the app:
 - **Paid sending (off until switched on):** sending messages needs your own Plus or **Unlimited Chat** (₹49 once, all current and future matches, no expiry); reading, matching and safety stay free. **Presence (off until switched on):** "Online" and approximate "Active 3 h ago" for matches, from real activity, with a setting to hide it. See `docs/presence-and-paid-chat.md`.
 - **Browser dating:** shared accounts, discovery, chat, profiles and safety in the responsive web app.
 - **Duos:** double dates with a friend, with a four-person group chat.
-- **Likes gallery:** a full-screen gallery of everyone who liked you.
+- **Likes gallery:** a full-screen gallery of everyone who liked you. 
 - **Themes:** seven colour themes in light and dark.
 
 The public name is still to be decided; see `docs/product/brand-shortlist.md`. The private website preview is https://muse-delhi-ncr.soundlemon8.chatgpt.site — review build, with public launch/provider/legal setup pending. Build and browser QA: `docs/web-preview.md`. Latest evidence and limits: `docs/qa-2026-10-10.md`.
