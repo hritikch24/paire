@@ -1,3 +1,6 @@
+import { useLaunchOffer } from "../hooks/useLaunchOffer";
+import { LaunchOfferCode } from "../components/LaunchOfferCode";
+import { currentPrice, OFFER_PRICES, formatInr, offerActive } from "../config/launch-offer";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
@@ -36,13 +39,16 @@ export function PremiumScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   // On the web the month pass (with a free month) leads and is chosen by default.
   const [selected, setSelected] = useState<PremiumPlanId>(webCheckout ? "month" : "week");
+  const launch = useLaunchOffer();
+  const promoCode = launch.quote.data?.code ?? undefined;
+  const webPlans = WEB_PREMIUM_PLANS.map(item => ({ ...item, priceInr: (launch.quote.data?.plans[item.id].amount ?? currentPrice(item.id)) / 100 }));
   const [moreOptions, setMoreOptions] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const uid = useAuthStore((state) => state.user?.uid);
   const allowance = useQuery({ queryKey: ["daily-allowance", uid], queryFn: fetchDailyAllowance, enabled: Boolean(uid), staleTime: 0, retry: 1 });
   const resetTime = allowance.data ? new Date(allowance.data.resetsAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZoneName: "short" }) : null;
-  const plan = (webCheckout ? WEB_PREMIUM_PLANS : PREMIUM_PLANS).find((item) => item.id === selected)!;
+  const plan = (webCheckout ? webPlans : PREMIUM_PLANS).find((item) => item.id === selected)!;
   const lifetimePlan = webCheckout && plan.id === "lifetime";
   const premium = useQuery({ queryKey: ["premium", uid], queryFn: fetchPremiumStatus, enabled: Boolean(uid), refetchInterval: 300_000, retry: 1 });
   const refreshAllowance = allowance.refetch;
@@ -56,16 +62,16 @@ export function PremiumScreen() {
   const paidChat = Boolean(chat?.enforced || chat?.enforceFrom);
   const lifetimeOwned = webCheckout && premium.data?.lifetime === true;
   const extending = webCheckout && premium.data?.active === true && !lifetimeOwned && !lifetimePlan;
-  const ready = Boolean(premium.data && !premium.isError && !lifetimeOwned && (webCheckout || !premium.data.active));
+  const ready = Boolean(premium.data && !premium.isError && (!webCheckout || (!launch.quote.isError && !launch.quote.isFetching)) && !lifetimeOwned && (webCheckout || !premium.data.active));
   // UPI straight to Paire when it's on (scan or open PhonePe/any UPI app); otherwise Razorpay on the
   // web, or the store's localised product in the app.
-  const byUpi = premium.data?.upiPurchaseAvailable === true;
+  const byUpi = premium.data?.upiPurchaseAvailable === true && !promoCode;
   const upiOrder = useQuery({ queryKey: ["upi-plus-order", uid], queryFn: () => fetchOpenUpiOrder("plus"), enabled: Boolean(uid && (byUpi || webCheckout)), retry: 1 });
   const [shownOrder, setShownOrder] = useState<UpiOrder | null>(null);
   const openOrder = shownOrder ?? upiOrder.data ?? null;
   const upiSubmitted = openOrder?.status === "submitted";
   // CCAvenue (cards, UPI, netbanking, wallets) on the web: its own button, or the main one when it's the only way.
-  const byCcavenue = ccavenueCheckout && premium.data?.ccavenuePurchaseAvailable === true;
+  const byCcavenue = ccavenueCheckout && premium.data?.ccavenuePurchaseAvailable === true && !promoCode;
   const ccavenueOnly = byCcavenue && !byUpi && premium.data?.webPurchaseAvailable !== true;
   const canPurchase = byUpi ? ready && !upiSubmitted : ccavenueOnly ? ready && !upiSubmitted : webCheckout ? ready && premium.data?.webPurchaseAvailable === true : Boolean(product && ready && premium.data?.purchaseAvailable);
   const payByCcavenue = async () => {
@@ -86,13 +92,14 @@ export function PremiumScreen() {
     if (byCcavenue) await confirmCcavenuePayment({ kind: "plus" }).catch(() => null);
     await premium.refetch();
   };
-  const priceLabel = webCheckout || byUpi ? `₹${plan.priceInr.toLocaleString("en-IN")}` : (product?.priceString ?? `₹${plan.priceInr.toLocaleString("en-IN")}`);
+  const methodPrice = (byUpi || ccavenueOnly) && webCheckout ? WEB_PREMIUM_PLANS.find(item => item.id === plan.id)!.priceInr : plan.priceInr;
+  const priceLabel = webCheckout || byUpi ? `₹${methodPrice.toLocaleString("en-IN")}` : (product?.priceString ?? `₹${plan.priceInr.toLocaleString("en-IN")}`);
   const offer = webCheckout ? webPlan(plan) : null;
   const extensionDuration = offer?.days ? `${offer.days} ${offer.days === 1 ? "day" : "days"}` : "";
   // "2 months" says the offer in two words on the buy button.
   const buyLabel = offer && plan.bonusDays ? "2 months" : plan.label;
-  const primaryPlans = ["month", "day", "lifetime"].map(id => WEB_PREMIUM_PLANS.find(item => item.id === id)!);
-  const secondaryPlans = ["week", "halfyear"].map(id => WEB_PREMIUM_PLANS.find(item => item.id === id)!);
+  const primaryPlans = ["month", "day", "lifetime"].map(id => webPlans.find(item => item.id === id)!);
+  const secondaryPlans = ["week", "halfyear"].map(id => webPlans.find(item => item.id === id)!);
   const plans = webCheckout ? [...primaryPlans, ...(moreOptions ? secondaryPlans : [])] : PREMIUM_PLANS;
   const fromPerDay = webCheckout ? webPlan(WEB_PREMIUM_PLANS.find(item => item.id === "month")!).perDay : 10;
   const payByUpi = async () => {
@@ -111,7 +118,7 @@ export function PremiumScreen() {
     setBusy(true); setMessage(null);
     let leaving = false;
     try {
-      const result = restore ? await restorePasses(uid) : webCheckout ? await purchaseWebPass(plan.id, colors.gradient[1] ?? "#B83A5E") : await purchasePass(uid, product!);
+      const result = restore ? await restorePasses(uid) : webCheckout ? await purchaseWebPass(plan.id, colors.gradient[1] ?? "#B83A5E", promoCode, Math.round(plan.priceInr * 100)) : await purchasePass(uid, product!);
       // Checkout on kraftai.in: the page is leaving, so keep the button busy (no second order).
       if ("redirecting" in result) { leaving = true; return; }
       const pending = "pending" in result && result.pending === true;
@@ -134,7 +141,7 @@ export function PremiumScreen() {
       <YStack gap="$2">
         <Text textAlign="center" fontSize="$2" color="$textMuted">{lifetimeOwned ? "Lifetime Plus · active · no expiry" : `${priceLabel} ${lifetimePlan ? "once · no expiry" : `for ${offer ? `${offer.days} ${offer.days === 1 ? "day" : "days"}` : plan.detail.toLowerCase()} · one-time payment · no auto-renewal`}`}</Text>
         <PrimaryButton testID="premium-purchase" loading={busy} disabled={!canPurchase} onPress={() => void act()}>{upiSubmitted ? "Confirming your UPI payment" : canPurchase ? (extending ? `Extend Plus by ${extensionDuration} · ${priceLabel}` : byUpi ? `Pay ${priceLabel} by UPI · ${buyLabel}` : `Get ${buyLabel} · ${priceLabel}`) : lifetimeOwned ? "Lifetime Plus is active" : premium.data?.active ? "Your pass is active" : "Plus is coming soon"}</PrimaryButton>
-        {byCcavenue && !ccavenueOnly && ready ? <SecondaryButton testID="premium-ccavenue" disabled={busy} onPress={() => void payByCcavenue()}>{`Pay ${priceLabel} by card, netbanking or wallet`}</SecondaryButton> : null}
+        {byCcavenue && !ccavenueOnly && ready ? <SecondaryButton testID="premium-ccavenue" disabled={busy} onPress={() => void payByCcavenue()}>{`Pay ₹${(WEB_PREMIUM_PLANS.find(item => item.id === plan.id)!.priceInr).toLocaleString("en-IN")} by card, netbanking or wallet`}</SecondaryButton> : null}
         <Text textAlign="center" fontSize="$1" color="$textMuted">{upiSubmitted ? "Thanks! Your pass starts as soon as we confirm your UPI payment, usually within a few hours." : canPurchase ? (byUpi ? `Pay by UPI straight to Paire: scan the QR code, or open PhonePe, Google Pay, Paytm or any UPI app.${byCcavenue ? " Or pay by card, netbanking or wallet through CCAvenue." : ""}` : ccavenueOnly ? "Pay securely with cards, UPI, netbanking or wallets via CCAvenue. You'll come back here after paying." : webCheckout ? "Pay securely with UPI, cards or netbanking via Razorpay. You'll come back here after paying." : "Pay securely through your app store.") : lifetimeOwned ? "All Plus benefits are included. No purchase is needed." : premium.data?.active ? `Available until ${new Date(premium.data.expiresAt!).toLocaleString("en-IN")}.` : "Purchases aren’t available yet. You won’t be charged."}</Text>
       </YStack>
     }>
@@ -154,6 +161,8 @@ export function PremiumScreen() {
             <Text fontSize="$2" lineHeight={21}>{`Add ${extensionDuration} after your current expiry. Your new expiry will be ${new Date(premium.data.expiresAt + (offer!.days ?? 0) * 86_400_000).toLocaleString("en-IN")}. You keep all your remaining time.`}</Text>
           </YStack>
         ) : null}
+        {!lifetimeOwned && webCheckout ? <Text fontSize="$1" color="$textMuted">October offers and promo codes apply to payments through KraftAI and Razorpay. Other payment methods show their own total before payment.</Text> : null}
+        {!lifetimeOwned && webCheckout ? <LaunchOfferCode offer={launch} available={premium.data?.webPurchaseAvailable === true} /> : null}
         {!lifetimeOwned ? <YStack gap="$2" accessibilityRole="radiogroup" accessibilityLabel="Plus pass duration">
           {plans.map((item, index) => {
             const active = selected === item.id;
@@ -176,6 +185,7 @@ export function PremiumScreen() {
                       <Text fontSize="$2" color="$textMuted">{view ? view.detail : nativeBillingAvailable ? item.detail : `₹${dailyPrice(item.priceInr, item.days ?? 1)}/day · ${item.detail}`}</Text>
                     </YStack>
                     <YStack alignItems="flex-end" gap={2}>
+                      {view && (launch.quote.data?.active ?? offerActive()) ? <Text fontSize="$1" color="$textMuted" textDecorationLine="line-through">{`${formatInr(OFFER_PRICES[item.id].regular)} from 1 Nov`}</Text> : null}
                       {view ? <Text fontSize="$6" fontWeight="700" color={deal ? "$primary" : "$text"}>{`₹${item.priceInr.toLocaleString("en-IN")}`}</Text> : null}
                       <Text fontSize={view ? "$1" : "$6"} fontWeight={view ? "400" : "700"} color={view ? "$textMuted" : "$text"}>{view ? view.days === null ? "Pay once" : `total · ₹${view.perDay}/day` : products.data?.find((product) => product.identifier === item.productId)?.priceString ?? `₹${item.priceInr}`}</Text>
                       {!view ? <Text fontSize="$1" fontWeight="700" color="$primary">{products.data?.length ? item.detail : item.badge}</Text> : null}
@@ -190,9 +200,9 @@ export function PremiumScreen() {
             );
             return webCheckout ? <YStack key={item.id} gap="$2">{index === 3 ? <Text fontSize="$3" fontWeight="700">Other durations</Text> : null}{card}</YStack> : card;
           })}
-          {webCheckout ? <SecondaryButton testID="premium-more-options" disabled={busy} onPress={() => { if (moreOptions && ["week", "halfyear"].includes(selected)) setSelected("month"); setMoreOptions(value => !value); }}>{moreOptions ? "Hide other durations" : "More options · ₹99 week / ₹799 six months"}</SecondaryButton> : null}
+          {webCheckout ? <SecondaryButton testID="premium-more-options" disabled={busy} onPress={() => { if (moreOptions && ["week", "halfyear"].includes(selected)) setSelected("month"); setMoreOptions(value => !value); }}>{moreOptions ? "Hide other durations" : "More options · a week or six months"}</SecondaryButton> : null}
         </YStack> : null}
-        {lifetimePlan && !lifetimeOwned ? <Text testID="premium-lifetime-terms" fontSize="$2" color="$textMuted" lineHeight={21}>₹1,499 once. Lifetime Plus starts after payment confirmation and has no expiry while Paire’s Plus service operates on this account. Includes unlimited regular likes and 5 Super Likes daily. Your existing pass stays recorded. Refunds, account deletion and community rules still apply.</Text> : null}
+        {lifetimePlan && !lifetimeOwned ? <Text testID="premium-lifetime-terms" fontSize="$2" color="$textMuted" lineHeight={21}>{priceLabel} once. Lifetime Plus starts after payment confirmation and has no expiry while Paire’s Plus service operates on this account. Includes unlimited regular likes and 5 Super Likes daily. Your existing pass stays recorded. Refunds, account deletion and community rules still apply.</Text> : null}
         {premium.data?.previousPaymentFailed && !openOrder ? (
           <YStack testID="premium-previous-failed" padding="$3" borderRadius="$4" backgroundColor="$primarySoft" gap="$1">
             <Text fontWeight="700">Your earlier payment didn't go through</Text>

@@ -110,8 +110,8 @@ export async function openCheckout(order: CheckoutOrder, theme: string): Promise
  * Razorpay Checkout takes the payment, and the server confirms it with Razorpay
  * before granting anything. A successful popup alone never grants Plus.
  */
-export async function purchaseWebPass(planId: PremiumPlanId, theme: string): Promise<(PremiumStatus & { pending?: boolean }) | { redirecting: true }> {
-  const order = await callFunction<PlusOrder>("createPlusOrder", { plan: planId });
+export async function purchaseWebPass(planId: PremiumPlanId, theme: string, promoCode?: string, expectedAmount?: number): Promise<(PremiumStatus & { pending?: boolean }) | { redirecting: true }> {
+  const order = await callFunction<PlusOrder>("createPlusOrder", { plan: planId, ...(promoCode ? { promoCode } : {}), ...(expectedAmount !== undefined ? { expectedAmount } : {}) });
   if (order.hostedUrl || Platform.OS === "web") {
     leaveForHostedCheckout(order);
     return { redirecting: true };

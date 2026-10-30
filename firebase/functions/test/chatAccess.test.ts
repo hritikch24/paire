@@ -107,3 +107,14 @@ describe("payment verification", () => {
     expect(razorpayMode(undefined)).toBeNull();
   });
 });
+
+
+test("chat promo and scheduled quotes must match both the stored order and captured payment exactly", () => {
+  for (const amount of [4410, 4900, 7000]) {
+    const order = { orderId: "order_QuoteTest123", amountPaise: amount, currency: "INR" };
+    const payment = { order_id: order.orderId, amount, currency: "INR", status: "captured" };
+    expect(unlockPaymentVerdict(payment, order)).toBe("captured");
+    expect(unlockPaymentVerdict({ ...payment, amount: amount + 1 }, order)).toBe("mismatch");
+    expect(unlockPaymentVerdict({ ...payment, amount: 1 }, { ...order, amountPaise: 1 })).toBe("mismatch");
+  }
+});

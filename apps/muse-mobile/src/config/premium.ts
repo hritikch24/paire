@@ -1,3 +1,4 @@
+import { currentPrice } from "./launch-offer";
 import { Platform } from "react-native";
 
 /**
@@ -22,11 +23,11 @@ export type PremiumPlan = (typeof WEB_PREMIUM_PLANS)[number];
 export const MONTH_OFFER = "Buy 1 month, get 1 month free";
 
 /** How a pass is shown on the web: total days with the offer, the per-day price and the saving against daily passes. */
-export function webPlan(plan: PremiumPlan) {
+export function webPlan(plan: Omit<PremiumPlan, "priceInr"> & { priceInr: number }) {
   if (plan.id === "lifetime") return { days: null, perDay: null, savePercent: 0, label: plan.label, detail: "One payment. Plus with no expiry." };
-  const days = plan.days + plan.bonusDays;
+  const days = (plan.days ?? 0) + plan.bonusDays;
   const perDay = plan.priceInr / days;
-  const daily = PREMIUM_PLANS[0].priceInr;
+  const daily = Platform.OS === "web" ? currentPrice("day") / 100 : PREMIUM_PLANS[0].priceInr;
   return {
     days,
     perDay: dailyPrice(plan.priceInr, days, 2),

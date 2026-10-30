@@ -1,3 +1,4 @@
+import { OFFER_PRICES } from "./launch-offer";
 import { CHAT_UNLOCK } from "../config";
 
 /**
@@ -113,9 +114,9 @@ export function unlockPaymentVerdict(payment: UnlockPayment | null | undefined, 
   if (
     !payment ||
     payment.order_id !== order.orderId ||
-    order.amountPaise !== CHAT_UNLOCK.amountPaise ||
+    !Object.values(OFFER_PRICES.chat).some(amount => amount === order.amountPaise) ||
     order.currency !== CHAT_UNLOCK.currency ||
-    payment.amount !== CHAT_UNLOCK.amountPaise ||
+    payment.amount !== order.amountPaise ||
     payment.currency !== CHAT_UNLOCK.currency
   ) {
     return "mismatch";

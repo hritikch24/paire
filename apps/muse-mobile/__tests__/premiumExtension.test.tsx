@@ -8,13 +8,16 @@ import { callFunction } from "../src/services/firebase";
 import { showToast } from "../src/components/Toast";
 
 let mockChat: ChatAccess | undefined;
+let mockOfferCode: string | null = null;
+let mockOfferError = false;
+const mockPrices = { day: [4900, 3500, 2800], week: [15000, 9900, 8500], month: [57000, 39900, 35910], halfyear: [114143, 79900, 71910], lifetime: [214143, 149900, 134910], chat: [7000, 4900, 4410] };
 const mockUntil = Date.UTC(2026, 11, 18, 10);
 let mockPremium: { active: boolean; expiresAt: number | null; webPurchaseAvailable: boolean; lifetime?: boolean } = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
 const mockInvalidate = jest.fn();
 const mockRefetch = jest.fn();
 jest.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mockInvalidate, setQueryData: jest.fn() }),
-  useQuery: ({ queryKey }: { queryKey: string[] }) => ({ data: queryKey[0] === "premium" ? mockPremium : undefined, refetch: mockRefetch })
+  useQuery: ({ queryKey }: { queryKey: string[] }) => ({ data: queryKey[0] === "premium" ? mockPremium : queryKey[0] === "launch-offer" && !mockOfferError ? { active: true, code: mockOfferCode, couponAvailable: true, remaining: 250, plans: Object.fromEntries(Object.entries(mockPrices).map(([id, [regular, offer, coupon]]) => [id, { regular, amount: mockOfferCode ? coupon : offer, offer, coupon }])) } : undefined, isError: queryKey[0] === "launch-offer" && mockOfferError, refetch: mockRefetch })
 }));
 jest.mock("@react-navigation/native", () => ({ useNavigation: () => ({ navigate: jest.fn() }) }));
 jest.mock("react-native", () => ({ Platform: { OS: "web" }, Linking: { openURL: jest.fn() }, Pressable: "Pressable" }));
@@ -23,6 +26,7 @@ jest.mock("../src/components/MuseButton", () => ({ PrimaryButton: "PrimaryButton
 jest.mock("../src/components/Screen", () => ({ Screen: ({ children, footer }: { children: React.ReactNode; footer: React.ReactNode }) => <>{children}{footer}</> }));
 jest.mock("../src/components/ScreenHeader", () => ({ ScreenHeader: () => null }));
 jest.mock("../src/components/Icon", () => ({ Icon: () => null }));
+jest.mock("../src/components/MuseInput", () => ({ MuseInput: "MuseInput" }));
 jest.mock("../src/components/UpiPayPanel", () => ({ UpiPayPanel: () => null }));
 jest.mock("../src/components/Toast", () => ({ showToast: jest.fn() }));
 jest.mock("../src/theme/useThemeColors", () => ({ useThemeColors: () => ({ gradient: ["#fff", "#000"] }) }));
@@ -38,7 +42,7 @@ jest.mock("../src/services/supportMode", () => ({ isSupportView: false }));
 jest.mock("../src/utils/chatAccess", () => ({ restoreDrafts: jest.fn(), takeReturnChat: jest.fn() }));
 jest.mock("../src/config/legal", () => ({ legal: {} }));
 
-afterEach(() => { jest.clearAllMocks(); mockChat = undefined; });
+afterEach(() => { jest.clearAllMocks(); mockChat = undefined; mockOfferCode = null; mockOfferError = false; });
 
 test("an active web member can extend by the selected days, retaining the current expiry", async () => {
   mockPremium = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
@@ -54,7 +58,7 @@ test("an active web member can extend by the selected days, retaining the curren
   expect(button().props.children).toBe("Extend Plus by 1 day · ₹35");
   expect(extension()).toContain(new Date(mockUntil + 86_400_000).toLocaleString("en-IN"));
   await act(async () => { await button().props.onPress(); });
-  expect(purchaseWebPass).toHaveBeenCalledWith("day", "#000");
+  expect(purchaseWebPass).toHaveBeenCalledWith("day", "#000", undefined, 3500);
   await act(async () => { tree.unmount(); });
 });
 
@@ -94,9 +98,9 @@ test("Lifetime Plus is ₹1,499 once, starts immediately and never pretends to a
   await act(async () => { tree.root.findByProps({ testID: "premium-plan-lifetime" }).props.onPress(); });
   expect(tree.root.findByProps({ testID: "premium-purchase" }).props.children).toBe("Get Lifetime Plus · ₹1,499");
   expect(tree.root.findAllByProps({ testID: "premium-extension" })).toHaveLength(0);
-  expect(tree.root.findByProps({ testID: "premium-lifetime-terms" }).props.children).toMatch(/₹1,499 once/);
+  expect(tree.root.findByProps({ testID: "premium-lifetime-terms" }).props.children.join("")).toMatch(/₹1,499 once/);
   await act(async () => { await tree.root.findByProps({ testID: "premium-purchase" }).props.onPress(); });
-  expect(purchaseWebPass).toHaveBeenCalledWith("lifetime", "#000");
+  expect(purchaseWebPass).toHaveBeenCalledWith("lifetime", "#000", undefined, 149900);
   await act(async () => { tree.unmount(); });
 });
 
@@ -126,7 +130,7 @@ test("featured offers keep monthly, day, lifetime order; six months is a deliber
   const extension = tree.root.findByProps({ testID: "premium-extension" }).findAll(node => typeof node.props.children === "string").map(node => node.props.children).join(" ");
   expect(extension).toContain(new Date(mockUntil + 180 * 86_400_000).toLocaleString("en-IN"));
   await act(async () => { await button.props.onPress(); });
-  expect(purchaseWebPass).toHaveBeenCalledWith("halfyear", "#000");
+  expect(purchaseWebPass).toHaveBeenCalledWith("halfyear", "#000", undefined, 79900);
   await act(async () => { tree.unmount(); });
 });
 
@@ -153,7 +157,30 @@ test("eligible members can deliberately open messaging-only checkout from Plus w
   const buyChat = tree.root.findByProps({ testID: "chat-access-unlock" });
   expect(buyChat.props.children).toBe("Unlock unlimited chats — ₹49 once");
   await act(async () => { await buyChat.props.onPress(); });
-  expect(purchaseChatUnlock).toHaveBeenCalledWith("#000", undefined);
+  expect(purchaseChatUnlock).toHaveBeenCalledWith("#000", undefined, undefined, 4900);
   expect(purchaseWebPass).not.toHaveBeenCalled();
+  await act(async () => { tree.unmount(); });
+});
+
+
+test("validated coupon prices reach hosted checkout only after a deliberate purchase", async () => {
+  mockPremium = { active: false, expiresAt: null, webPurchaseAvailable: true };
+  mockOfferCode = "PAIRE250";
+  jest.mocked(purchaseWebPass).mockResolvedValue({ redirecting: true });
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<PremiumScreen />); });
+  await act(async () => { tree.root.findByProps({ testID: "premium-plan-day" }).props.onPress(); });
+  expect(tree.root.findByProps({ testID: "premium-purchase" }).props.children).toBe("Get 1 day · ₹28");
+  expect(purchaseWebPass).not.toHaveBeenCalled();
+  await act(async () => { await tree.root.findByProps({ testID: "premium-purchase" }).props.onPress(); });
+  expect(purchaseWebPass).toHaveBeenCalledWith("day", "#000", "PAIRE250", 2800);
+  await act(async () => { tree.unmount(); });
+});
+test("a failed promo validation disables purchase instead of silently charging another price", async () => {
+  mockPremium = { active: false, expiresAt: null, webPurchaseAvailable: true };
+  mockOfferError = true;
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => { tree = renderer.create(<PremiumScreen />); });
+  expect(tree.root.findByProps({ testID: "premium-purchase" }).props.disabled).toBe(true);
   await act(async () => { tree.unmount(); });
 });

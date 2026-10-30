@@ -766,3 +766,51 @@ describe("Lifetime Plus", () => {
     expect((await admin.doc(`chatUnlocks/${uid}`).get()).exists).toBe(false);
   });
 });
+
+describe("October offers through KraftAI and Razorpay", () => {
+  beforeEach(async () => {
+    jest.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-30T12:00:00+05:30"));
+    // These in-process payment fixtures deliberately have no real Auth user.
+    const { adminAuth } = await import("../src/admin");
+    jest.spyOn(adminAuth(), "getUser").mockResolvedValue({ metadata: { creationTime: "Fri, 30 Oct 2026 01:00:00 GMT" } } as import("firebase-admin/auth").UserRecord);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  test("every Plus coupon records and charges its exact hosted quote, then grants normally", async () => {
+    for (const [plan, expected] of [["day", 2800], ["week", 8500], ["month", 35910], ["halfyear", 71910], ["lifetime", 134910]] as const) {
+      const uid = await buyer();
+      const order = await call(createPlusOrder, uid, { plan, promoCode: "PAIRE250", expectedAmount: expected });
+      expect(order.amount).toBe(expected);
+      expect(order.hostedUrl).toBe(`https://kraftai.in/?order=${order.orderId}`);
+      expect(fake.orders.get(order.orderId)?.notes).toMatchObject({ product: "kraftai_plus", plan, promo: "PAIRE250", pricing: "coupon", campaign: "october-2026" });
+      expect((await admin.doc(`razorpayOrders/${order.orderId}`).get()).get("amountPaise")).toBe(expected);
+      const paid = pay(order.orderId);
+      const result = await call(confirmPlusPayment, uid, { orderId: order.orderId, paymentId: paid.id, signature: checkoutSignature(order.orderId, paid.id) });
+      expect(result.active).toBe(true);
+      if (plan === "lifetime") expect(result.lifetime).toBe(true);
+      else expect(result.expiresAt).toBeGreaterThan(Date.now());
+    }
+  });
+  test("discounted Unlimited Chat grants once and duplicate capture refunds the actual discounted amount", async () => {
+    const uid = await buyer();
+    const created = await call(chat.createChatUnlockOrder, uid, { promoCode: "WELCOME250", expectedAmount: 4410 });
+    if (created.status !== "checkout") throw new Error("expected hosted checkout");
+    const order = created.checkout;
+    expect(order.amount).toBe(4410);
+    expect(order.description).toContain("₹44.1");
+    expect(fake.orders.get(order.orderId)?.notes).toMatchObject({ product: "kraftai_unlimited_chat", pricing: "coupon" });
+    const paid = pay(order.orderId);
+    const confirmed = await call(chat.confirmChatUnlock, uid, { orderId: order.orderId, paymentId: paid.id, signature: checkoutSignature(order.orderId, paid.id) });
+    expect(confirmed.status).toBe("owned");
+    const second = pay(order.orderId);
+    expect(await webhook("payment.captured", paymentEvent(second))).toBe(200);
+    expect(fake.refunds).toContainEqual({ paymentId: second.id, amount: 4410 });
+    expect((await unlockOf(uid))?.status).toBe("active");
+  });
+  test("an old full-price chat order cannot silently replace an applied coupon quote", async () => {
+    const uid = await buyer();
+    await checkout(uid);
+    await expect(call(chat.createChatUnlockOrder, uid, { promoCode: "PAIRE250", expectedAmount: 4410 })).rejects.toThrow("different price");
+    expect((await admin.doc(`launchOfferClaims/${uid}`).get()).exists).toBe(false);
+  });
+});

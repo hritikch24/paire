@@ -118,3 +118,7 @@ Current web quotes: ₹399/month (60 days with the bonus), ₹20/day, ₹1,499 l
 ## Daily-price correction (2026-10-24)
 
 The owner subsequently set the new 24-hour web pass to **₹35 (3500 paise)**. Other plan prices and durations are unchanged. KraftAI continues to validate exact historical ₹20/₹29 day quotes and ₹299 monthly quotes, so previously issued checkouts and purchased time retain their original terms. Deploy the matching checkout before the three order-creation functions and browser UI.
+
+## October 30–31 offer (prepared locally, not deployed)
+
+See `docs/october-launch-offer.md` for exact scheduled, launch and coupon amounts; the three codes share one first-250-account pool. KraftAI must deploy the matching `launch-offer.ts`, strict campaign order validation and `/products/paire` page before Paire quotes a coupon or scheduled regular price. CCAvenue, UPI and gift prices are unchanged. Historical quotes and purchases remain intact.

@@ -68,9 +68,10 @@ export const core = [
 <tr><td>Priority likes (shown first in "Likes you")</td><td>No</td><td>Yes</td></tr>
 <tr><td>Age-gap filter</td><td>No</td><td>Yes</td></tr>
 </tbody></table>
+<div data-launch-offer></div><!-- launch-offer-end -->
 <h2>Paire Plus passes</h2>
 <ul>
-<li><strong>Monthly offer: ₹399 for 60 days</strong>: buy 1 month, get 1 month free. ₹6.65 a day, about 81% less per day than buying day passes.</li>
+<li><strong>Monthly offer: ₹399 for 60 days</strong>: buy 1 month, get 1 month free. ₹6.65 a day during the launch offer.</li>
 <li><strong>₹35 for 24 hours</strong>: try Plus for a day, for example on a weekend.</li>
 <li><strong>Lifetime Plus: ₹1,499 once</strong>: unlimited regular likes and all Plus benefits, with no expiry while the service operates on your account.</li>
 </ul>

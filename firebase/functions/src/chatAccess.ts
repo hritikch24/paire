@@ -1,3 +1,5 @@
+import { currentPrice, formatInr } from "./lib/launch-offer";
+import { promoCheckout } from "./launchOffer";
 import { createHash } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
@@ -86,7 +88,7 @@ export type UnlockOffer = {
 };
 
 async function unlockOffer(uid: string, access: ChatAccessMirror | null): Promise<UnlockOffer> {
-  const priceInr = CHAT_UNLOCK.amountPaise / 100;
+  const priceInr = currentPrice("chat") / 100;
   const methods: UnlockOffer["methods"] = [
     ...((await salesOpen()) ? ["razorpay" as const] : []),
     ...((await upiSalesOpen()) ? ["upi" as const] : []),
@@ -168,7 +170,7 @@ async function refundPayment(orderId: string, paymentId: string, reason: string)
   try {
     const refund = await razorpay<RefundResult>(`/payments/${paymentId}/refund`, {
       method: "POST",
-      body: { amount: CHAT_UNLOCK.amountPaise, speed: "normal", notes: { reason, product: CHECKOUT_PRODUCTS.chat } }
+      body: { amount: Number((await ref.get()).get("amountPaise")), speed: "normal", notes: { reason, product: CHECKOUT_PRODUCTS.chat } }
     });
     await ref.update(extra
       ? { extraRefunds: FieldValue.arrayUnion({ paymentId, refundId: refund.id ?? null, at: Date.now() }) }
@@ -306,12 +308,12 @@ type RazorpayOrder = { id?: string; status?: string; amount?: number; currency?:
 type CheckoutPayload = { orderId: string; amount: number; currency: string; keyId: string | undefined; name: string; description: string; email: string | null; hostedUrl: string | null };
 type CreateResult = { status: "checkout"; checkout: CheckoutPayload } | { status: "owned" } | { status: "pending" };
 
-const checkoutPayload = (orderId: string, email: string | null): CheckoutPayload => ({
+const checkoutPayload = (orderId: string, email: string | null, amount: number = currentPrice("chat")): CheckoutPayload => ({
   orderId,
-  amount: CHAT_UNLOCK.amountPaise,
+  amount,
   currency: CHAT_UNLOCK.currency,
   keyId: process.env.RAZORPAY_KEY_ID,
-  description: CHAT_UNLOCK.razorpayLabel,
+  description: CHAT_UNLOCK.razorpayLabel.replace(/₹49/g, formatInr(amount)),
   email,
   // name, and hostedUrl when Checkout opens on kraftai.in (lib/kraftai.ts).
   ...checkoutHost(orderId)
@@ -378,54 +380,60 @@ export const createChatUnlockOrder = onCall({ region: REGION, secrets: SECRETS, 
   const previous = await reconcileCheckout(uid);
   if (previous.state === "owned" || previous.state === "pending") return { status: previous.state };
   if (previous.state === "reusable" && sellingMode() === razorpayMode(process.env.RAZORPAY_KEY_ID)) {
-    return { status: "checkout", checkout: checkoutPayload(previous.orderId!, email) };
+    const prior = await db.doc(`chatUnlockOrders/${previous.orderId}`).get();
+    const expected = (request.data as { expectedAmount?: unknown } | null)?.expectedAmount;
+    if (expected !== undefined && expected !== prior.get("amountPaise")) throw new HttpsError("failed-precondition", "Your earlier checkout has a different price. Finish or cancel that payment before applying a new offer.");
+    return { status: "checkout", checkout: checkoutPayload(previous.orderId!, email, Number(prior.get("amountPaise"))) };
   }
 
-  // One checkout at a time: a second tab waits instead of creating a second order, and an
-  // order another tab opened since we looked is reused on the next try, not replaced.
-  await db.runTransaction(async (tx) => {
-    const checkout = await tx.get(checkoutRef);
-    const state = checkout.get("state");
-    if ((state === "creating" && Date.now() - (Number(checkout.get("updatedAt")) || 0) < CHAT_UNLOCK.creatingLockMs) ||
-      ((state === "open" || state === "pending") && (checkout.get("orderId") ?? null) !== seenOrder)) {
-      throw new HttpsError("aborted", "Checkout is already opening in another window. Try again in a moment.");
-    }
-    tx.set(checkoutRef, { state: "creating", updatedAt: Date.now() });
-  });
-
-  let order: RazorpayOrder;
-  try {
-    order = await razorpay<RazorpayOrder>("/orders", {
-      method: "POST",
-      body: {
-        amount: CHAT_UNLOCK.amountPaise,
-        currency: CHAT_UNLOCK.currency,
-        receipt: unlockReceipt(hash(uid), Date.now()),
-        notes: { product: CHECKOUT_PRODUCTS.chat }
+  return promoCheckout(uid, "chat", (request.data as { promoCode?: unknown } | null)?.promoCode, async (amountPaise, promoNotes) => {
+    // One checkout at a time: a second tab waits instead of creating a second order, and an
+    // order another tab opened since we looked is reused on the next try, not replaced.
+    await db.runTransaction(async (tx) => {
+      const checkout = await tx.get(checkoutRef);
+      const state = checkout.get("state");
+      if ((state === "creating" && Date.now() - (Number(checkout.get("updatedAt")) || 0) < CHAT_UNLOCK.creatingLockMs) ||
+        ((state === "open" || state === "pending") && (checkout.get("orderId") ?? null) !== seenOrder)) {
+        throw new HttpsError("aborted", "Checkout is already opening in another window. Try again in a moment.");
       }
+      tx.set(checkoutRef, { state: "creating", updatedAt: Date.now() });
     });
-    if (!isRazorpayId(order.id, "order") || order.amount !== CHAT_UNLOCK.amountPaise || order.currency !== CHAT_UNLOCK.currency) {
-      throw new HttpsError("unavailable", "The payment service returned an unexpected order. Please try again.");
+
+    let order: RazorpayOrder;
+    try {
+      order = await razorpay<RazorpayOrder>("/orders", {
+        method: "POST",
+        body: {
+          amount: amountPaise,
+          currency: CHAT_UNLOCK.currency,
+          receipt: unlockReceipt(hash(uid), Date.now()),
+          notes: { product: CHECKOUT_PRODUCTS.chat, ...promoNotes }
+        }
+      });
+      if (!isRazorpayId(order.id, "order") || order.amount !== amountPaise || order.currency !== CHAT_UNLOCK.currency) {
+        throw new HttpsError("unavailable", "The payment service returned an unexpected order. Please try again.");
+      }
+    } catch (error) {
+      await checkoutRef.delete();
+      throw error;
     }
-  } catch (error) {
-    await checkoutRef.delete();
-    throw error;
-  }
-  const now = Date.now();
-  const batch = db.batch();
-  batch.set(db.doc(`chatUnlockOrders/${order.id}`), {
-    uid,
-    product: CHAT_UNLOCK.product,
-    amountPaise: CHAT_UNLOCK.amountPaise,
-    currency: CHAT_UNLOCK.currency,
-    mode,
-    status: "created",
-    createdAt: now,
-    updatedAt: FieldValue.serverTimestamp()
-  });
-  batch.set(checkoutRef, { state: "open", orderId: order.id, updatedAt: now });
-  await batch.commit();
-  return { status: "checkout", checkout: checkoutPayload(order.id, email) };
+    const now = Date.now();
+    const batch = db.batch();
+    batch.set(db.doc(`chatUnlockOrders/${order.id}`), {
+      uid,
+      product: CHAT_UNLOCK.product,
+      amountPaise,
+      ...promoNotes,
+      currency: CHAT_UNLOCK.currency,
+      mode,
+      status: "created",
+      createdAt: now,
+      updatedAt: FieldValue.serverTimestamp()
+    });
+    batch.set(checkoutRef, { state: "open", orderId: order.id, updatedAt: now });
+    await batch.commit();
+    return { status: "checkout", checkout: checkoutPayload(order.id, email, amountPaise) };
+  }, (request.data as { expectedAmount?: unknown } | null)?.expectedAmount);
 });
 
 export type ConfirmResult = { status: "owned" | "pending"; access: ChatAccessStatus };

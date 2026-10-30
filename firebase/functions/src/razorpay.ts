@@ -2,6 +2,8 @@ import { DocumentReference, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { db } from "./admin";
+import { promoCheckout } from "./launchOffer";
+import { normalizePromo } from "./lib/launch-offer";
 import { handleChatUnlockWebhook } from "./chatAccess";
 import { razorpayConfigured, razorpayPlusOpen, storeExpiryIfEnabled, syncPremium, webPassBenefits, webPassExpiry } from "./billing";
 import { REGION } from "./config";
@@ -134,54 +136,66 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
   if (!(await verifiedUsers([uid])).has(uid)) {
     throw new HttpsError("failed-precondition", "Verify your photos before buying a pass, so you can use it straight away.");
   }
-  const pass = PLUS_PASSES[plan];
-  const checkoutRef = db.doc(`lifetimePlusCheckout/${uid}`);
-  const previousId = plan === "lifetime" ? await db.runTransaction(async tx => {
-    const previous = await tx.get(checkoutRef), age = Date.now() - Number(previous.get("updatedAt") || 0);
-    if (previous.get("state") === "creating" && age < 60_000) throw new HttpsError("aborted", "Checkout is already opening. Try again in a moment.");
-    if (previous.get("state") === "open" && age < 6 * 3600_000 && isRazorpayId(previous.get("orderId"), "order")) return previous.get("orderId") as string;
-    tx.set(checkoutRef, { state: "creating", updatedAt: Date.now() }); return null;
-  }) : null;
-  if (previousId) {
-    const prior = await db.doc(`razorpayOrders/${previousId}`).get();
-    if (prior.get("uid") === uid && prior.get("plan") === "lifetime" && prior.get("status") === "created" && prior.get("amountPaise") === pass.amountPaise) return { orderId: previousId, amount: pass.amountPaise, currency: "INR", keyId: process.env.RAZORPAY_KEY_ID, description: pass.razorpayLabel, email: request.auth?.token.email ?? null, ...checkoutHost(previousId) };
-    await checkoutRef.set({ state: "closed", updatedAt: Date.now() });
-    throw new HttpsError("aborted", "Your earlier checkout changed. Refresh your pass status and try again.");
+  if (plan === "lifetime" && normalizePromo((request.data as { promoCode?: unknown } | null)?.promoCode)) {
+    const previous = await db.doc(`lifetimePlusCheckout/${uid}`).get();
+    const age = Date.now() - Number(previous.get("updatedAt") || 0);
+    if (previous.get("state") === "open" && age < 6 * 3600_000) {
+      const order = await db.doc(`razorpayOrders/${previous.get("orderId")}`).get();
+      if (!order.get("promo")) throw new HttpsError("failed-precondition", "Finish your earlier Lifetime checkout before using a promo code.");
+    }
   }
-  let order: { id: string; amount: number; currency: string };
-  try { order = await razorpay<{ id: string; amount: number; currency: string }>("/orders", {
-    method: "POST",
-    body: {
+  return promoCheckout(uid, plan, (request.data as { promoCode?: unknown } | null)?.promoCode, async (amountPaise, promoNotes) => {
+    const pass = { ...PLUS_PASSES[plan], amountPaise };
+    const checkoutRef = db.doc(`lifetimePlusCheckout/${uid}`);
+    const previousId = plan === "lifetime" ? await db.runTransaction(async tx => {
+      const previous = await tx.get(checkoutRef), age = Date.now() - Number(previous.get("updatedAt") || 0);
+      if (previous.get("state") === "creating" && age < 60_000) throw new HttpsError("aborted", "Checkout is already opening. Try again in a moment.");
+      if (previous.get("state") === "open" && age < 6 * 3600_000 && isRazorpayId(previous.get("orderId"), "order")) return previous.get("orderId") as string;
+      tx.set(checkoutRef, { state: "creating", updatedAt: Date.now() }); return null;
+    }) : null;
+    if (previousId) {
+      if (promoNotes.promo) throw new HttpsError("failed-precondition", "Finish your earlier Lifetime checkout before using a promo code.");
+      const prior = await db.doc(`razorpayOrders/${previousId}`).get();
+      if (prior.get("uid") === uid && prior.get("plan") === "lifetime" && prior.get("status") === "created" && prior.get("amountPaise") === pass.amountPaise) return { orderId: previousId, amount: pass.amountPaise, currency: "INR", keyId: process.env.RAZORPAY_KEY_ID, description: pass.razorpayLabel, email: request.auth?.token.email ?? null, ...checkoutHost(previousId) };
+      await checkoutRef.set({ state: "closed", updatedAt: Date.now() });
+      throw new HttpsError("aborted", "Your earlier checkout changed. Refresh your pass status and try again.");
+    }
+    let order: { id: string; amount: number; currency: string };
+    try { order = await razorpay<{ id: string; amount: number; currency: string }>("/orders", {
+      method: "POST",
+      body: {
+        amount: pass.amountPaise,
+        currency: "INR",
+        receipt: `plus_${plan}_${Date.now()}`,
+        notes: { plan, product: CHECKOUT_PRODUCTS.plus, ...promoNotes }
+      }
+    });
+    } catch (error) { if (plan === "lifetime") await checkoutRef.set({ state: "failed", updatedAt: Date.now() }); throw error; }
+    if (!isRazorpayId(order.id, "order") || order.amount !== pass.amountPaise || order.currency !== "INR") {
+      throw new HttpsError("unavailable", "The payment service returned an unexpected order. Please try again.");
+    }
+    await db.doc(`razorpayOrders/${order.id}`).set({
+      uid,
+      plan,
+      amountPaise: pass.amountPaise,
+      ...promoNotes,
+      currency: "INR",
+      status: "created",
+      mode: razorpayMode(process.env.RAZORPAY_KEY_ID),
+      createdAt: FieldValue.serverTimestamp()
+    });
+    if (plan === "lifetime") await checkoutRef.set({ state: "open", orderId: order.id, updatedAt: Date.now() });
+    return {
+      orderId: order.id,
       amount: pass.amountPaise,
       currency: "INR",
-      receipt: `plus_${plan}_${Date.now()}`,
-      notes: { plan, product: CHECKOUT_PRODUCTS.plus }
-    }
-  });
-  } catch (error) { if (plan === "lifetime") await checkoutRef.set({ state: "failed", updatedAt: Date.now() }); throw error; }
-  if (!isRazorpayId(order.id, "order") || order.amount !== pass.amountPaise || order.currency !== "INR") {
-    throw new HttpsError("unavailable", "The payment service returned an unexpected order. Please try again.");
-  }
-  await db.doc(`razorpayOrders/${order.id}`).set({
-    uid,
-    plan,
-    amountPaise: pass.amountPaise,
-    currency: "INR",
-    status: "created",
-    mode: razorpayMode(process.env.RAZORPAY_KEY_ID),
-    createdAt: FieldValue.serverTimestamp()
-  });
-  if (plan === "lifetime") await checkoutRef.set({ state: "open", orderId: order.id, updatedAt: Date.now() });
-  return {
-    orderId: order.id,
-    amount: pass.amountPaise,
-    currency: "INR",
-    keyId: process.env.RAZORPAY_KEY_ID,
-    description: pass.razorpayLabel,
-    email: (request.auth?.token.email as string | undefined) ?? null,
-    // name, and hostedUrl when Checkout opens on kraftai.in (lib/kraftai.ts).
-    ...checkoutHost(order.id)
-  };
+      keyId: process.env.RAZORPAY_KEY_ID,
+      description: pass.razorpayLabel,
+      email: (request.auth?.token.email as string | undefined) ?? null,
+      // name, and hostedUrl when Checkout opens on kraftai.in (lib/kraftai.ts).
+      ...checkoutHost(order.id)
+    };
+  }, (request.data as { expectedAmount?: unknown } | null)?.expectedAmount);
 });
 
 export const confirmPlusPayment = onCall({ region: REGION, secrets: SECRETS, timeoutSeconds: 30 }, async (request) => {

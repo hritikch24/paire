@@ -1,3 +1,6 @@
+import { useLaunchOffer } from "../hooks/useLaunchOffer";
+import { LaunchOfferCode } from "./LaunchOfferCode";
+import { currentPrice, formatInr, OFFER_PRICES } from "../config/launch-offer";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Text, XStack, YStack } from "tamagui";
@@ -39,22 +42,25 @@ type Props = {
  */
 export function ChatAccessCard({ variant = "composer", access, matchId, onGetPlus, onVerify }: Props) {
   const queryClient = useQueryClient();
+  const launch = useLaunchOffer();
+  const promoCode = launch.quote.data?.code ?? undefined;
   const uid = useAuthStore((state) => state.user?.uid);
   const { gradient } = useThemeColors();
   const [phase, setPhase] = useState<Phase>(access?.unlock.status === "pending" ? "pending" : "idle");
   const [error, setError] = useState<string | null>(null);
   const unlock = access?.unlock;
-  const price = `₹${unlock?.priceInr ?? 49}`;
+  const amount = webCheckout ? launch.quote.data?.plans.chat.amount ?? currentPrice("chat") : (unlock?.priceInr ?? 49) * 100;
+  const price = formatInr(amount);
   const [upiOrder, setUpiOrder] = useState<UpiOrder | null>(null);
   const pending = phase === "pending" || unlock?.status === "pending";
   const upiPending = (unlock?.upiPending === true || upiOrder?.status === "submitted") && !access?.unlimited;
   // UPI to Paire's own account when it's on; otherwise Razorpay Checkout on the web. CCAvenue
   // (cards, UPI, netbanking) is its own choice when it's on, or the only one.
-  const byUpi = unlock?.methods?.includes("upi") === true;
+  const byUpi = unlock?.methods?.includes("upi") === true && !promoCode;
   const byRazorpay = webCheckout && (unlock?.methods ? unlock.methods.includes("razorpay") : true);
-  const byCcavenue = ccavenueCheckout && unlock?.methods?.includes("ccavenue") === true;
+  const byCcavenue = ccavenueCheckout && unlock?.methods?.includes("ccavenue") === true && !promoCode;
   const available = unlock?.status === "available";
-  const canBuy = available && (byUpi || byRazorpay || byCcavenue);
+  const canBuy = available && (byUpi || byRazorpay || byCcavenue) && (!webCheckout || (!launch.quote.isError && !launch.quote.isFetching));
   const ccavenueOnly = byCcavenue && !byUpi && !byRazorpay;
 
   const payByCcavenue = async () => {
@@ -100,7 +106,7 @@ export function ChatAccessCard({ variant = "composer", access, matchId, onGetPlu
     setPhase("loading");
     setError(null);
     try {
-      const status = await purchaseChatUnlock(gradient[1] ?? "#B83A5E", matchId);
+      const status = await purchaseChatUnlock(gradient[1] ?? "#B83A5E", matchId, promoCode, amount);
       if (status === "redirecting") return; // The page is leaving for checkout on kraftai.in.
       const next = await settle(false).catch(() => null);
       if (status === "owned" || next?.unlimited) {
@@ -147,6 +153,8 @@ export function ChatAccessCard({ variant = "composer", access, matchId, onGetPlu
         {variant === "offer" ? "Messaging only, with no expiry. Covers all current and future mutual matches. Your discovery allowance stays the same; liker reveals and other Plus features are not included." : "Reading and receiving messages is always free. To send, choose one. Your message stays here either way."}
       </Text>
 
+      {webCheckout && available ? <LaunchOfferCode offer={launch} available={byRazorpay} /> : null}
+      {webCheckout && launch.quote.data?.active ? <Text fontSize="$1" color="$textMuted">{`${formatInr(OFFER_PRICES.chat.regular)} from 1 November · ${price} today`}</Text> : null}
       {upiPending ? (
         <YStack gap="$2" testID="chat-access-upi-pending">
           <Text fontSize="$2" lineHeight={20}>
@@ -174,7 +182,7 @@ export function ChatAccessCard({ variant = "composer", access, matchId, onGetPlu
               </SecondaryButton>
               {byCcavenue && !ccavenueOnly ? (
                 <SecondaryButton testID="chat-access-ccavenue" disabled={phase === "loading"} onPress={() => void payByCcavenue()}>
-                  Pay by card, netbanking or wallet
+                  Pay ₹49 by card, netbanking or wallet
                 </SecondaryButton>
               ) : null}
               <Text fontSize="$1" color="$textMuted" lineHeight={18}>

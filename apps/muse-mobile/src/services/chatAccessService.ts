@@ -48,8 +48,8 @@ type ConfirmResult = { status: "owned" | "pending"; access: ChatAccess };
  * the window is closed. With Checkout on kraftai.in, resolves "redirecting"
  * as the page leaves.
  */
-export async function purchaseChatUnlock(theme: string, returnToChat?: string): Promise<"owned" | "pending" | "redirecting"> {
-  const created = await callFunction<CreateResult>("createChatUnlockOrder");
+export async function purchaseChatUnlock(theme: string, returnToChat?: string, promoCode?: string, expectedAmount?: number): Promise<"owned" | "pending" | "redirecting"> {
+  const created = await callFunction<CreateResult>("createChatUnlockOrder", { ...(promoCode ? { promoCode } : {}), ...(expectedAmount !== undefined ? { expectedAmount } : {}) });
   if (created.status !== "checkout") return created.status;
   // Checkout on kraftai.in: the page leaves, and comes back to this chat.
   if (created.checkout.hostedUrl || Platform.OS === "web") {

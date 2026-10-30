@@ -9,6 +9,7 @@
  * EXPO_PUBLIC_FIREBASE_* / EXPO_PUBLIC_FUNCTIONS_REGION in the hosting
  * environment to point it elsewhere. Emulators and test hooks are always off.
  */
+import { offerModule, renderLaunchOffer } from "./launch-offer.mjs";
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -79,6 +80,7 @@ writeFileSync(
 );
 
 cpSync(resolve(web, "site"), output, { recursive: true });
+writeFileSync(resolve(output, "launch-offer-contract.js"), offerModule);
 
 // Meta Pixel for ads (PAIRE_META_PIXEL_ID in Vercel): PageView everywhere, Lead when someone opens the app,
 // and the app itself reports CompleteRegistration and Purchase (src/services/analytics.ts).
@@ -101,7 +103,7 @@ for (const page of ["index.html", "diwali-together/index.html", "garba-nights/in
   const file = resolve(output, page);
   writeFileSync(
     file,
-    closeDiwali(expireCampaigns(readFileSync(file, "utf8")))
+    renderLaunchOffer(closeDiwali(expireCampaigns(readFileSync(file, "utf8"))))
       .split("%SITE_URL%").join(origin)
       .replace('content="/og-image.png"', `content="${origin}/og-image.png"`)
       .replace(/<footer class="wrap">[\s\S]*?<\/footer>/, FOOTER)
@@ -120,7 +122,7 @@ const linkable = [
 ];
 for (const page of contentPages) {
   mkdirSync(resolve(output, page.path), { recursive: true });
-  writeFileSync(resolve(output, page.path, "index.html"), renderPage(page, { origin, pages: linkable, extraHead: `${pixel}${visitBeacon}` }));
+  writeFileSync(resolve(output, page.path, "index.html"), renderLaunchOffer(renderPage(page, { origin, pages: linkable, extraHead: `${pixel}${visitBeacon}<script type="module" src="/launch-offer.js"></script>` })));
 }
 
 // IndexNow (Bing, Yandex, Seznam…; ChatGPT search reads Bing's index): the key file is

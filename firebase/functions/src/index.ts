@@ -31,6 +31,7 @@ export {
 } from "./duos";
 
 export { getPremiumStatus, revenueCatWebhook } from "./billing";
+export { getLaunchOffer } from "./launchOffer";
 export { confirmPlusPayment, createPlusOrder, razorpayWebhook } from "./razorpay";
 export { createChatUnlockOrder, confirmChatUnlock, getChatAccess } from "./chatAccess";
 export { ccavenueResponse, confirmCcavenueOrder, createCcavenueOrder } from "./ccavenue";
