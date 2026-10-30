@@ -1,6 +1,6 @@
 # October 30–31 web offer
 
-Deployment authorized by the owner on 30 October 2026. KraftAI release `a6e16ab` is live; Pairé Firebase release `0d5562a` deployed successfully (six payment/quote functions and Firestore rules). Pairé website/browser deployment is in progress. KraftAI release is based on production `main` and preserves the newer Asterion site.
+Deployment authorized by the owner on 30 October 2026. KraftAI release `a6e16ab` is live; Pairé Firebase release `0d5562a` deployed successfully (six payment/quote functions and Firestore rules). Pairé website/browser production deployment `paire-fszp2f4x9` (`dpl_3JZibiHa18uvUZg8KBcZNnseVjTR`, commit `810559c`) is Ready and includes the offer release. KraftAI release is based on production `main` and preserves the newer Asterion site.
 
 The promotion uses the existing Paire → KraftAI → Razorpay flow. No runtime sales switches or native/store products change. CCAvenue, direct UPI and gifts retain their existing catalog and checkout. Their buttons quote their own amounts; promo redemption uses Razorpay.
 
@@ -39,3 +39,11 @@ Validation completed locally:
 - `./scripts/verify.sh` completed its app/site/functions checks but its standard emulator ports were occupied by an unrelated running workspace. Rules and integration checks ran separately on isolated ports 24400/25001/28080/29099/29199, without disturbing that workspace. No live account login, payment, deployment, push, email or runtime-switch change occurred.
 
 Deployment preparation corrected the website contract loader to read the browser copy under `apps/muse-mobile`, because Vercel intentionally excludes `firebase/`. Website checks passed after this packaging correction. Existing sales flag values were compared with production before the Firebase rollout and are unchanged.
+
+Production receipt (30 October 2026):
+
+- KraftAI: `a6e16ab5b2a4bfa8bcec8f93bec4df853eea07b9`, Vercel `Chb7D9fTqX3prwe7kd3AEb7Fq22Z`, GitHub status success; `https://kraftai.in/products/paire` serves the day/week promo examples and all six matching prices. The production release preserves the Asterion work and excludes the unrelated gift branch.
+- Firebase `muse-352ba`: successful creation of `getLaunchOffer`, updates of `createPlusOrder`, `createChatUnlockOrder`, `getChatAccess`, `confirmChatUnlock`, `razorpayWebhook`, and release of Firestore rules. CLI reported `Deploy complete!`. A request without an authenticated user to the new quote callable returns the expected HTTP 401 / `UNAUTHENTICATED`.
+- Pairé: source release `0d5562a745bd6474e2eb3b0f331b00f5dac4d342`; GitHub production head `810559cc5008acd4c27fef3701561110c27b3a78` includes it and is Vercel Ready (`dpl_3JZibiHa18uvUZg8KBcZNnseVjTR`, `paire-fszp2f4x9-team-rockstar.vercel.app`). The initial Git-triggered `d3d5cdd` deployment was marked BLOCKED by Vercel; the later README commits on the remote completed deployment successfully. Those README edits were preserved and pulled by fast-forward.
+- Live contract check matched every regular, offer and promo amount, all three codes, the 250-account cap and exact expiry. Both public pages passed live 390px/1280px checks without document overflow or page errors. The live `/app/` browser bundle contains `getLaunchOffer` and `PAIRE250`. Screenshots are `/tmp/paire-october-live-390.png`, `/tmp/paire-october-live-1280.png`, `/tmp/kraftai-october-live-390.png`, `/tmp/kraftai-october-live-1280.png` and `/tmp/paire-october-live-welcome.png`.
+- IndexNow returned HTTP 200 for 54 URLs. No customer login, purchase, order creation or sales-switch change was used for deployment verification.
