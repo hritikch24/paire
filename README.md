@@ -3,7 +3,7 @@
 "Find your Paire." Live at paire.in. Formerly Chitthi, and before that the working name Muse; internal IDs (`com.muse.app`, Firebase `muse-352ba`, folder names) are unchanged.
 
 Paire is a dating app for adult men and women (18+), built for India: women set the rules, men get a fair chance. It is open to members across India. Members sign up in two quick steps and pick interests (music, film, craft…). Profile-based vibe ranking sorts people whose preferences match their own and explains shared choices. They can explore photo cards or Vibe-first cards, see who liked them for free, and chat after a mutual like, with optional AI icebreakers.
-
+  
 Also in the app:
 - **Sparks:** add a note to any like. Notes lead "Likes you" and open the chat if you match.
 - **Garba Nights** (Navratri): pick your Garba nights and meet people dancing on the same nights. Free for everyone.
