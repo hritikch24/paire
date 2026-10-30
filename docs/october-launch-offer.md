@@ -1,6 +1,6 @@
 # October 30–31 web offer
 
-Deployment authorized by the owner on 30 October 2026. Release in progress. KraftAI release is based on production `main` and preserves the newer Asterion site.
+Deployment authorized by the owner on 30 October 2026. KraftAI release `a6e16ab` is live; Pairé Firebase release `0d5562a` deployed successfully (six payment/quote functions and Firestore rules). Pairé website/browser deployment is in progress. KraftAI release is based on production `main` and preserves the newer Asterion site.
 
 The promotion uses the existing Paire → KraftAI → Razorpay flow. No runtime sales switches or native/store products change. CCAvenue, direct UPI and gifts retain their existing catalog and checkout. Their buttons quote their own amounts; promo redemption uses Razorpay.
 
@@ -37,3 +37,5 @@ Validation completed locally:
 - KraftAI checkout validation: 7 passed, including legacy/gift regression coverage, exact coupon notes and rejection of tampered prices. KraftAI production build and the Paire website/browser export passed.
 - Browser checks passed at 390px and 1280px on both public pricing pages, with no page errors or document overflow. An already-open Paire tab switched to regular prices at the deadline. Local screenshots: `/tmp/paire-offer-390.png`, `/tmp/paire-offer-1280.png`, `/tmp/kraftai-paire-offer-390.png`, `/tmp/kraftai-paire-offer-1280.png`.
 - `./scripts/verify.sh` completed its app/site/functions checks but its standard emulator ports were occupied by an unrelated running workspace. Rules and integration checks ran separately on isolated ports 24400/25001/28080/29099/29199, without disturbing that workspace. No live account login, payment, deployment, push, email or runtime-switch change occurred.
+
+Deployment preparation corrected the website contract loader to read the browser copy under `apps/muse-mobile`, because Vercel intentionally excludes `firebase/`. Website checks passed after this packaging correction. Existing sales flag values were compared with production before the Firebase rollout and are unchanged.
