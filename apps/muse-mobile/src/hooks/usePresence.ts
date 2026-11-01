@@ -53,13 +53,14 @@ export function usePresence(uids: string[], intervalMs = 60_000): { enabled: boo
   const uid = useAuthStore((state) => state.user?.uid);
   const focused = useIsFocused();
   const appActive = useAppActive();
+  const pollInterval = Platform.OS === "web" ? Math.max(60_000, intervalMs) : intervalMs;
   const key = useMemo(() => [...new Set(uids.filter(Boolean))].sort().slice(0, 50), [uids]);
   const query = useQuery({
     queryKey: Platform.OS === "web" ? ["presence", uid, key.join(",")] : ["presence", key.join(",")],
     queryFn: () => fetchPresence(key),
     enabled: key.length > 0 && focused && appActive,
-    refetchInterval: intervalMs,
-    staleTime: intervalMs / 2,
+    refetchInterval: pollInterval,
+    staleTime: pollInterval / 2,
     retry: false
   });
   const data = query.data;
@@ -76,7 +77,7 @@ export function usePresence(uids: string[], intervalMs = 60_000): { enabled: boo
   }, [data, focused, now, offset]);
   // Stale answers (the app was in the background) say nothing rather than something wrong.
   const displayNow = Platform.OS === "web" ? Math.max(now, Date.now()) : now;
-  const fresh = data && appActive && (Platform.OS !== "web" || (!query.isError && focused)) && displayNow - data.receivedAt < Math.max(3 * intervalMs, 3 * 60_000);
+  const fresh = data && appActive && (Platform.OS !== "web" || (!query.isError && focused)) && displayNow - data.receivedAt < Math.max(3 * pollInterval, 3 * 60_000);
   return {
     enabled: data?.enabled === true,
     statusOf: (uid: string) => (fresh && data?.enabled ? presenceStatus(data.members[uid], offset, displayNow) : null)

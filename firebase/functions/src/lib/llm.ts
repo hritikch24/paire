@@ -5,7 +5,10 @@ import { logger } from "firebase-functions";
  * opinions). Without a provider every feature uses the free built-in generators
  * (lib/suggestions.ts), which also remain the fallback on any AI failure.
  *
- * Providers, in order:
+ * Paid providers are disabled unless MUSE_PAID_AI_ENABLED is exactly "true".
+ * Existing keys and the legacy Gemini flag cannot enable spending on their own.
+ * This also pauses new Gemini selfie checks; it never grants verification.
+ * Providers, in order, after that explicit opt-in:
  *  1. Claude, when the ANTHROPIC_API_KEY secret holds a real key.
  *  2. Gemini on Vertex AI, when MUSE_GEMINI_ENABLED=true. It runs as the Cloud
  *     Functions service account inside this Firebase project, so no API key is
@@ -24,9 +27,12 @@ const TIMEOUT_MS = 15_000;
 export type AiProvider = "claude" | "gemini";
 
 const claudeKey = () => {
+  if (!paidAiEnabled()) return null;
   const key = process.env.ANTHROPIC_API_KEY;
   return key && key !== "disabled" ? key : null;
 };
+
+export const paidAiEnabled = () => process.env.MUSE_PAID_AI_ENABLED === "true";
 
 /** Which AI writes, or null for the built-in generators only. */
 export function aiProvider(): AiProvider | null {
@@ -61,7 +67,7 @@ export function parseJsonReply(text: string): unknown | null {
  * `options.model` names a Claude model; Gemini uses `options.geminiModel` or MUSE_GEMINI_MODEL.
  */
 /** Gemini is set up (deployed functions only: it uses the server's own Google identity). */
-export const geminiEnabled = () => process.env.MUSE_GEMINI_ENABLED === "true" && process.env.FUNCTIONS_EMULATOR !== "true";
+export const geminiEnabled = () => paidAiEnabled() && process.env.MUSE_GEMINI_ENABLED === "true" && process.env.FUNCTIONS_EMULATOR !== "true";
 
 export async function askAiForJson(system: string, prompt: string, maxTokens = 600, options: AskOptions = {}): Promise<unknown | null> {
   const provider = options.provider === "gemini" ? (geminiEnabled() ? "gemini" : null) : options.provider === "claude" ? (claudeKey() ? "claude" : null) : aiProvider();

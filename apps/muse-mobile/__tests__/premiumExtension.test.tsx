@@ -33,6 +33,7 @@ jest.mock("../src/components/Toast", () => ({ showToast: jest.fn() }));
 jest.mock("../src/theme/useThemeColors", () => ({ useThemeColors: () => ({ gradient: ["#fff", "#000"] }) }));
 jest.mock("../src/store/authStore", () => ({ useAuthStore: (select: (state: unknown) => unknown) => select({ user: { uid: "fixture-member" } }) }));
 jest.mock("../src/hooks/useChatAccess", () => ({ useChatAccess: () => ({ data: mockChat }) }));
+jest.mock("../src/hooks/useWebScreenActive", () => ({ useWebScreenActive: () => true }));
 jest.mock("../src/services/billingService", () => ({ webCheckout: true, nativeBillingAvailable: false, purchaseWebPass: jest.fn(), fetchPremiumStatus: jest.fn() }));
 jest.mock("../src/services/chatAccessService", () => ({ fetchOpenUpiOrder: jest.fn(), startUpiUnlock: jest.fn(), purchaseChatUnlock: jest.fn(), fetchChatAccess: jest.fn() }));
 jest.mock("../src/services/ccavenueService", () => ({ ccavenueCheckout: true }));

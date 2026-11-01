@@ -647,8 +647,20 @@ describe("member admin", () => {
     await admin.doc(`users/${man}`).set({ gender: "man", createdAt: Date.now() }, { merge: true });
     await expect(call(memberAdmin.adminListMembers, woman, { gender: "woman" })).rejects.toThrow(/Moderator access/);
     await expect(call(memberAdmin.adminGetMember, woman, { uid: man })).rejects.toThrow(/Moderator access/);
-    const women = await asModerator(memberAdmin.adminListMembers, { gender: "woman" });
-    const men = await asModerator(memberAdmin.adminListMembers, { gender: "man" });
+    // Other suites share the emulator and can have newer accounts than this
+    // suite's frozen October clock. Find fixtures through the real pagination.
+    const list = async (gender: "woman" | "man") => {
+      const members: Array<{ uid: string }> = [];
+      let cursor: string | null = null;
+      do {
+        const page: { members: Array<{ uid: string }>; nextCursor: string | null } = await asModerator(memberAdmin.adminListMembers, { gender, cursor });
+        members.push(...page.members);
+        cursor = page.nextCursor;
+      } while (cursor);
+      return { members };
+    };
+    const women = await list("woman");
+    const men = await list("man");
     expect(women.members.map((member) => member.uid)).toContain(woman);
     expect(women.members.map((member) => member.uid)).not.toContain(man);
     expect(men.members.map((member) => member.uid)).toContain(man);

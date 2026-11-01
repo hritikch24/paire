@@ -11,15 +11,18 @@ import { Icon } from "./Icon";
 import { PrimaryButton, SecondaryButton } from "./MuseButton";
 import { Screen } from "./Screen";
 import { LoadingView } from "./States";
+import { Platform } from "react-native";
+import { useWebScreenActive } from "../hooks/useWebScreenActive";
 
 /** An understandable entry point; Cloud Functions and rules enforce the same policy. */
 export function VerificationGate({ children }: { children: ReactNode }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const uid = useAuthStore((state) => state.user?.uid);
   const photos = useAuthStore((state) => JSON.stringify(state.profile?.photoUrls ?? []));
-  const status = useQuery({ queryKey: ["verification", uid, photos], queryFn: fetchVerificationStatus, enabled: Boolean(uid), staleTime: 0, retry: 1, refetchInterval: 60_000 });
+  const active = useWebScreenActive();
+  const status = useQuery({ queryKey: ["verification", uid, photos], queryFn: fetchVerificationStatus, enabled: Boolean(uid) && active, staleTime: Platform.OS === "web" ? 5 * 60_000 : 0, retry: 1, refetchInterval: query => Platform.OS !== "web" ? 60_000 : query.state.data?.required && query.state.data.captureAvailable && query.state.data.state !== "verified" ? 5 * 60_000 : false });
   const refetch = status.refetch;
-  useFocusEffect(useCallback(() => { if (uid) void refetch(); }, [uid, refetch]));
+  useFocusEffect(useCallback(() => { if (uid && Platform.OS !== "web") void refetch(); }, [uid, refetch]));
   if (status.isPending) return <Screen><LoadingView label="Checking your profile…" /></Screen>;
   if (!status.isError && status.data && (!status.data.required || status.data.state === "verified")) return children;
   return <Screen scroll testID="verification-required"><YStack flex={1} justifyContent="center" gap="$4">

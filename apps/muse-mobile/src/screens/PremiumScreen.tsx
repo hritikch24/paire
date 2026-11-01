@@ -35,6 +35,7 @@ import { UpiPayPanel } from "../components/UpiPayPanel";
 import { fetchOpenUpiOrder, startUpiUnlock, UpiOrder } from "../services/chatAccessService";
 import { ccavenueCheckout, confirmCcavenuePayment, startCcavenuePayment } from "../services/ccavenueService";
 import { useQueryClient } from "@tanstack/react-query";
+import { useWebScreenActive } from "../hooks/useWebScreenActive";
 
 export function PremiumScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -47,11 +48,12 @@ export function PremiumScreen() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const uid = useAuthStore((state) => state.user?.uid);
+  const screenActive = useWebScreenActive();
   const allowance = useQuery({ queryKey: ["daily-allowance", uid], queryFn: fetchDailyAllowance, enabled: Boolean(uid), staleTime: 0, retry: 1 });
   const resetTime = allowance.data ? new Date(allowance.data.resetsAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZoneName: "short" }) : null;
   const plan = (webCheckout ? webPlans : PREMIUM_PLANS).find((item) => item.id === selected)!;
   const lifetimePlan = webCheckout && plan.id === "lifetime";
-  const premium = useQuery({ queryKey: ["premium", uid], queryFn: fetchPremiumStatus, enabled: Boolean(uid), refetchInterval: 300_000, retry: 1 });
+  const premium = useQuery({ queryKey: ["premium", uid], queryFn: fetchPremiumStatus, enabled: Boolean(uid) && screenActive, refetchInterval: 300_000, retry: 1 });
   const refreshAllowance = allowance.refetch;
   useEffect(() => { if (webCheckout && uid && premium.isSuccess) void refreshAllowance(); }, [uid, premium.dataUpdatedAt, premium.isSuccess, refreshAllowance]);
   const products = useQuery({ queryKey: ["pass-products", uid], queryFn: () => fetchPassProducts(uid!), enabled: Boolean(uid && nativeBillingAvailable), retry: 1 });

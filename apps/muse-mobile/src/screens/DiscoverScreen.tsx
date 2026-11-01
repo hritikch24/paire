@@ -1,5 +1,6 @@
 import { MemberOfferBanner } from "../components/MemberOfferBanner";
 import { useLaunchOffer } from "../hooks/useLaunchOffer";
+import { useWebScreenActive } from "../hooks/useWebScreenActive";
 import { DiscoverEmpty } from "../components/DiscoverEmpty";
 import { DiscoverWebStyles } from "../components/DiscoverWebStyles";
 import { DiscoveryActions } from "../components/DiscoveryActions";
@@ -191,7 +192,8 @@ function DiscoveryExperience() {
   const me = useAuthStore((state) => state.profile);
   const settings = useAuthStore((state) => state.settings);
   const uid = useAuthStore((state) => state.user?.uid);
-  const premium = useQuery({ queryKey: ["premium", uid], queryFn: fetchPremiumStatus, enabled: Boolean(uid), refetchInterval: 300_000, retry: 1 });
+  const screenActive = useWebScreenActive();
+  const premium = useQuery({ queryKey: ["premium", uid], queryFn: fetchPremiumStatus, enabled: Boolean(uid) && screenActive, refetchInterval: 300_000, retry: 1 });
   const memberQuote = useLaunchOffer();
   const refreshMemberOffer = memberQuote.quote.refetch;
   const plus = premium.data?.active === true;
