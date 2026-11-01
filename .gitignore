@@ -44,6 +44,7 @@ dist/
 # Web build output and Vercel local state
 apps/web/dist/
 apps/web/.browser-export/
+apps/web/.face-check-cache/
 .vercel/
 
 # Superseded site preview (its own git repo; apps/web is the live site)

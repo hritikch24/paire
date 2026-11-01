@@ -12,6 +12,7 @@ import { ToggleRow } from "../components/SettingsRow";
 import { friendlyError } from "../services/errors";
 import { legal } from "../config/legal";
 import { SelfieCamera } from "../components/SelfieCamera";
+import { DevicePhotoCheck } from "../components/DevicePhotoCheck";
 import { showToast } from "../components/Toast";
 import { beginPhotoVerification, fetchVerificationStatus, SelfiePose, startSelfieCheck, submitSelfieCheck, VerificationState } from "../services/verificationService";
 import { useAuthStore } from "../store/authStore";
@@ -49,7 +50,9 @@ export function VerificationScreen() {
     ? { title: "We couldn’t check your status.", text: "Check your connection and try again. We can’t confirm verification right now." }
     : status.isPending || status.isFetching
       ? { title: "Checking your status…", text: "Fetching the latest photo-verification result." }
-      : STATES[status.data?.state ?? "unverified"];
+      : Platform.OS === "web" && status.data?.state === "unverified" && !status.data.captureAvailable
+        ? { title: "No verified badge yet.", text: "The device comparison above checks photo similarity. A verified badge needs a separate approval." }
+        : STATES[status.data?.state ?? "unverified"];
   const available = status.data?.captureAvailable === true && !status.isError;
   const selfieMethod = status.data?.method === "selfie";
   const begin = async () => {
@@ -120,6 +123,7 @@ export function VerificationScreen() {
   return (
     <Screen scroll testID="verification-screen" header={<ScreenHeader title="Photo verification" />}>
       <YStack gap="$5" paddingTop="$4">
+        {Platform.OS === "web" ? <DevicePhotoCheck /> : null}
         {error ? (
           <YStack testID="verification-error" gap="$2" padding="$4" borderRadius={20} backgroundColor="$backgroundStrong" borderWidth={1} borderColor="$error" accessibilityLiveRegion="polite">
             <Text fontWeight="700" color="$error">Not verified yet</Text>
@@ -143,7 +147,7 @@ export function VerificationScreen() {
           <Text fontSize={32} lineHeight={39} fontWeight="700" accessibilityRole="header">{copy.title}</Text>
           <Text fontSize="$4" color="$textMuted" lineHeight={24}>{copy.text}</Text>
         </YStack>
-        <YStack borderRadius={24} backgroundColor="$backgroundStrong" borderWidth={1} borderColor="$border" padding="$4" gap="$4">
+        {available || Platform.OS !== "web" ? <YStack borderRadius={24} backgroundColor="$backgroundStrong" borderWidth={1} borderColor="$border" padding="$4" gap="$4">
           <Text fontSize="$5" fontWeight="700">How the photo check works</Text>
           {(selfieMethod ? [
             ["01", "A live selfie with a pose", "We'll ask for a random pose, like a thumbs-up, so it has to be you, right now."],
@@ -156,7 +160,7 @@ export function VerificationScreen() {
           ]).map(([step, title, description]) => (
             <XStack key={step} gap="$3"><Text fontSize="$2" color="$primary" fontWeight="700" paddingTop={3}>{step}</Text><YStack flex={1} gap={3}><Text fontWeight="700">{title}</Text><Text color="$textMuted" fontSize="$2" lineHeight={21}>{description}</Text></YStack></XStack>
           ))}
-        </YStack>
+        </YStack> : null}
         <YStack gap="$2" padding="$4" borderRadius={20} backgroundColor="$primarySoft">
           <Text fontWeight="700">{available ? "A free check, with your permission" : Platform.OS === "web" ? "Photo checks are temporarily unavailable" : "Photo verification is coming soon"}</Text>
           <Text color="$textMuted" fontSize="$2" lineHeight={21}>{available ? (selfieMethod ? "Paire compares your selfie with your profile photos using a face-matching model, and Google's Gemini checks the pose and that it's a live photo. Your selfie is never stored: it's deleted as soon as the check ends. Only the result is kept. Your badge expires after 90 days." : "Didit handles the live camera check. Paire reviews your profile photos before approval. Only the result and checked profile photos are kept in Paire; we don’t store your selfie or identity document. Your photo badge expires after 90 days.") : Platform.OS === "web" ? "New photo checks are paused. Existing approvals keep their original expiry and still apply only to the photos that were checked. Contact support if you need help." : "Live photo checks aren’t available yet. You can’t submit a selfie or receive a new badge here. Verification will be free for everyone."}</Text>

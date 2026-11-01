@@ -10,6 +10,7 @@
  * environment to point it elsewhere. Emulators and test hooks are always off.
  */
 import { offerModule, memberModule, renderLaunchOffer } from "./launch-offer.mjs";
+import { prepareFaceCheckAssets } from "./face-check-assets.mjs";
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -80,6 +81,7 @@ writeFileSync(
 );
 
 cpSync(resolve(web, "site"), output, { recursive: true });
+await prepareFaceCheckAssets(output);
 writeFileSync(resolve(output, "launch-offer-contract.js"), offerModule);
 writeFileSync(resolve(output, "member-offer-contract.js"), memberModule);
 

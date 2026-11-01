@@ -13,6 +13,8 @@ Core message listeners, payment confirmation/refunds, purchased access, safety r
 
 ## Rollout
 
+Follow-up: [browser photo comparison](browser-photo-check.md) now supplies a separate, entirely local similarity check. It does not re-enable Gemini checks or grant trusted badges. Both changes are still local and need the rollout below to affect production spending.
+
 This is a local code change, not a deployment. The owner requested code changes; repository instructions require a separate deployment request. Existing production requests and charges continue until the new code is deployed.
 
 Deploy all seven entry points that use or advertise the AI-backed features, together:
