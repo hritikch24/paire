@@ -1,6 +1,6 @@
 # Monthly and Lifetime member offers
 
-Owner requested usage-based discounts of 30–50% on 1 November 2026, with Monthly and Lifetime Plus featured first. Implementation and verification are complete. Rollout is in progress.
+Owner requested usage-based discounts of 30–50% on 1 November 2026, with Monthly and Lifetime Plus featured first. Implementation and verification are complete. KraftAI `853b55b` is Vercel Ready; Firebase `getLaunchOffer`, `createPlusOrder` and Firestore rules deployed successfully. Pairé website/browser rollout is in progress.
 
 Eligible members without active Plus receive one seven-day offer when first viewing Discovery or Plus. The offer starts at 30%, increases to 40% when either free likes or Super Likes are exhausted or when likes/Super Likes were used on three of the last seven UTC days, and reaches 50% when both free allowances are exhausted on a day. Earned savings persist after the daily reset, while the original expiry never resets or extends. Expired offers do not automatically respawn. Existing active/lifetime holders receive no new sales offer.
 
