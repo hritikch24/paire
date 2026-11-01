@@ -37,7 +37,7 @@ const memberAdmin = require("../src/memberAdmin") as typeof import("../src/membe
 
 type FakePayment = { id: string; order_id: string; status: string; amount: number; currency: string; amount_refunded: number; refund_status: string | null };
 const fake = {
-  orders: new Map<string, { id: string; amount: number; currency: string; status: string; notes: Record<string, string> }>(),
+  orders: new Map<string, { id: string; amount: number; currency: string; status: string; notes: Record<string, string>; created_at?: number }>(),
   payments: new Map<string, FakePayment>(),
   refunds: [] as Array<{ paymentId: string; amount: number }>
 };
@@ -51,7 +51,7 @@ function fakeRazorpay(url: string, init?: Parameters<typeof fetch>[1]): Response
   if (auth !== `Basic ${Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64")}`) return json({ error: "auth" }, 401);
   if (path === "/orders" && init?.method === "POST") {
     const body = JSON.parse(String(init.body));
-    const order = { id: rid("order"), amount: body.amount, currency: body.currency, status: "created", notes: body.notes };
+    const order = { id: rid("order"), amount: body.amount, currency: body.currency, status: "created", notes: body.notes, created_at: Math.floor(Date.now()/1000) };
     fake.orders.set(order.id, order);
     return json(order);
   }
@@ -132,9 +132,11 @@ async function checkout(uid: string): Promise<string> {
 }
 
 beforeEach(async () => {
+  jest.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-30T12:00:00+05:30"));
   await admin.doc("runtime/trust").set({ requireVerification: false, unlockSales: true });
   process.env.RAZORPAY_KEY_ID = "rzp_test_PaireSandbox1";
 });
+afterEach(() => jest.restoreAllMocks());
 afterAll(async () => {
   await admin.doc("runtime/trust").set({ requireVerification: false });
 });
@@ -813,4 +815,22 @@ describe("October offers through KraftAI and Razorpay", () => {
     await expect(call(chat.createChatUnlockOrder, uid, { promoCode: "PAIRE250", expectedAmount: 4410 })).rejects.toThrow("different price");
     expect((await admin.doc(`launchOfferClaims/${uid}`).get()).exists).toBe(false);
   });
+});
+
+
+describe("earned member offers and paid entitlements",()=>{
+ beforeEach(()=>{jest.spyOn(Date,"now").mockReturnValue(Date.parse("2026-11-01T12:00:00+05:30"));});
+ test("all three Monthly/Lifetime tiers survive hosted validation and grant their original access",async()=>{
+  const {memberPrice,validMemberQuote}=await import("../src/lib/member-offer");
+  const {dayKey}=await import("../src/lib/ids");
+  for(const plan of ["month","lifetime"] as const)for(const percent of [30,40,50] as const){
+   const uid=await buyer();await admin.doc(`limits/${uid}/daily/${dayKey()}`).set({likes:percent>=40?10:0,supers:percent===50?1:0});
+   const order=await call(createPlusOrder,uid,{plan,expectedAmount:memberPrice(plan,percent)});
+   const remote=fake.orders.get(order.orderId)!;expect(remote.amount).toBe(memberPrice(plan,percent));expect(remote.notes.discountPercent).toBe(String(percent));
+   expect(validMemberQuote(plan,remote.amount,remote.notes,remote.created_at)).toBe(true);
+   const payment=pay(order.orderId);const active=await call(confirmPlusPayment,uid,{orderId:order.orderId,paymentId:payment.id,signature:checkoutSignature(order.orderId,payment.id)});
+   expect(active.active).toBe(true);
+   if(plan==="lifetime")expect(active.lifetime).toBe(true);else {const saved=(await admin.doc(`razorpayOrders/${order.orderId}`).get()).data()!;expect(saved.expiresAt-saved.startsAt).toBe(60*86400000);}
+  }
+ });
 });

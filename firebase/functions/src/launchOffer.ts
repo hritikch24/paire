@@ -1,6 +1,8 @@
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { adminAuth, db } from "./admin";
 import { REGION } from "./config";
+import { getMemberOffer } from "./memberOffers";
+import { isMemberPlan, memberPrice, MEMBER_OFFER } from "./lib/member-offer";
 import { requireAuth } from "./lib/auth";
 import { currentPrice, LAUNCH_OFFER, normalizePromo, OFFER_PRICES, OfferPlan, offerActive, validPromo } from "./lib/launch-offer";
 
@@ -26,11 +28,12 @@ export const getLaunchOffer = onCall({ region: REGION }, async request => {
   const remaining = Math.max(0, LAUNCH_OFFER.limit - (Number(campaign.get("claimed")) || 0));
   const couponAvailable = eligible && (claim.exists || remaining > 0);
   if (code && !couponAvailable) throw new HttpsError("failed-precondition", active ? "This code is for the first 250 new members joining on 30–31 October, on their first purchase." : "This offer ended on 31 October at 11:59 pm IST.");
+  const personalized = !active && !code ? await getMemberOffer(uid) : null;
   const plans = Object.fromEntries(Object.entries(OFFER_PRICES).map(([id, prices]) => [id, {
-    regular: prices.regular, amount: code ? prices.coupon : currentPrice(id as OfferPlan),
+    regular: prices.regular, amount: personalized && isMemberPlan(id) ? memberPrice(id, personalized.discountPercent) : code ? prices.coupon : currentPrice(id as OfferPlan),
     offer: prices.offer, coupon: prices.coupon
   }]));
-  return { active, endsAt: LAUNCH_OFFER.endsAt, remaining, couponAvailable, code: code || null, plans };
+  return { personalized, active, endsAt: LAUNCH_OFFER.endsAt, remaining, couponAvailable, code: code || null, plans };
 });
 
 /** One claim and one immutable checkout per account, shared across every code and plan.
@@ -39,9 +42,10 @@ export const getLaunchOffer = onCall({ region: REGION }, async request => {
  */
 export async function promoCheckout<T extends object>(uid: string, plan: OfferPlan, rawCode: unknown, create: (amount: number, notes: Record<string, string>) => Promise<T>, expectedAmount?: unknown): Promise<T> {
   const code = normalizePromo(rawCode);
-  const quoted = code ? OFFER_PRICES[plan].coupon : currentPrice(plan);
+  const personalized = !code && isMemberPlan(plan) ? await getMemberOffer(uid) : null;
+  const quoted = personalized && isMemberPlan(plan) ? memberPrice(plan, personalized.discountPercent) : code ? OFFER_PRICES[plan].coupon : currentPrice(plan);
   if (expectedAmount !== undefined && expectedAmount !== quoted) throw new HttpsError("failed-precondition", "The price changed. Refresh the offer before paying.");
-  if (!code) return create(quoted, {});
+  if (!code) return create(quoted, personalized ? { campaign: MEMBER_OFFER.campaign, pricing: "member_offer", offerId: personalized.id, discountPercent: String(personalized.discountPercent), offerStartedAt: String(personalized.startsAt), offerExpiresAt: String(personalized.expiresAt) } : {});
   if (!validPromo(code)) throw new HttpsError("invalid-argument", "That promo code isn't valid.");
   const claimRef = db.doc(`launchOfferClaims/${uid}`);
   const existing = await claimRef.get();

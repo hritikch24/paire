@@ -543,6 +543,9 @@ service cloud.firestore {
         && (request.auth.uid == resource.data.fromUid || request.auth.uid == resource.data.toUid);
       allow write: if false;
     }
+    match /memberOffers/{uid} {
+      allow read, write: if false;
+    }
     match /launchOfferClaims/{uid} {
       allow read, write: if false;
     }

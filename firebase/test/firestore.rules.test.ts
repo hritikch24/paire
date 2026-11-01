@@ -340,6 +340,8 @@ describe("server-only collections", () => {
     await assertFails(alexa.doc("complimentaryPlusGrants/alexa").set({ status: "active", expiresAt: 9999999999999 }));
     await assertFails(alexa.doc("notificationCampaigns/run").get());
     await assertFails(alexa.doc("notificationCampaigns/run").set({ status: "running" }));
+    await assertFails(alexa.doc("memberOffers/alexa").get());
+    await assertFails(alexa.doc("memberOffers/alexa").set({ discountPercent: 100 }));
     await assertFails(alexa.doc("billingSupportAudit/receipt").get());
     await assertFails(alexa.doc("billingSupportAudit/receipt").set({ action: "payment-received", amountReportedPaise: 29900, confirmationSource: "owner_statement" }));
     await assertFails(alexa.collection("discovery").get());

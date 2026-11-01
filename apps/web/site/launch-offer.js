@@ -1,5 +1,7 @@
 import { LAUNCH_OFFER, OFFER_PRICES, currentPrice, formatInr, offerActive } from "/launch-offer-contract.js";
+import { MEMBER_OFFER } from "/member-offer-contract.js";
 const paint = () => {
+  if (Date.now() >= MEMBER_OFFER.startsAt) return;
   if (offerActive()) return;
   const replacements = Object.fromEntries(Object.values(OFFER_PRICES).map(p => [formatInr(p.offer), formatInr(p.regular)]));
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);

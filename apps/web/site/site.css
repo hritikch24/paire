@@ -21,3 +21,7 @@
 .launch-offer{background:#f0e1d8;border:1px solid #d9bbb0;border-radius:24px;padding:28px;margin:24px 0 32px}.launch-offer h2{font-size:clamp(28px,4vw,46px);margin:10px 0}.offer-table-wrap{overflow-x:auto}.launch-offer table{width:100%;min-width:440px;border-collapse:collapse;font-size:14px}.launch-offer th,.launch-offer td{text-align:left;padding:12px 10px;border-bottom:1px solid #d9bbb0}.offer-reference{display:block;font-size:13px;font-weight:400;color:var(--muted);letter-spacing:0}.offer-coupon{display:block;font-size:14px;font-weight:700;color:var(--rose);letter-spacing:0;margin-top:8px}@media(max-width:700px){.launch-offer{padding:18px}.launch-offer table{font-size:12px}}
 
 @media(max-width:700px){.launch-offer table{min-width:0;font-size:11px;line-height:1.4}.launch-offer th,.launch-offer td{padding:12px 4px}.launch-offer th:first-child{width:28%}.launch-offer th:not(:first-child){width:24%}}
+
+@media(max-width:700px){[aria-label="Plus member offers"] table{font-size:10px}[aria-label="Plus member offers"] th,[aria-label="Plus member offers"] td{padding:10px 3px}[aria-label="Plus member offers"] th:first-child{width:24%}[aria-label="Plus member offers"] th:not(:first-child){width:19%}}
+
+.primary-price-grid.has-lifetime{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:700px){.primary-price-grid.has-lifetime{grid-template-columns:1fr}}

@@ -1,3 +1,5 @@
+import { MemberOfferBanner } from "../components/MemberOfferBanner";
+import { useLaunchOffer } from "../hooks/useLaunchOffer";
 import { DiscoverEmpty } from "../components/DiscoverEmpty";
 import { DiscoverWebStyles } from "../components/DiscoverWebStyles";
 import { DiscoveryActions } from "../components/DiscoveryActions";
@@ -190,6 +192,8 @@ function DiscoveryExperience() {
   const settings = useAuthStore((state) => state.settings);
   const uid = useAuthStore((state) => state.user?.uid);
   const premium = useQuery({ queryKey: ["premium", uid], queryFn: fetchPremiumStatus, enabled: Boolean(uid), refetchInterval: 300_000, retry: 1 });
+  const memberQuote = useLaunchOffer();
+  const refreshMemberOffer = memberQuote.quote.refetch;
   const plus = premium.data?.active === true;
   // Only lock the chips once we know there's no pass; if the check fails, the server decides.
   const plusLocked = premium.isSuccess && !plus;
@@ -450,6 +454,7 @@ function DiscoveryExperience() {
     sendSwipe(profile.uid, type, type === "nope" ? null : note)
       .then((result) => {
         void refreshAllowance();
+        if (Platform.OS === "web" && type !== "nope" && result.remaining[type === "super" ? "supers" : "likes"] === 0) void refreshMemberOffer();
         void queryClient.invalidateQueries({ queryKey: LIKES_YOU_KEY });
         if (note && type !== "nope") setFlight({ key: Date.now(), name: profile.displayName });
         if (result.matched && result.matchId) {
@@ -461,6 +466,7 @@ function DiscoveryExperience() {
       })
       .catch((err) => {
         void refreshAllowance();
+        if (Platform.OS === "web") void refreshMemberOffer();
         if (errorCode(err) === "functions/not-found") return; // they left or blocked you
         // Out of likes, or offline: put the card back so nothing is silently lost.
         setDeck((current) => [profile, ...current.filter((item) => item.uid !== profile.uid)]);
@@ -478,7 +484,7 @@ function DiscoveryExperience() {
           errorCode(err) === "functions/resource-exhausted" ? "info" : "error"
         );
       });
-  }, [refreshAllowance, plusLocked, navigation]);
+  }, [refreshAllowance, refreshMemberOffer, plusLocked, navigation]);
 
   const sendFromComposer = (note: string | null) => {
     const current = compose;
@@ -617,6 +623,8 @@ function DiscoveryExperience() {
           </Text>
         </XStack>
       ) : null}
+
+      {Platform.OS === "web" && !plus ? <MemberOfferBanner compact offer={memberQuote.quote.data?.personalized} onExplore={() => navigation.navigate("Premium")} /> : null}
 
       <YStack testID="discover-modes" paddingBottom="$2">
         <ModeSwitch mode={mode} onChange={changeMode} duoBadge={!duosSeen && !duo.duo} />

@@ -9,7 +9,7 @@
  * EXPO_PUBLIC_FIREBASE_* / EXPO_PUBLIC_FUNCTIONS_REGION in the hosting
  * environment to point it elsewhere. Emulators and test hooks are always off.
  */
-import { offerModule, renderLaunchOffer } from "./launch-offer.mjs";
+import { offerModule, memberModule, renderLaunchOffer } from "./launch-offer.mjs";
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -81,6 +81,7 @@ writeFileSync(
 
 cpSync(resolve(web, "site"), output, { recursive: true });
 writeFileSync(resolve(output, "launch-offer-contract.js"), offerModule);
+writeFileSync(resolve(output, "member-offer-contract.js"), memberModule);
 
 // Meta Pixel for ads (PAIRE_META_PIXEL_ID in Vercel): PageView everywhere, Lead when someone opens the app,
 // and the app itself reports CompleteRegistration and Purchase (src/services/analytics.ts).

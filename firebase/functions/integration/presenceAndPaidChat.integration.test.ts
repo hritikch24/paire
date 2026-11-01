@@ -1,3 +1,4 @@
+import { currentPrice } from "../src/lib/launch-offer";
 /**
  * Presence and the paid-chat gate end to end, through the Functions emulator,
  * the real security rules and the same client SDK calls the app makes. Uses
@@ -271,7 +272,7 @@ describe("paid chat gate", () => {
     const access = await dev.call<ChatAccess>("getChatAccess");
     expect(access).toMatchObject({ enforced: true, canSend: false, unlimited: false });
     // Sales aren't switched on in this environment: no checkout can open, nobody is charged.
-    expect(access.unlock).toMatchObject({ status: "unavailable", reason: "sales-off", priceInr: 49 });
+    expect(access.unlock).toMatchObject({ status: "unavailable", reason: "sales-off", priceInr: currentPrice("chat") / 100 });
     await expect(dev.call("createChatUnlockOrder", { amount: 1 })).rejects.toThrow(/isn't available yet/);
     // Clients can't hand themselves the mirror.
     await expect(setDoc(doc(dev.db, "moderation", dev.uid), { chatAccess: { unlimited: true } }, { merge: true })).rejects.toMatchObject({ code: "permission-denied" });
