@@ -13,17 +13,17 @@ Core message listeners, payment confirmation/refunds, purchased access, safety r
 
 ## Rollout
 
-Follow-up: [browser photo comparison](browser-photo-check.md) now supplies a separate, entirely local similarity check. It does not re-enable Gemini checks or grant trusted badges. Both changes are still local and need the rollout below to affect production spending.
+Follow-up: [browser photo comparison](browser-photo-check.md) supplies a separate, entirely local similarity check. It does not re-enable Gemini checks or grant trusted badges.
 
-This is a local code change, not a deployment. The owner requested code changes; repository instructions require a separate deployment request. Existing production requests and charges continue until the new code is deployed.
+The owner authorized deployment on 2 November 2026. All seven entry points below deployed successfully and were read back ACTIVE at 05:29 UTC with `MUSE_PAID_AI_ENABLED=false` and minimum instances zero. Existing billing, sandbox, checkout and verification flags matched the pre-deploy environment. The browser rollout is in progress. No Cloud Billing API, billing account or runtime sales/enforcement switch changed.
 
-Deploy all seven entry points that use or advertise the AI-backed features, together:
+All seven entry points that use or advertise the AI-backed features were deployed together:
 
 ```sh
 firebase deploy --project muse-352ba --only functions:suggestBio,functions:suggestOpeners,functions:getDiscoverFeed,functions:onMessageCreated,functions:startSelfieCheck,functions:submitSelfieCheck,functions:getVerificationStatus
 ```
 
-Then publish the browser app through the existing Vercel flow. Keep `MUSE_PAID_AI_ENABLED=false` in the deploy environment. Confirm the deployed flag and public verification availability using read-only inspection, and watch the AI service's request trend and itemised billing report after reporting delay. Do not create a real purchase or customer login for QA.
+Publish the browser app through the existing Vercel flow next. Keep `MUSE_PAID_AI_ENABLED=false` in the deploy environment. Watch the AI service's request trend and itemised billing report after reporting delay. Do not create a real purchase or customer login for QA.
 
 A ₹50/month total cannot be guaranteed by these code changes: Firestore, image storage/downloads, function compute, scheduled jobs, build artifacts and other services have separate usage costs. Do not unlink billing or downgrade the project to Spark: that would interrupt the current backend. Provider-side spend controls and budgets need separate billing-console configuration; alerts alone do not stop charges, and stopping future requests does not erase accrued charges.
 
@@ -36,4 +36,4 @@ Validation completed:
 - The production web build passed. Local browser checks at 390/1280px passed for startup, page errors/overflow, paused-check copy and bundled visibility logic, with external requests blocked. No customer login, real order or payment was used.
 - Regression tests confirm zero provider traffic despite legacy credentials and explicit provider requests, useful free suggestions, matching without extra AI reads, selfie submissions blocked before image/database/model work, hidden/background query suppression, native activity behavior and fixed offer expiry with reduced polling.
 
-No production deployment, cloud billing configuration or API enablement was performed. QA workspaces contain only disabled provider secrets and fictional emulator accounts.
+QA workspaces contain only disabled provider secrets and fictional emulator accounts. The subsequent owner-authorized backend deployment is recorded above; QA used no customer accounts, real purchases or payment methods.
