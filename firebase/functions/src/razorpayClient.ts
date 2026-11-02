@@ -8,10 +8,10 @@ function authHeader(): string {
 }
 
 /** Authenticated Razorpay API call with the server's own key. Secrets never reach a client. */
-export async function razorpay<T>(path: string, init?: { method: "POST"; body: unknown }): Promise<T> {
+export async function razorpay<T>(path: string, init?: { method: "POST"; body: unknown; refundIdempotencyKey?: string }): Promise<T> {
   const response = await fetch(`${RAZORPAY_API}${path}`, {
     method: init?.method ?? "GET",
-    headers: { authorization: authHeader(), "content-type": "application/json", "user-agent": "KraftAI/1.0" },
+    headers: { authorization: authHeader(), "content-type": "application/json", "user-agent": "KraftAI/1.0", ...(init?.refundIdempotencyKey ? { "X-Refund-Idempotency": init.refundIdempotencyKey } : {}) },
     credentials: "omit",
     referrerPolicy: "no-referrer",
     body: init ? JSON.stringify(init.body) : undefined,

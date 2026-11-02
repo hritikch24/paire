@@ -1,3 +1,5 @@
+import { savePremiumQueue } from "./premiumQueue";
+import { appendPremiumCredit, premiumQueue } from "./lib/premiumQueue";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { adminAuth, db } from "./admin";
 import { billingEnabled, webPassBenefits } from "./billing";
@@ -21,10 +23,10 @@ async function recipient(value: unknown) {
 export const adminPreviewPlusGrant = onCall({ region: REGION }, async (request) => {
   await requireSupportOperator(request);
   const account = await recipient(request.data?.email);
-  const [profile, billing, mod, web] = await Promise.all([db.doc(`users/${account.uid}`).get(), db.doc(`billing/${account.uid}`).get(), db.doc(`moderation/${account.uid}`).get(), webPassBenefits(account.uid)]);
+  const [profile, billing, mod, web, ledger] = await Promise.all([db.doc(`users/${account.uid}`).get(), db.doc(`billing/${account.uid}`).get(), db.doc(`moderation/${account.uid}`).get(), webPassBenefits(account.uid), db.doc(`webPassLedger/${account.uid}`).get()]);
   if (!profile.exists || mod.get("status") === "banned") throw new HttpsError("failed-precondition", "That member is unavailable.");
   if (web.lifetime) throw new HttpsError("failed-precondition", "This member already has Lifetime Plus.");
-  const now = Date.now(), startsAt = Math.max(now, future(billing.get("expiresAt"), now), web.expiresAt);
+  const now = Date.now(), startsAt = Math.max(now, premiumQueue(ledger.get("premiumQueue")) ? 0 : future(billing.get("expiresAt"), now), web.expiresAt);
   return { uid: account.uid, email: account.email, name: String(profile.get("displayName") || account.displayName || "Member"), addedDays: DAYS, startsAt, expiresAt: startsAt + DAYS * DAY_MS };
 });
 
@@ -49,12 +51,15 @@ export const adminGrantPlusMonth = onCall({ region: REGION, timeoutSeconds: 60 }
     const now = Date.now();
     const benefits = await webPassBenefits(uid, now, tx);
     if (benefits.lifetime) throw new HttpsError("failed-precondition", "This member already has Lifetime Plus.");
-    const startsAt = Math.max(now, future(billing.get("expiresAt"), now), future(ledger.get("until"), now), benefits.expiresAt);
-    const expiresAt = startsAt + DAYS * DAY_MS;
+    const queue = premiumQueue(ledger.get("premiumQueue"));
+    const added = queue ? appendPremiumCredit(queue, `goodwill:${auditRef.id}`, DAYS, now) : null;
+    const startsAt = added ? added.window.startsAt : Math.max(now, future(billing.get("expiresAt"), now), future(ledger.get("until"), now), benefits.expiresAt);
+    const expiresAt = added ? added.window.expiresAt : startsAt + DAYS * DAY_MS;
     tx.create(auditRef, { uid, action: "goodwill-grant", status: "active", amountReportedPaise: 0, currency: "INR", days: DAYS, startsAt, expiresAt, createdAt: now, actorUid, reason: typeof reason === "string" && reason.trim() ? reason.trim() : "Owner complimentary month", requestId });
-    tx.set(db.doc(`complimentaryPlusGrants/${uid}`), { status: "active", expiresAt, updatedAt: now, grantedBy: actorUid, lastAuditId: auditRef.id }, { merge: true });
+    if (!added) tx.set(db.doc(`complimentaryPlusGrants/${uid}`), { status: "active", expiresAt, updatedAt: now, grantedBy: actorUid, lastAuditId: auditRef.id }, { merge: true });
     tx.set(billing.ref, { expiresAt, checkedAt: now }, { merge: true });
-    tx.set(ledger.ref, { until: expiresAt, updatedAt: now }, { merge: true });
+    if (added) savePremiumQueue(tx, ledger.ref, added, now);
+    else tx.set(ledger.ref, { until: expiresAt, updatedAt: now }, { merge: true });
     tx.set(moderation.ref, { chatAccess: { unlimited: unlock.get("status") === "active", premiumUntil: expiresAt, updatedAt: now } }, { merge: true });
     return { uid, email: account.email, addedDays: DAYS, startsAt, expiresAt, alreadyGranted: false };
   });

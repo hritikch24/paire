@@ -76,7 +76,7 @@ test("the only payment for a gift that can't be delivered is never called a seco
   jest.mocked(confirmGiftPayment).mockResolvedValue({ status: "pending", giftId: "g", refunding: true });
   await mount();
   expect(showToast).toHaveBeenCalledTimes(1);
-  expect(showToast).toHaveBeenCalledWith("This payment is being refunded, and you won't be charged.");
+  expect(showToast).toHaveBeenCalledWith("The gift could not be delivered. A refund is due to your original payment method.");
   expect(confirmGiftPayment).toHaveBeenCalledTimes(1);
 });
 
@@ -94,7 +94,7 @@ test("a failed or cancelled gift return confirms nothing and says nobody was cha
   }
   expect(confirmGiftPayment).not.toHaveBeenCalled();
   expect(showToast).toHaveBeenCalledTimes(2);
-  expect(showToast).toHaveBeenCalledWith("The payment didn't go through, and you weren't charged.");
+  expect(showToast).toHaveBeenCalledWith("Payment was not confirmed. If your bank shows a charge, check Your gifts or contact support before trying again.");
 });
 
 test.each([["plus"], ["chat"]])("kind=%s is left entirely to the existing hook", async (kind) => {

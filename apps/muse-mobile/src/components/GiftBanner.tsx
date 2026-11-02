@@ -39,7 +39,7 @@ export function GiftBanner({ spaced = false }: { spaced?: boolean }) {
         refresh(["gifts", "premium", "chat-access", "daily-allowance", "send-policy"]);
       } else {
         await declineGift(pending.id);
-        showToast("No problem. The gift has gone back to them.");
+        showToast("Gift declined. A refund is due to their original payment method.");
         markAnswered("declined");
         refresh(["gifts"]);
       }

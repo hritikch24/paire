@@ -8,6 +8,7 @@ import { parsePasses, sameSecret, validRevenueCatSignature } from "./lib/billing
 import { ccavenueSalesOpen, chatPolicy, syncChatAccess, upiSalesOpen } from "./chatEntitlement";
 import { consumeDailyQuota } from "./quota";
 import { verifiedUsers } from "./trust";
+import { initialPremiumQueue, premiumQueue, queueBenefits, PremiumQueue } from "./lib/premiumQueue";
 import { summarizeWebBenefits, WebBenefits } from "./lib/premiumBenefits";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -75,9 +76,9 @@ export async function storeExpiryIfEnabled(uid: string, now = Date.now()): Promi
 }
 
 /** Authoritative web benefits, including old monthly purchases, six-month passes and explicit lifetime grants. */
-export async function webPassBenefits(uid: string, now = Date.now(), tx?: Transaction): Promise<WebBenefits> {
+async function webPassSources(uid: string, tx?: Transaction) {
   const queries = ["razorpayOrders", "upiUnlockOrders", "ccavenueOrders"].map(collection => db.collection(collection).where("uid", "==", uid));
-  const refs = ["supportPlusGrants", "complimentaryPlusGrants", "lifetimePlusGrants"].map(collection => db.doc(`${collection}/${uid}`));
+  const refs = ["supportPlusGrants", "complimentaryPlusGrants", "lifetimePlusGrants", "webPassLedger"].map(collection => db.doc(`${collection}/${uid}`));
   // Keep reads within one transaction sequential. If one query aborts under
   // contention, sibling reads must not outlive that attempt and race its retry.
   const readTransaction = async (transaction: Transaction) => {
@@ -89,7 +90,23 @@ export async function webPassBenefits(uid: string, now = Date.now(), tx?: Transa
     Promise.all(queries.map(query => query.get())), db.getAll(...refs)
   ]);
   const records = orders.flatMap((snap, source) => snap.docs.filter(doc => source === 0 || doc.get("kind") === "plus").map(doc => ({ ...doc.data(), id: doc.id, paymentSource: ["razorpay", "upi", "ccavenue"][source] })));
-  return summarizeWebBenefits(records, grants[0].data(), grants[1].data(), grants[2].data(), now);
+  return { records, grants };
+}
+
+export async function webPassBenefits(uid: string, now = Date.now(), tx?: Transaction): Promise<WebBenefits> {
+  const { records, grants } = await webPassSources(uid, tx);
+  const benefits = summarizeWebBenefits(records, grants[0].data(), grants[1].data(), grants[2].data(), now);
+  const queue = premiumQueue(grants[3].get("premiumQueue"));
+  return queue ? { ...benefits, ...queueBenefits(queue, now) } : benefits;
+}
+
+/** Called in the acceptance transaction; no migration or writes occur before consent. */
+export async function prepareGiftQueue(uid: string, now: number, storeExpiry: number, tx?: Transaction): Promise<PremiumQueue> {
+  const { records, grants } = await webPassSources(uid, tx);
+  const queue = premiumQueue(grants[3].get("premiumQueue"));
+  if (queue) return queue;
+  try { return initialPremiumQueue(records, grants[0].data(), grants[1].data(), storeExpiry, now); }
+  catch { throw new HttpsError("failed-precondition", "Existing premium passes need support review before adding this gift. The gift was not accepted.", { reason: "premium-review-required" }); }
 }
 
 /** Finite pass queue only. Lifetime access never consumes or fabricates queued days. */
@@ -104,16 +121,17 @@ export async function webPassExpiry(uid: string, now = Date.now(), tx?: Transact
 export async function syncPremium(uid: string): Promise<PremiumStatus> {
   const status = { purchaseAvailable: nativeBillingEnabled(), webPurchaseAvailable: await razorpayPlusOpen(), upiPurchaseAvailable: await upiPlusOpen(), ccavenuePurchaseAvailable: await ccavenuePlusOpen() };
   if (!billingEnabled()) return { active: false, expiresAt: null, ...status };
-  const now = Date.now();
-  const [store, web] = await Promise.all([
-    status.purchaseAvailable ? storePassExpiry(uid, now) : Promise.resolve(0),
-    webPassBenefits(uid, now)
-  ]);
-  const expiresAt = Math.max(store, web.expiresAt);
-  await db.doc(`billing/${uid}`).set({ expiresAt, lifetime: web.lifetime, unlimitedLikesUntil: web.unlimitedLikesUntil, checkedAt: now });
-  // Plus includes unlimited messaging: keep the rules' copy current (never touches Unlimited Chat).
+  const store = await storeExpiryIfEnabled(uid);
+  // Read sources and update the cache atomically. A slower sync cannot restore access after a refund.
+  const current = await db.runTransaction(async tx => {
+    const member = await tx.get(db.doc(`users/${uid}`));
+    const now = Date.now(), web = await webPassBenefits(uid, now, tx);
+    const expiresAt = Math.max(store, web.expiresAt);
+    if (member.exists) tx.set(db.doc(`billing/${uid}`), { expiresAt, lifetime: web.lifetime, unlimitedLikesUntil: web.unlimitedLikesUntil, checkedAt: now });
+    return { active: member.exists && (web.lifetime || expiresAt > now), lifetime: member.exists && web.lifetime, unlimitedLikes: member.exists && (web.lifetime || web.unlimitedLikesUntil > now), expiresAt: member.exists && !web.lifetime && expiresAt > now ? expiresAt : null };
+  });
   await syncChatAccess(uid);
-  return { active: web.lifetime || expiresAt > now, lifetime: web.lifetime, unlimitedLikes: web.lifetime || web.unlimitedLikesUntil > now, expiresAt: web.lifetime ? null : expiresAt > now ? expiresAt : null, ...status };
+  return { ...current, ...status };
 }
 
 /** Never accepts a client-supplied entitlement, price, receipt status or duration. */

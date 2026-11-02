@@ -1,3 +1,5 @@
+import { savePremiumQueue } from "./premiumQueue";
+import { appendPremiumCredit, premiumQueue, purchaseKey, reversePremiumCredit } from "./lib/premiumQueue";
 import { randomInt } from "crypto";
 import { DocumentSnapshot, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
@@ -248,10 +250,15 @@ export const reviewUpiPayment = onCall({ region: REGION, secrets: ["REVENUECAT_S
       if (!user.exists) throw new HttpsError("failed-precondition", "This account was deleted. Refund the payment by hand.");
       if ((await webPassBenefits(uid, now, tx)).lifetime) throw new HttpsError("failed-precondition", "This member already has Lifetime Plus. Check and refund this extra payment by hand.");
       if (kind === "plus") {
-        const queuedUntil = Math.max(Number(ledger?.get("until")) || 0, storeExpiry, await webPassExpiry(uid, now, tx));
-        const { startsAt, expiresAt } = planWindow(now, order.get("plan") as PlusPlan, queuedUntil);
-        tx.set(ledgerRef, { until: expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() });
-        tx.update(ref, { ...audit, status: "approved", startsAt, expiresAt });
+        const queue = premiumQueue(ledger?.get("premiumQueue"));
+        const benefits = await webPassBenefits(uid, now, tx);
+        const queuedUntil = queue ? benefits.expiresAt : Math.max(Number(ledger?.get("until")) || 0, storeExpiry, benefits.expiresAt);
+        const plan = order.get("plan") as PlusPlan;
+        const added = queue && plan !== "lifetime" ? appendPremiumCredit(queue, purchaseKey("upi", orderId), plan, now) : null;
+        const { startsAt, expiresAt } = added ? added.window : planWindow(now, plan, queuedUntil);
+        if (added) savePremiumQueue(tx, ledgerRef, added, now);
+        else tx.set(ledgerRef, { until: expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        tx.update(ref, { ...audit, status: "approved", startsAt, expiresAt, ...(added ? { entitlementQueueVersion: 2 } : {}) });
         return "approved";
       }
       if (unlock.get("status") !== "active") {
@@ -283,12 +290,17 @@ export const reviewUpiPayment = onCall({ region: REGION, secrets: ["REVENUECAT_S
     if (kind === "chat" && unlock.get("status") === "active" && unlock.get("orderId") === orderId) {
       tx.update(db.doc(`chatUnlocks/${uid}`), { status: "revoked", revokedAt: now, revokedReason: "refund", updatedAt: FieldValue.serverTimestamp() });
     }
+    const queue = kind === "plus" ? premiumQueue(ledger?.get("premiumQueue")) : null;
+    if (queue) {
+      const next = reversePremiumCredit(queue, purchaseKey("upi", orderId), now);
+      savePremiumQueue(tx, ledgerRef, next, now);
+    }
     tx.update(ref, { ...audit, status: "revoked" });
     return "revoked";
   });
   if (uid && kind === "plus") {
     // A revoked pass pulls the queue back to the passes that remain.
-    if (decision === "revoke") await db.doc(`webPassLedger/${uid}`).set({ until: await webPassExpiry(uid), updatedAt: FieldValue.serverTimestamp() });
+    if (decision === "revoke") await db.doc(`webPassLedger/${uid}`).set({ until: await webPassExpiry(uid), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
     await syncPremium(uid);
   } else if (uid) await syncChatAccess(uid);
   logger.info("UPI payment reviewed", { orderId, decision, kind });

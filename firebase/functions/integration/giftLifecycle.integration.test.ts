@@ -23,7 +23,7 @@ import {
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from "firebase/functions";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 process.env.RAZORPAY_KEY_ID = "rzp_test_PaireSandbox1";
 process.env.RAZORPAY_KEY_SECRET = "sandbox_key_secret";
@@ -83,12 +83,19 @@ function fakeRazorpay(url: string, init?: Parameters<typeof fetch>[1]): Response
   if (match && init?.method === "POST") {
     const payment = fake.payments.get(match[1]);
     if (!payment) return json({ error: { description: "unknown payment" } }, 400);
+    const key=String((init.headers as Record<string,string>)["X-Refund-Idempotency"]??"");
+    if(key && refundIdempotency.has(key)) return json(refundIdempotency.get(key));
     const body = JSON.parse(String(init.body));
     payment.amount_refunded = payment.amount;
     payment.refund_status = "full";
     fake.refunds.push({ paymentId: payment.id, amount: body.amount, notes: body.notes });
-    return json({ id: rid("rfnd") });
+    const result={ id: rid("rfnd") };
+    if (key) refundIdempotency.set(key,result);
+    refundStates.set(result.id,{id:result.id,payment_id:payment.id,status:"pending"});
+    return json(result);
   }
+  const refundMatch = /^\/refunds\/(rfnd_\w+)$/.exec(path);
+  if(refundMatch) return refundStates.has(refundMatch[1])?json(refundStates.get(refundMatch[1])):json({},404);
   match = /^\/payments\/(pay_\w+)$/.exec(path);
   if (match) return fake.payments.has(match[1]) ? json(fake.payments.get(match[1])) : json({}, 400);
   return json({ error: "not faked" }, 404);
@@ -97,13 +104,19 @@ function fakeRazorpay(url: string, init?: Parameters<typeof fetch>[1]): Response
 const realFetch = global.fetch;
 /** Makes Razorpay's refund API slow, so a second delivery arrives while the first refund is in flight. */
 let refundDelayMs = 0;
+let failingRefundPayment = "", lostRefundResponsePayment = "";
+const refundIdempotency = new Map<string, { id: string }>();
+const refundStates = new Map<string, { id:string; payment_id:string; status:string }>();
 const clients: Array<{ app: FirebaseApp; db: Firestore }> = [];
 beforeAll(() => {
   global.fetch = (async (input: string | URL | Request, init?: Parameters<typeof fetch>[1]) => {
     const url = input instanceof Request ? input.url : String(input);
     if (!url.startsWith("https://api.razorpay.com/")) return realFetch(input, init);
     if (refundDelayMs && url.endsWith("/refund")) await new Promise((resolve) => setTimeout(resolve, refundDelayMs));
-    return fakeRazorpay(url, init);
+    if (failingRefundPayment && url.endsWith(`/payments/${failingRefundPayment}/refund`)) { failingRefundPayment=""; return new Response("{}",{status:503}); }
+    const result=fakeRazorpay(url, init);
+    if (lostRefundResponsePayment && url.endsWith(`/payments/${lostRefundResponsePayment}/refund`)) { lostRefundResponsePayment=""; throw new Error("Response lost after provider accepted refund"); }
+    return result;
   }) as typeof fetch;
 });
 afterAll(async () => {
@@ -155,7 +168,7 @@ async function member(gender: "woman" | "man", name?: string, claims: Record<str
   if (Object.keys(claims).length) await getAuth().setCustomUserClaims(uid, claims);
   const batch = admin.batch();
   batch.set(admin.doc(`moderation/${uid}`), { status: "ok", emailVerified: true, cohort: "test" });
-  batch.set(admin.doc(`users/${uid}`), { uid, displayName: name ?? `Member ${counter}`, gender, photoUrls: [], onboardingComplete: true });
+  batch.set(admin.doc(`users/${uid}`), { uid, displayName: name ?? `Member ${counter}`, gender, age: 29, photoUrls: [], onboardingComplete: true });
   if (claims.supportAccess) batch.set(admin.doc(`supportOperators/${uid}`), { enabled: true });
   await batch.commit();
   return uid;
@@ -210,7 +223,7 @@ beforeEach(async () => {
 });
 
 describe("claiming a gift", () => {
-  test("the recipient claims: the complimentary source, billing and the chat mirror all move; the gifter is told", async () => {
+  test("the recipient claims: an independent premium credit, billing and the chat mirror move; the gifter is told", async () => {
     const { her, him, matchId } = await pair("Alexa Rao", "Jules Verne");
     const { giftId } = await paidGift(her, matchId, "week");
     pushes.length = 0;
@@ -221,17 +234,17 @@ describe("claiming a gift", () => {
     await expectMemberFieldsOnly(giftId);
     // The reversal's bookkeeping lives only on the server-only order.
     const saved = await orderOf(giftId);
-    expect(saved).toMatchObject({ previousCompExpiry: 0, previousCompStatus: null, previousCompLastGiftId: null, endsAt: result.endsAt });
+    expect(saved).toMatchObject({ entitlementQueueVersion: 2, endsAt: result.endsAt });
     expect(saved.startsAt).toBeGreaterThanOrEqual(before);
     expect(saved.endsAt - saved.startsAt).toBe(7 * DAY);
     expect(typeof saved.claimedAt).toBe("number");
-    expect(await compOf(him)).toMatchObject({ status: "active", expiresAt: result.endsAt, lastSource: "gift", lastGiftId: giftId });
+    expect(await compOf(him)).toBeUndefined();
     expect((await billingOf(him))!.expiresAt).toBe(result.endsAt);
     expect(await mirrorOf(him)).toMatchObject({ premiumUntil: result.endsAt });
     // Nothing about her own access, and nothing in Plus's purchase records.
     expect((await admin.doc(`complimentaryPlusGrants/${her}`).get()).exists).toBe(false);
     expect((await admin.collection("razorpayOrders").where("uid", "==", him).get()).empty).toBe(true);
-    expect((await admin.doc(`webPassLedger/${him}`).get()).exists).toBe(false);
+    expect((await admin.doc(`webPassLedger/${him}`).get()).get("premiumQueue.version")).toBe(2);
     // Previews are off by default: the alert names nobody (notificationCopy keeps it generic too).
     expect(pushes).toEqual([{ uid: her, message: expect.objectContaining({ kind: "matches", title: "Paire", body: "Your gift was accepted.", data: { type: "gift", matchId, giftId } }) }]);
   });
@@ -262,7 +275,7 @@ describe("claiming a gift", () => {
     expect(one).toEqual(two);
     const again = await call(life.claimGift, him, { giftId });
     expect(again).toEqual(one);
-    expect((await compOf(him))!.expiresAt).toBe(one.endsAt);
+    expect((await billingOf(him))!.expiresAt).toBe(one.endsAt);
     expect((await orderOf(giftId)).endsAt - (await orderOf(giftId)).startsAt).toBe(7 * DAY);
     expect(pushes.filter((push) => push.uid === her)).toHaveLength(1);
   });
@@ -338,9 +351,9 @@ describe("claiming a gift", () => {
     const granted = await call(adminGrantPlusMonth, owner, { email, requestId: randomUUID() });
     const { giftId } = await paidGift(her, matchId, "day");
     const result = await call(life.claimGift, him, { giftId });
-    expect(await orderOf(giftId)).toMatchObject({ previousCompExpiry: granted.expiresAt, previousCompStatus: "active", startsAt: granted.expiresAt });
+    expect(await orderOf(giftId)).toMatchObject({ entitlementQueueVersion: 2, startsAt: granted.expiresAt });
     expect(result.endsAt).toBe(granted.expiresAt + DAY);
-    expect(await compOf(him)).toMatchObject({ status: "active", expiresAt: result.endsAt, grantedBy: owner });
+    expect(await compOf(him)).toMatchObject({ status: "active", expiresAt: granted.expiresAt, grantedBy: owner });
   });
 
   test("claim, decline and list keep working after giftSales is switched off", async () => {
@@ -446,7 +459,7 @@ describe("reversing a gift (refund or chargeback after payment)", () => {
     expect((await giftOf(giftId)).status).toBe("refunded");
     expect((await orderOf(giftId)).needsReview).toBeUndefined();
     await expectMemberFieldsOnly(giftId);
-    expect(await compOf(him)).toMatchObject({ status: "ended", expiresAt: 0 });
+    expect((await billingOf(him))!.expiresAt).toBe(0);
     expect((await billingOf(him))!.expiresAt).toBe(0);
     expect(await mirrorOf(him)).toMatchObject({ premiumUntil: 0 });
     expect((await orderOf(giftId)).status).toBe("refunded");
@@ -470,36 +483,34 @@ describe("reversing a gift (refund or chargeback after payment)", () => {
     expect(await orderOf(giftId)).toMatchObject({ reversalReason: "chargeback", revokedAt: expect.any(Number) });
   });
 
-  test("changed since (the owner granted a month after the claim): flagged for review, the grant is left alone", async () => {
+  test("a later owner month survives a gift reversal without retaining the gift's unused days", async () => {
     const owner = await member("woman", "Owner", { moderator: true, supportAccess: true });
     const { her, him, matchId } = await pair();
     const { giftId, payment } = await paidGift(her, matchId, "week");
     await call(life.claimGift, him, { giftId });
-    const granted = await call(adminGrantPlusMonth, owner, { email: (await getAuth().getUser(him)).email!, requestId: randomUUID() });
+    await call(adminGrantPlusMonth, owner, { email: (await getAuth().getUser(him)).email!, requestId: randomUUID() });
+    const before = Date.now();
     expect(await webhook("refund.processed", refundEvent(payment))).toBe(200);
-    expect((await giftOf(giftId)).status).toBe("claimed");
-    expect(await orderOf(giftId)).toMatchObject({ needsReview: true, needsReviewReason: "refund" });
-    await expectMemberFieldsOnly(giftId);
-    expect(await compOf(him)).toMatchObject({ status: "active", expiresAt: granted.expiresAt });
-    expect((await billingOf(him))!.expiresAt).toBe(granted.expiresAt);
-    expect(await webhook("payment.refunded", paymentRefunded(payment))).toBe(200);
-    expect((await compOf(him))!.expiresAt).toBe(granted.expiresAt);
+    expect((await giftOf(giftId)).status).toBe("refunded");
+    expect((await orderOf(giftId)).needsReview).toBeUndefined();
+    expect((await billingOf(him))!.expiresAt).toBeGreaterThanOrEqual(before + 30*DAY);
+    expect((await billingOf(him))!.expiresAt).toBeLessThan(Date.now() + 30*DAY + 1000);
+    expect(await compOf(him)).toBeUndefined();
   });
 
-  test("two gifts claimed in turn: refunding the older one is reviewed, refunding the newer restores the older one's end", async () => {
+  test("two claimed gifts can be refunded in original order without manual ledger repair", async () => {
     const { her, him, matchId } = await pair();
-    const older = await paidGift(her, matchId, "day");
-    const newer = await paidGift(her, matchId, "week");
+    const older = await paidGift(her, matchId, "day"), newer = await paidGift(her, matchId, "week");
     const first = await call(life.claimGift, him, { giftId: older.giftId });
     const second = await call(life.claimGift, him, { giftId: newer.giftId });
-    expect(second.endsAt).toBe(first.endsAt + 7 * DAY);
+    expect(second.endsAt).toBe(first.endsAt + 7*DAY);
+    const before=Date.now();
     expect(await webhook("refund.processed", refundEvent(older.payment))).toBe(200);
-    expect((await giftOf(older.giftId)).status).toBe("claimed");
-    expect((await orderOf(older.giftId)).needsReview).toBe(true);
-    expect((await compOf(him))!.expiresAt).toBe(second.endsAt);
+    expect((await orderOf(older.giftId)).needsReview).toBeUndefined();
+    expect((await billingOf(him))!.expiresAt).toBeGreaterThanOrEqual(before+7*DAY);
+    expect((await billingOf(him))!.expiresAt).toBeLessThan(Date.now()+7*DAY+1000);
     expect(await webhook("refund.processed", refundEvent(newer.payment))).toBe(200);
-    expect((await giftOf(newer.giftId)).status).toBe("refunded");
-    expect((await compOf(him))!.expiresAt).toBe(first.endsAt);
+    expect((await billingOf(him))!.expiresAt).toBe(0);
   });
 
   test("a purchased pass is never changed by a reversal", async () => {
@@ -513,7 +524,8 @@ describe("reversing a gift (refund or chargeback after payment)", () => {
     expect(await webhook("refund.processed", refundEvent(payment))).toBe(200);
     expect((await giftOf(giftId)).status).toBe("refunded");
     expect((await admin.doc(`razorpayOrders/${orderId}`).get()).data()).toEqual(bought);
-    expect((await billingOf(him))!.expiresAt).toBe(bought.expiresAt);
+    expect((await billingOf(him))!.expiresAt).toBeLessThan(bought.expiresAt);
+    expect((await billingOf(him))!.expiresAt).toBeGreaterThan(Date.now()+7*DAY-1000);
   });
 
   test("a refund of an unclaimed gift marks it refunded and nothing else", async () => {
@@ -534,9 +546,9 @@ describe("reversal: the revoke condition and repeat events", () => {
     const first = await call(life.claimGift, him, { giftId: older.giftId });
     await call(life.claimGift, him, { giftId: newer.giftId });
     expect(await webhook("refund.processed", refundEvent(newer.payment))).toBe(200);
-    expect(await compOf(him)).toMatchObject({ status: "active", expiresAt: first.endsAt, lastGiftId: older.giftId });
+    expect((await billingOf(him))!.expiresAt).toBe(first.endsAt);
     expect(await webhook("refund.processed", refundEvent(older.payment))).toBe(200);
-    expect(await compOf(him)).toMatchObject({ status: "ended", expiresAt: 0 });
+    expect((await billingOf(him))!.expiresAt).toBe(0);
     expect((await orderOf(older.giftId)).needsReview).toBeUndefined();
     expect((await billingOf(him))!.expiresAt).toBe(0);
   });
@@ -545,7 +557,8 @@ describe("reversal: the revoke condition and repeat events", () => {
     const { her, him, matchId } = await pair();
     const relabelled = await paidGift(her, matchId, "day");
     await call(life.claimGift, him, { giftId: relabelled.giftId });
-    await admin.doc(`complimentaryPlusGrants/${him}`).update({ lastGiftId: "order_SomethingElse1" });
+    await admin.doc(`giftOrders/${relabelled.giftId}`).update({ entitlementQueueVersion: FieldValue.delete() });
+    await admin.doc(`complimentaryPlusGrants/${him}`).set({ status: "active", lastGiftId: "order_SomethingElse1", expiresAt: (await orderOf(relabelled.giftId)).endsAt });
     expect(await webhook("refund.processed", refundEvent(relabelled.payment))).toBe(200);
     expect(await orderOf(relabelled.giftId)).toMatchObject({ needsReview: true });
     expect(await compOf(him)).toMatchObject({ status: "active", lastGiftId: "order_SomethingElse1", expiresAt: (await orderOf(relabelled.giftId)).endsAt });
@@ -553,7 +566,8 @@ describe("reversal: the revoke condition and repeat events", () => {
     const other = await pair();
     const switchedOff = await paidGift(other.her, other.matchId, "day");
     await call(life.claimGift, other.him, { giftId: switchedOff.giftId });
-    await admin.doc(`complimentaryPlusGrants/${other.him}`).update({ status: "ended" });
+    await admin.doc(`giftOrders/${switchedOff.giftId}`).update({ entitlementQueueVersion: FieldValue.delete() });
+    await admin.doc(`complimentaryPlusGrants/${other.him}`).set({ status: "ended" });
     expect(await webhook("refund.processed", refundEvent(switchedOff.payment))).toBe(200);
     expect(await orderOf(switchedOff.giftId)).toMatchObject({ needsReview: true });
     expect((await compOf(other.him))!.status).toBe("ended");
@@ -607,14 +621,14 @@ describe("refunds left in flight at capture", () => {
     expect((await orderOf(fresh.orderId)).refundId).toBeUndefined();
   });
 
-  test("a refund that failed with an error on record is left for support, as before: no automatic retry", async () => {
+  test("a previous refund error is retried automatically and does not lose the obligation", async () => {
     const { orderId, payment } = await orphanedOrder();
     await admin.doc(`giftOrders/${orderId}`).update({ status: "orphaned", paymentId: payment.id, refundAttemptAt: Date.now() - DAY, refundError: "Razorpay down" });
     expect(await webhook("payment.captured", captured(payment))).toBe(200);
     expect((await gifts.grantGift(orderId, payment.id)).outcome).toBe("closed");
     await life.runGiftExpiry(Date.now());
-    expect(refundsFor(payment)).toHaveLength(0);
-    // Support refunds it by hand through the same helper, which records the result.
+    expect(refundsFor(payment)).toHaveLength(1);
+    // A manual retry uses the same durable job and cannot refund twice.
     await refundGiftPayment(orderId, payment.id, 3500, "orphaned");
     expect(refundsFor(payment)).toHaveLength(1);
     expect((await orderOf(orderId)).refundId).toEqual(expect.any(String));
@@ -754,4 +768,91 @@ describe("the paid-chat gate after a claim (real rules, client SDK)", () => {
     await call(life.claimGift, dev.uid, { giftId });
     await send(dev.db, dev.uid, matchId, asha.uid);
   });
+});
+
+describe("independent gifted premium credits", () => {
+  test("refunding a paid pass ahead of a gift removes that purchase and preserves all unused gift days", async () => {
+    const { her, him, matchId } = await pair();
+    const { orderId } = await call(createPlusOrder, him, { plan: "month" });
+    const payment = pay(orderId);
+    await call(confirmPlusPayment, him, { orderId, paymentId: payment.id, signature: checkoutSignature(orderId,payment.id) });
+    const gift = await paidGift(her,matchId,"week");
+    const claimed = await call(life.claimGift,him,{giftId:gift.giftId});
+    const quoted=(await orderOf(gift.giftId)).startsAt; expect(claimed.endsAt-quoted).toBe(7*DAY);
+    // Use the existing primary webhook, not a separate provider configuration.
+    const { razorpayWebhook } = await import("../src/razorpay");
+    const body=Buffer.from(JSON.stringify({event:"refund.processed",payload:refundEvent(payment)}));
+    let status=0;
+    await razorpayWebhook({method:"POST",rawBody:body,body:JSON.parse(body.toString()),get:(name:string)=>name.toLowerCase()==="x-razorpay-signature"?createHmac("sha256",process.env.RAZORPAY_WEBHOOK_SECRET!).update(body).digest("hex"):undefined} as never,{sendStatus:(code:number)=>{status=code;}} as never);
+    expect(status).toBe(200);
+    const expiry=(await billingOf(him))!.expiresAt;
+    expect(expiry).toBeGreaterThan(Date.now()+7*DAY-1000);
+    expect(expiry).toBeLessThan(Date.now()+7*DAY+1000);
+    expect((await orderOf(gift.giftId)).status).toBe("paid");
+    expect((await life.listGifts.run({data:{},auth:{uid:him,token:{}}} as never)).received.find(g=>g.id===gift.giftId)?.endsAt).toBe(expiry);
+  });
+
+  test("the monthly premium gift includes monthly unlimited-like benefits after acceptance",async()=>{
+    const {her,him,matchId}=await pair(); const {giftId}=await paidGift(her,matchId,"month");
+    const result=await call(life.claimGift,him,{giftId});
+    expect((await billingOf(him))!.unlimitedLikesUntil).toBe(result.endsAt);
+    expect((await billingOf(her))?.expiresAt||0).toBe(0);
+  });
+
+  test("a recipient losing approval after capture cannot claim and the sender's payment is refunded",async()=>{
+    const {her,him,matchId}=await pair(); const {giftId,payment}=await paidGift(her,matchId,"day");
+    await admin.doc(`moderation/${him}`).update({emailVerified:false});
+    expect((await failure(call(life.claimGift,him,{giftId}))).reason).toBe("unavailable");
+    expect((await giftOf(giftId)).status).toBe("void"); expect(refundsFor(payment)).toHaveLength(1);
+    expect((await billingOf(him))?.expiresAt||0).toBe(0);
+  });
+});
+
+ describe("durable premium gift refunds",()=>{
+  test.each(["failed-call","lost-response"])("%s stays due and retries with one provider refund",async(kind)=>{
+    const {her,matchId}=await pair();
+    const {orderId}=await call(gifts.createGiftOrder,her,{matchId,plan:"day"});
+    const payment=pay(orderId);
+    await admin.doc(`giftOrders/${orderId}`).update({status:"orphaned",paymentId:payment.id});
+    if(kind==="failed-call") failingRefundPayment=payment.id; else lostRefundResponsePayment=payment.id;
+    await refundGiftPayment(orderId,payment.id,3500,"orphaned");
+    const {giftRefundKey,runGiftRefund}=await import("../src/giftRefunds");
+    const job=admin.doc(`giftRefundJobs/${giftRefundKey(orderId,payment.id)}`);
+    expect((await job.get()).get("status")).toBe("pending");
+    expect((await orderOf(orderId)).refundDue).toBe(true);
+    await job.update({nextAttemptAt:0});
+    await Promise.all([runGiftRefund(job.id),runGiftRefund(job.id)]);
+    expect(refundsFor(payment)).toHaveLength(1);
+    expect((await job.get()).get("status")).toBe("submitted");
+    expect((await orderOf(orderId)).refundDue).toBeUndefined();
+  });
+  test("a crash after recording an extra payment is recovered without changing the original gift",async()=>{
+    const {her,him,matchId}=await pair();const paid=await paidGift(her,matchId,"day"), extra=pay(paid.giftId);
+    await call(life.claimGift,him,{giftId:paid.giftId});
+    const expiry=(await billingOf(him))!.expiresAt;
+    await admin.doc(`giftOrders/${paid.giftId}`).update({extraPaymentIds:FieldValue.arrayUnion(extra.id),extraRefundDue:true});
+    await life.runGiftExpiry(Date.now());await life.runGiftExpiry(Date.now());
+    expect(refundsFor(extra)).toHaveLength(1);expect(refundsFor(paid.payment)).toHaveLength(0);
+    expect((await giftOf(paid.giftId)).status).toBe("claimed");expect((await billingOf(him))!.expiresAt).toBe(expiry);
+  });
+});
+
+ test.each(["processed","failed"])("daily reconciliation reflects a submitted refund becoming %s",async(status)=>{
+  const {her,matchId}=await pair(); const {giftId,payment}=await paidGift(her,matchId,"day");
+  await call(life.declineGift,(await giftOf(giftId)).toUid,{giftId});
+  const {giftRefundKey}=await import("../src/giftRefunds");
+  const job=admin.doc(`giftRefundJobs/${giftRefundKey(giftId,payment.id)}`),saved=(await job.get()).data()!;
+  refundStates.get(saved.refundId)!.status=status;await job.update({nextCheckAt:0});
+  await life.runGiftExpiry(Date.now());
+  expect((await job.get()).get("status")).toBe(status==="processed"?"processed":"needs_review");
+  expect((await orderOf(giftId)).refundStatus).toBe(status==="processed"?"processed":"needs_review");
+  expect(refundsFor(payment)).toHaveLength(1);
+});
+
+ test("old unaccepted premium stays visible behind more than fifty newer gifts",async()=>{
+  const {her,him,matchId}=await pair();const now=Date.now(),batch=admin.batch();
+  batch.set(admin.doc("gifts/order_OLDPENDING01"),{fromUid:her,toUid:him,matchId,plan:"day",status:"pending",createdAt:now-2*DAY,expiresAt:now+5*DAY});
+  for(let i=0;i<55;i++)batch.set(admin.doc(`gifts/order_RECENT${counter}x${i}`),{fromUid:her,toUid:him,matchId,plan:"day",status:"claimed",createdAt:now-i*1000,expiresAt:now+7*DAY});
+  await batch.commit();const mine=await call(life.listGifts,him,{});
+  expect(mine.received).toHaveLength(50);expect(mine.received).toEqual(expect.arrayContaining([expect.objectContaining({id:"order_OLDPENDING01",status:"pending"})]));
 });

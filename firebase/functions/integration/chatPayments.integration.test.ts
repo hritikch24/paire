@@ -836,7 +836,7 @@ describe("earned member offers and paid entitlements",()=>{
   const {memberPrice,validMemberQuote}=await import("../src/lib/member-offer");
   const {dayKey}=await import("../src/lib/ids");
   for(const plan of ["month","lifetime"] as const)for(const percent of [30,40,50] as const){
-   const uid=await buyer();await admin.doc(`limits/${uid}/daily/${dayKey()}`).set({likes:percent>=40?10:0,supers:percent===50?1:0});
+   const uid=await buyer();await admin.doc(`limits/${uid}/daily/${dayKey(new Date(Date.now()))}`).set({likes:percent>=40?10:0,supers:percent===50?1:0});
    const order=await call(createPlusOrder,uid,{plan,expectedAmount:memberPrice(plan,percent)});
    const remote=fake.orders.get(order.orderId)!;expect(remote.amount).toBe(memberPrice(plan,percent));expect(remote.notes.discountPercent).toBe(String(percent));
    expect(validMemberQuote(plan,remote.amount,remote.notes,remote.created_at)).toBe(true);

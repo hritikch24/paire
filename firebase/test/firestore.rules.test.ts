@@ -219,8 +219,9 @@ describe("profiles", () => {
   test("privacy and control settings are owner-only Booleans", async () => {
     const settings = dbFor("alexa").doc("users/alexa/private/settings");
     await assertSucceeds(
-      settings.set({ requireNote: true, firstMove: true, incognito: true, privatePhotos: true, sameIntentOnly: true, sharedLanguageOnly: false })
+      settings.set({ requireNote: true, firstMove: true, incognito: true, privatePhotos: true, sameIntentOnly: true, sharedLanguageOnly: false, allowGiftRequests: false })
     );
+    await assertFails(settings.set({ allowGiftRequests: "yes" }, { merge: true }));
     await assertFails(settings.set({ incognito: "yes" }, { merge: true }));
     await assertFails(settings.set({ showMe: ["woman", "man", "nonbinary"] }));
     await assertFails(dbFor("jules").doc("users/alexa/private/settings").set({ incognito: true }));
@@ -1036,4 +1037,25 @@ describe("storage", () => {
       upload("alexa", "alexa", "big.jpg", new Uint8Array(10 * 1024 * 1024 + 1), "image/jpeg")
     );
   });
+});
+
+// Gift wishes are private, server-mediated and never financial orders.
+describe("gift requests", () => {
+  test("members, participants and moderator clients cannot read or forge request records", async () => {
+    await seed({ "giftRequests/request-one": { fromUid: "alexa", toUid: "jules", status: "pending", plan: "month" } });
+    for (const uid of ["alexa", "jules", "stranger"]) {
+      await assertFails(dbFor(uid).doc("giftRequests/request-one").get());
+      await assertFails(dbFor(uid).collection("giftRequests").get());
+      await assertFails(dbFor(uid).doc("giftRequests/request-one").set({ status: "declined" }));
+      await assertFails(dbFor(uid).doc("giftRequests/request-one").delete());
+    }
+    await assertFails(testEnv.authenticatedContext("mod", { moderator: true }).firestore().doc("giftRequests/request-one").get());
+  });
+});
+
+ test("premium refund jobs cannot be read or changed by member or moderator clients",async()=>{
+  await seed({"giftRefundJobs/private-refund":{orderId:"order_secret",paymentId:"pay_secret",amountPaise:39900,status:"pending"}});
+  for(const context of [testEnv.authenticatedContext("alexa",{email_verified:true}),testEnv.authenticatedContext("staff",{email_verified:true,moderator:true})]){
+   const db=context.firestore();await assertFails(db.doc("giftRefundJobs/private-refund").get());await assertFails(db.collection("giftRefundJobs").get());await assertFails(db.doc("giftRefundJobs/private-refund").set({status:"processed"}));
+  }
 });

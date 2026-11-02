@@ -226,7 +226,7 @@ service cloud.firestore {
           'showMe', 'ageMin', 'ageMax', 'maxDistanceKm', 'locationEnabled', 'location',
           'sharedVibesOnly', 'aiVibeMatching', 'openToCasual', 'notifications', 'updatedAt',
           'requireNote', 'firstMove', 'incognito', 'privatePhotos', 'sameIntentOnly', 'sharedLanguageOnly',
-          'ageGap', 'garbaNights', 'diwaliPlan', 'showPresence'
+          'ageGap', 'garbaNights', 'diwaliPlan', 'showPresence', 'allowGiftRequests'
         ])
         && (!('showMe' in d) || (d.showMe is list && d.showMe.size() >= 1 && d.showMe.size() <= 2
             && d.showMe.hasOnly(['woman', 'man'])))
@@ -243,7 +243,7 @@ service cloud.firestore {
         && (!('openToCasual' in d) || d.openToCasual is bool)
         && optBool(d, 'requireNote') && optBool(d, 'firstMove') && optBool(d, 'incognito')
         && optBool(d, 'privatePhotos') && optBool(d, 'sameIntentOnly') && optBool(d, 'sharedLanguageOnly')
-        && optBool(d, 'showPresence')
+        && optBool(d, 'showPresence') && optBool(d, 'allowGiftRequests')
         && (!('ageGap' in d) || d.ageGap == null || d.ageGap in ['older', 'intoOlder'])
         && (!('diwaliPlan' in d) || d.diwaliPlan == null || validDiwaliPlan(d.diwaliPlan))
         && (!('garbaNights' in d) || d.garbaNights == null || validGarbaNights(d.garbaNights))
@@ -472,6 +472,8 @@ service cloud.firestore {
 
     // -------------------------------------------------------------- reports
 
+    match /giftRequests/{requestId} { allow read, write: if false; }
+    match /giftRefundJobs/{refundId} { allow read, write: if false; }
     match /reports/{reportId} {
       // Authenticated callables validate evidence/quotas and expose only own progress.
       allow read, write: if false;

@@ -1,4 +1,5 @@
 /**
+ * Legacy compatibility rules for pre-queue gifts. New gifts use premiumQueue.
  * Pure rules for a gift after payment (giftLifecycle.ts): when a claimed gift
  * starts and ends, whether a refund may take it back, and what the daily sweep
  * does with a gift nobody claimed. No I/O here.

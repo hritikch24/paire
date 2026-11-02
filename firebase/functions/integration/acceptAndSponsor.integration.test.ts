@@ -230,7 +230,8 @@ test("accept, reply free, gift a week, claim: the whole story, and Plus and Unli
   await expect(send(she, matchId, he.uid, "Can I reply?")).rejects.toMatchObject({ code: "permission-denied" });
   await send(he, matchId, she.uid, "Still here");
   expect((await mirrorOf(he.uid))?.premiumUntil).toBe(claimed.endsAt);
-  expect((await admin.doc(`complimentaryPlusGrants/${he.uid}`).get()).get("expiresAt")).toBe(claimed.endsAt);
+  expect((await admin.doc(`complimentaryPlusGrants/${he.uid}`).get()).exists).toBe(false);
+  expect((await admin.doc(`webPassLedger/${he.uid}`).get()).get("premiumQueue.credits")).toEqual(expect.arrayContaining([expect.objectContaining({key:`gift:${orderId}`,milliseconds:7*DAY})]));
   expect((await admin.doc(`gifts/${orderId}`).get()).get("status")).toBe("claimed");
 
   // Back on: she sends free again, with nothing else needed.

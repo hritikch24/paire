@@ -49,7 +49,7 @@ export function useGiftReturn() {
       void queryClient.invalidateQueries({ queryKey: ["send-policy"] });
     };
     if (!paid) {
-      showToast("The payment didn't go through, and you weren't charged.");
+      showToast("Payment was not confirmed. If your bank shows a charge, check Your gifts or contact support before trying again.");
       refresh();
       return;
     }
@@ -62,7 +62,7 @@ export function useGiftReturn() {
       .then((outcome) => {
         // refunding with "paid" is a second payment for a gift that already exists; refunding with
         // "pending" is the member's only payment for a gift that can't be delivered.
-        if (outcome.refunding) showToast(outcome.status === "paid" ? "That was a second payment, and it is being refunded." : "This payment is being refunded, and you won't be charged.");
+        if (outcome.refunding) showToast(outcome.status === "paid" ? "That was a second payment, and it is being refunded." : "The gift could not be delivered. A refund is due to your original payment method.");
         else if (outcome.status === "paid") showToast("Gift paid. They'll see it when they open Paire.", "success");
         else showToast("Payment received. Your bank is still confirming it; you won't be charged again.");
       })

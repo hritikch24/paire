@@ -34,6 +34,8 @@ async function recursiveDelete(ref: DocumentReference): Promise<void> {
  */
 export async function purgeUserData(uid: string): Promise<void> {
   await purgeVerificationData(uid);
+  await deleteQueryResults(db.collection("giftRequests").where("fromUid", "==", uid));
+  await deleteQueryResults(db.collection("giftRequests").where("toUid", "==", uid));
   await deleteQueryResults(db.collection("webPushSubscriptions").where("uid", "==", uid));
   await db.doc(`notificationReminders/${uid}`).delete();
   await db.doc(`billing/${uid}`).delete();

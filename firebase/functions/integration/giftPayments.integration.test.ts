@@ -119,7 +119,7 @@ async function member(gender: "woman" | "man", options: { cohort?: string | null
   if (options.cohort !== null) moderation.cohort = options.cohort ?? "test";
   const batch = admin.batch();
   batch.set(admin.doc(`moderation/${uid}`), moderation);
-  batch.set(admin.doc(`users/${uid}`), { uid, displayName: `Member ${counter}`, gender, photoUrls: [], onboardingComplete: true });
+  batch.set(admin.doc(`users/${uid}`), { uid, displayName: `Member ${counter}`, gender, age: 29, photoUrls: [], onboardingComplete: true });
   await batch.commit();
   return uid;
 }
@@ -381,7 +381,7 @@ describe("confirming a gift payment", () => {
   });
 
   test("a test-mode payment for a real (non-test-cohort) account is rejected and refunded", async () => {
-    const her = await member("woman", { cohort: null }), him = await member("man");
+    const her = await member("woman", { cohort: null }), him = await member("man", { cohort: null });
     const matchId = await matchUp(her, him);
     const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan: "day" });
     const payment = pay(orderId);
@@ -541,5 +541,34 @@ describe("the gift webhook", () => {
     expect(await webhook("payment.dispute.created", { dispute: { entity: { payment_id: payment.id } } })).toBe(200);
     expect((await gift(orderId))!.status).toBe("pending");
     expect((await order(orderId))!.needsReview).toBeUndefined();
+  });
+});
+
+ describe("premium-only delivery guards",()=>{
+  test("cash, items, chat and lifetime are rejected before any provider order",async()=>{
+    const {her,matchId}=await pair();const before=fake.orders.size;
+    for(const plan of ["cash","items","chat","lifetime","halfyear"]) await expect(call(gifts.createGiftOrder,her,{matchId,plan})).rejects.toThrow(/Choose/);
+    expect(fake.orders.size).toBe(before);
+  });
+  test("a new hidden or unconfirmed recipient cannot receive a paid gift",async()=>{
+    for(const change of [{status:"hidden"},{emailVerified:false}]){
+      const {her,him,matchId}=await pair();const {orderId}=await call(gifts.createGiftOrder,her,{matchId,plan:"day"});
+      await admin.doc(`moderation/${him}`).update(change);const payment=pay(orderId);
+      await expect(call(gifts.confirmGiftPayment,her,{orderId,paymentId:payment.id,signature:checkoutSignature(orderId,payment.id)})).rejects.toMatchObject({details:{reason:"refunded"}});
+      expect(await gift(orderId)).toBeUndefined();expect(fake.refunds.filter(r=>r.paymentId===payment.id)).toHaveLength(1);
+    }
+  });
+  test("four concurrent captures deliver at most three paid gifts per sender per day",async()=>{
+    const her=await member("woman"), orders: Array<{orderId:string;payment:FakePayment}>=[];
+    for(let i=0;i<4;i++){
+      const him=await member("man"), matchId=await matchUp(her,him);
+      const {orderId}=await call(gifts.createGiftOrder,her,{matchId,plan:"day"});orders.push({orderId,payment:pay(orderId)});
+    }
+    const outcomes=await Promise.allSettled(orders.map(({orderId,payment})=>call(gifts.confirmGiftPayment,her,{orderId,paymentId:payment.id,signature:checkoutSignature(orderId,payment.id)})));
+    expect(outcomes.filter(outcome=>outcome.status==="fulfilled")).toHaveLength(3);
+    expect(outcomes.filter(outcome=>outcome.status==="rejected")).toHaveLength(1);
+    const delivered=await Promise.all(orders.map(o=>gift(o.orderId)));
+    expect(delivered.filter(Boolean)).toHaveLength(3);
+    expect(fake.refunds.filter(r=>orders.some(o=>o.payment.id===r.paymentId))).toHaveLength(1);
   });
 });

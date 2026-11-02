@@ -132,9 +132,9 @@ describe("refund retry after a crash", () => {
     expect(refundRetryAllowed({ ...orphaned, refundAttemptAt: now - 120_000 }, "pay_A1b2C3d4", now)).toBe(true);
   });
 
-  test("never once a refund, a refund error or a refund event is recorded, or for a refunded order", () => {
+  test("a confirmed refund settles the obligation; a failed attempt remains retryable", () => {
     expect(refundRetryAllowed({ ...orphaned, refundId: "rfnd_1" }, "pay_A1b2C3d4", now)).toBe(false);
-    expect(refundRetryAllowed({ ...orphaned, refundError: "boom" }, "pay_A1b2C3d4", now)).toBe(false);
+    expect(refundRetryAllowed({ ...orphaned, refundError: "boom" }, "pay_A1b2C3d4", now)).toBe(true);
     expect(refundRetryAllowed({ ...orphaned, refundedPaymentIds: ["pay_A1b2C3d4"] }, "pay_A1b2C3d4", now)).toBe(false);
     expect(refundRetryAllowed({ ...orphaned, status: "refunded" }, "pay_A1b2C3d4", now)).toBe(false);
     expect(refundRetryAllowed({ ...orphaned, status: "paid" }, "pay_A1b2C3d4", now)).toBe(false);
@@ -158,8 +158,8 @@ describe("orderRefundState", () => {
     expect(orderRefundState(orphaned, "pay_A1b2C3d4", now)).toBe("retry");
     expect(orderRefundState({ ...orphaned, refundAttemptAt: now - 120_000 }, "pay_A1b2C3d4", now)).toBe("retry");
     expect(orderRefundState({ ...orphaned, refundAttemptAt: now, refundId: "rfnd_1" }, "pay_A1b2C3d4", now)).toBe("settled");
-    expect(orderRefundState({ ...orphaned, refundAttemptAt: now, refundError: "down" }, "pay_A1b2C3d4", now)).toBe("settled");
-    expect(orderRefundState({ ...orphaned, refundError: "down" }, "pay_A1b2C3d4", now)).toBe("settled");
+    expect(orderRefundState({ ...orphaned, refundAttemptAt: now, refundError: "down" }, "pay_A1b2C3d4", now)).toBe("in-flight");
+    expect(orderRefundState({ ...orphaned, refundError: "down" }, "pay_A1b2C3d4", now)).toBe("retry");
     expect(orderRefundState({ ...orphaned, status: "paid" }, "pay_A1b2C3d4", now)).toBe("settled");
   });
 });

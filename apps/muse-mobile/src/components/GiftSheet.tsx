@@ -9,13 +9,13 @@ import { createGift, type GiftPlanId, type GiftView } from "../services/giftServ
 import { GIFT_PLANS, giftPlanLabel, giftStatusWord } from "../utils/gifts";
 import { GhostButton } from "./MuseButton";
 
-type GiftSheetProps = { visible: boolean; matchId: string; name: string; onClose: () => void };
+type GiftSheetProps = { visible: boolean; matchId: string; name: string; onClose: () => void; requestedPlan?: GiftPlanId };
 
 function GiftRow({ gift, side }: { gift: GiftView; side: "sent" | "received" }) {
   return (
-    <YStack testID={`gift-row-${gift.id}`} gap={2} paddingVertical="$2" accessible accessibilityLabel={`${side === "sent" ? "To" : "From"} ${gift.counterpartName}, ${giftPlanLabel(gift.plan)}. ${giftStatusWord(gift.status, side)}`}>
+    <YStack testID={`gift-row-${gift.id}`} gap={2} paddingVertical="$2" accessible accessibilityLabel={`${side === "sent" ? "To" : "From"} ${gift.counterpartName}, ${giftPlanLabel(gift.plan)}. ${giftStatusWord(gift.status, side, gift.refundStatus)}`}>
       <Text fontSize="$3" fontWeight="600">{`${side === "sent" ? "To" : "From"} ${gift.counterpartName}`}</Text>
-      <Text fontSize="$2" color="$textMuted">{`${giftPlanLabel(gift.plan)} · ${giftStatusWord(gift.status, side)}`}</Text>
+      <Text fontSize="$2" color="$textMuted">{`${giftPlanLabel(gift.plan)} · ${giftStatusWord(gift.status, side, gift.refundStatus)}`}</Text>
     </YStack>
   );
 }
@@ -27,7 +27,7 @@ function GiftRow({ gift, side }: { gift: GiftView; side: "sent" | "received" }) 
  * person already has Lifetime Plus, …) its plain message is shown here and
  * nothing redirects.
  */
-export function GiftSheet({ visible, matchId, name, onClose }: GiftSheetProps) {
+export function GiftSheet({ visible, matchId, name, onClose, requestedPlan }: GiftSheetProps) {
   const insets = useSafeAreaInsets();
   const gifts = useGifts().data;
   const [busy, setBusy] = useState<GiftPlanId | null>(null);
@@ -80,7 +80,8 @@ export function GiftSheet({ visible, matchId, name, onClose }: GiftSheetProps) {
           <ScrollView keyboardShouldPersistTaps="handled">
             <YStack gap="$3">
               <Text fontSize="$7" fontWeight="700" accessibilityRole="header">{`Gift Paire Plus to ${first}`}</Text>
-              <Text color="$textMuted">They'll get a notification and can accept it; if they don't, you're refunded after 7 days.</Text>
+              <Text color="$textMuted">Premium passes only. No cash, items or chat-only unlocks. They can accept or say no. If they say no, do not accept within 7 days, or the match ends, we request a refund to your original payment method. Your bank may take more time to return the money.</Text>
+              {requestedPlan ? <Text fontWeight="700">They asked for {giftPlanLabel(requestedPlan)}. You can choose any available gift or close this page. You do not owe them a gift.</Text> : null}
               <YStack gap="$2">
                 {GIFT_PLANS.map((plan) => {
                   const details = webPlan(plan);

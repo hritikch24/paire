@@ -15,6 +15,8 @@ export type GiftView = {
   expiresAt: number;
   /** Only on a received, claimed gift: when the added Plus ends. */
   endsAt?: number;
+  /** Sender only: confirmed progress of the original-payment refund. */
+  refundStatus?: string;
 };
 export type GiftList = { received: GiftView[]; sent: GiftView[] };
 export type GiftConfirmation = { status: "paid" | "pending"; giftId: string; refunding?: true };

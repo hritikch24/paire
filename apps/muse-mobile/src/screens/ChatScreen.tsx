@@ -64,6 +64,7 @@ import type { AppStackParamList } from "../navigation/types";
  * composer-lock test renders this screen without them. Dynamic import() doesn't run under Jest.
  */
 const loadGiftSheet = () => (require("../components/GiftSheet") as typeof import("../components/GiftSheet")).GiftSheet;
+const loadGiftRequests = () => (require("../components/GiftRequestSheet") as typeof import("../components/GiftRequestSheet")).GiftRequestSheet;
 
 const GROUP_GAP_MS = 5 * 60 * 1000;
 
@@ -131,6 +132,8 @@ export function ChatScreen() {
   const contactIssue = Platform.OS === "web" ? chatContactIssue(text) : null;
   const [menuOpen, setMenuOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
+  const [giftRequestOpen, setGiftRequestOpen] = useState(false);
+  const [requestedGiftPlan, setRequestedGiftPlan] = useState<import("../services/giftService").GiftPlanId | undefined>();
   const [closeOpen, setCloseOpen] = useState(false);
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set());
   const [warnings, setWarnings] = useState<ReadonlyMap<string, MessageSafety>>(() => new Map());
@@ -407,7 +410,7 @@ export function ChatScreen() {
         ]
       : []),
     ...(Platform.OS === "web" && active && sendPolicy?.giftSales === true
-      ? [{ label: "Gift premium", icon: "gift-outline" as const, testID: "chat-gift-premium", onPress: () => setGiftOpen(true) }]
+      ? [{ label: "Gift premium", icon: "gift-outline" as const, testID: "chat-gift-premium", onPress: () => { setRequestedGiftPlan(undefined); setGiftOpen(true); } }, { label: "Ask for a Plus gift", icon: "gift-outline" as const, testID: "chat-request-gift", onPress: () => setGiftRequestOpen(true) }]
       : []),
     {
       label: `Report ${name}`,
@@ -421,6 +424,7 @@ export function ChatScreen() {
   const menuOptions = group ? groupMenu : pairMenu;
   // The gift sheet (and the payment modules behind it) is only loaded once someone opens it.
   const GiftSheetView = Platform.OS === "web" && giftOpen && !group && sendPolicy?.giftSales === true ? loadGiftSheet() : null;
+  const GiftRequestView = Platform.OS === "web" && giftRequestOpen && !group && active && sendPolicy?.giftSales === true ? loadGiftRequests() : null;
 
   // Written for this match by Paire AI; the local ones show while it loads or if it can't.
   const openers = useQuery({
@@ -843,7 +847,8 @@ export function ChatScreen() {
       </KeyboardAvoidingView>
 
       <ActionSheet visible={menuOpen} onClose={() => setMenuOpen(false)} options={menuOptions} />
-      {GiftSheetView ? <GiftSheetView visible matchId={matchId} name={name} onClose={() => setGiftOpen(false)} /> : null}
+      {GiftSheetView ? <GiftSheetView visible matchId={matchId} name={name} requestedPlan={requestedGiftPlan} onClose={() => setGiftOpen(false)} /> : null}
+      {GiftRequestView ? <GiftRequestView matchId={matchId} onClose={() => setGiftRequestOpen(false)} onGift={plan => { setRequestedGiftPlan(plan); setGiftOpen(true); }} /> : null}
       <ActionSheet
         visible={closeOpen}
         title={`Send ${name.split(" ")[0]} a kind goodbye, then end the match`}

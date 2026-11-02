@@ -1,3 +1,7 @@
+import { WEB_PUSH_SECRETS } from "./webPush";
+import { handlePremiumGiftWebhook } from "./giftPayments";
+import { savePremiumQueue } from "./premiumQueue";
+import { appendPremiumCredit, premiumQueue, purchaseKey, reversePremiumCredit } from "./lib/premiumQueue";
 import { DocumentReference, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
@@ -100,10 +104,13 @@ export async function grantWebPass(orderId: string, paymentId: string): Promise<
       tx.update(ref, { ...record, status: "rejected" }); return "rejected";
     }
     if (benefits.lifetime) { tx.update(ref, { ...record, status: "duplicate" }); return "duplicate"; }
-    const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry, benefits.expiresAt);
-    const window = planWindow(now, order.plan, queuedUntil);
-    tx.update(ref, { ...record, ...window, status: "paid", paidAt: now });
-    tx.set(ledgerRef, { until: window.expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() });
+    const queue = premiumQueue(ledger.get("premiumQueue"));
+    const queuedUntil = queue ? benefits.expiresAt : Math.max(Number(ledger.get("until")) || 0, storeExpiry, benefits.expiresAt);
+    const added = queue && order.plan !== "lifetime" ? appendPremiumCredit(queue, purchaseKey("razorpay", orderId), order.plan, now) : null;
+    const window = added ? { startsAt: added.window.startsAt, expiresAt: added.window.expiresAt } : planWindow(now, order.plan, queuedUntil);
+    tx.update(ref, { ...record, ...window, status: "paid", paidAt: now, ...(added ? { entitlementQueueVersion: 2 } : {}) });
+    if (added) savePremiumQueue(tx, ledgerRef, added, now);
+    else tx.set(ledgerRef, { until: window.expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
     return "granted";
   });
   if (["duplicate", "orphaned", "rejected", "extra"].includes(outcome)) await refundUnneededPass(orderId, paymentId, order.amountPaise, outcome, outcome === "extra");
@@ -115,8 +122,17 @@ async function refundWebPass(ref: DocumentReference): Promise<string | null> {
   const snap = await ref.get();
   if (!snap.exists) return null;
   const uid = snap.get("uid") as string;
-  await ref.update({ status: "refunded", updatedAt: FieldValue.serverTimestamp() });
-  await db.doc(`webPassLedger/${uid}`).set({ until: await webPassExpiry(uid), updatedAt: FieldValue.serverTimestamp() });
+  await db.runTransaction(async tx => {
+    const ledgerRef = db.doc(`webPassLedger/${uid}`);
+    const [fresh, ledger] = await tx.getAll(ref, ledgerRef);
+    const now = Date.now(), queue = premiumQueue(ledger.get("premiumQueue"));
+    if (fresh.get("status") !== "refunded") tx.update(ref, { status: "refunded", refundedAt: now, updatedAt: FieldValue.serverTimestamp() });
+    if (queue) {
+      const next = reversePremiumCredit(queue, purchaseKey("razorpay", ref.id), now);
+      savePremiumQueue(tx, ledgerRef, next, now);
+    }
+  });
+  await db.doc(`webPassLedger/${uid}`).set({ until: await webPassExpiry(uid), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   return uid;
 }
 
@@ -225,7 +241,7 @@ type WebhookPayload = {
   event?: string;
   payload?: {
     payment?: { entity?: { id?: string; order_id?: string } };
-    refund?: { entity?: { payment_id?: string } };
+    refund?: { entity?: { id?: string; payment_id?: string } };
     dispute?: { entity?: { payment_id?: string } };
   };
 };
@@ -236,7 +252,7 @@ type WebhookPayload = {
  * payment.dispute.lost, payment.dispute.won and payment.dispute.closed.
  */
 export const razorpayWebhook = onRequest(
-  { region: REGION, secrets: ["RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"], timeoutSeconds: 60 },
+  { region: REGION, secrets: ["RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET", ...WEB_PUSH_SECRETS], timeoutSeconds: 60 },
   async (request, response) => {
     if (request.method !== "POST") {
       response.sendStatus(405);
@@ -253,6 +269,10 @@ export const razorpayWebhook = onRequest(
       const paymentId = body.payload?.refund?.entity?.payment_id ?? body.payload?.dispute?.entity?.payment_id ?? eventPayment?.id;
       // Unlimited Chat orders live in their own collection, so a Plus pass can never be granted for one (or the reverse).
       if (await handleChatUnlockWebhook(event, paymentId, eventPayment?.order_id)) {
+        response.sendStatus(200);
+        return;
+      }
+      if (await handlePremiumGiftWebhook(event, paymentId, eventPayment?.order_id, body.payload?.refund?.entity?.id)) {
         response.sendStatus(200);
         return;
       }

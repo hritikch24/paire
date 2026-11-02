@@ -90,6 +90,7 @@ export type UserSettings = {
   diwaliPlan?: { dates: string[]; vibes: string[] } | null;
   /** Show matches when I'm online and when I was last active. Missing = true. */
   showPresence?: boolean;
+  allowGiftRequests?: boolean;
 };
 
 /**

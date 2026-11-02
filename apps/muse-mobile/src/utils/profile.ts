@@ -119,7 +119,8 @@ export function withSettingsDefaults(settings: Partial<UserSettings> | null | un
     ageGap: settings?.ageGap === "older" || settings?.ageGap === "intoOlder" ? settings.ageGap : null,
     garbaNights: Array.isArray(settings?.garbaNights) ? settings.garbaNights.filter((night) => typeof night === "string") : [],
     diwaliPlan: normalizeDiwaliPlan(settings?.diwaliPlan),
-    showPresence: settings?.showPresence !== false
+    showPresence: settings?.showPresence !== false,
+    allowGiftRequests: settings?.allowGiftRequests !== false
   };
 }
 

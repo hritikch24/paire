@@ -301,6 +301,7 @@ export function SettingsScreen() {
           title="Privacy & control"
           footer="Free for everyone, always. These are built so women can date on their own terms, and anyone can use them."
         >
+          {Platform.OS === "web" ? <ToggleRow testID="settings-gift-requests" icon="gift-outline" label="Allow Plus gift requests" description="Matches can ask you for a Plus gift. You can say no. No payment starts without your choice." value={settings.allowGiftRequests !== false} showDivider={false} onValueChange={value => void save({ allowGiftRequests: value })} /> : null}
           <ToggleRow
             testID="settings-require-note"
             icon="chatbubble-ellipses-outline"

@@ -1,7 +1,9 @@
+import { dailyLimitRef } from "./quota";
 import { FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { db } from "./admin";
+import { prepareGiftQueue, storeExpiryIfEnabled } from "./billing";
 import { billingEnabled, razorpayConfigured, webPassBenefits } from "./billing";
 import { chatPolicy } from "./chatEntitlement";
 import { REGION } from "./config";
@@ -11,13 +13,13 @@ import { canGift, GiftDenied, giftAmountPaise, GIFT_PENDING_MS, GiftPlan, isGift
 import { GIFT_CHECKOUT_REUSE_MS, giftCaptureVerdict, giftCheckoutKey, giftDayStart, giftOrderBody, giftPushCopy, isMatchId, orderRefundState } from "./lib/giftPayments";
 import { pairId } from "./lib/ids";
 import { reverseGift } from "./giftLifecycle";
-import { EXTRA_REASON, refundGiftPayment } from "./giftRefunds";
+import { EXTRA_REASON, refundGiftPayment, settleGiftRefundJob, failGiftRefundJob } from "./giftRefunds";
 import { checkoutHost, requireHostedCheckout } from "./lib/kraftai";
 import { isRazorpayId, paymentMatchesOrder, PLUS_PASSES, validCheckoutSignature, validWebhookSignature } from "./lib/razorpay";
 import { sendPushToUser } from "./push";
 import { consumeDailyQuota } from "./quota";
 import { razorpay } from "./razorpayClient";
-import { verifiedUsers } from "./trust";
+import { verifiedUsers, requireVerifiedUsers } from "./trust";
 import { WEB_PUSH_SECRETS } from "./webPush";
 
 /**
@@ -105,11 +107,9 @@ export const createGiftOrder = onCall({ region: REGION, secrets: SECRETS, timeou
   await consumeDailyQuota(uid, "giftOrders", ORDERS_PER_DAY);
 
   const [sender, senderModeration, match] = await db.getAll(db.doc(`users/${uid}`), db.doc(`moderation/${uid}`), db.doc(`matches/${matchId}`));
-  if (!sender.exists) throw new HttpsError("failed-precondition", "Finish creating your profile first.");
-  if (senderModeration.get("status") === "banned") throw new HttpsError("permission-denied", "This account is unavailable. Contact support for help.");
-  if (!(await verifiedUsers([uid])).has(uid)) {
-    throw new HttpsError("failed-precondition", "Verify your photos before sending a gift.", { reason: "verification-required" });
-  }
+  if (!sender.exists || !Number.isFinite(sender.get("age")) || sender.get("age") < 18 || sender.get("age") > 100) throw new HttpsError("failed-precondition", "Finish creating your profile first.");
+  if (["hidden", "banned"].includes(senderModeration.get("status"))) throw new HttpsError("permission-denied", "This account is unavailable. Contact support for help.");
+  await requireVerifiedUsers([uid]);
 
   // The recipient comes from the match itself, never from the client.
   const participants = (match.get("participants") as unknown[] | undefined)?.filter((p): p is string => typeof p === "string") ?? [];
@@ -127,19 +127,23 @@ export const createGiftOrder = onCall({ region: REGION, secrets: SECRETS, timeou
   // Only gifts actually paid for today count: abandoned checkouts never lock anyone out
   // (the 20 orders a day quota above still caps how many can be opened).
   const today = await db.collection("giftOrders").where("fromUid", "==", uid).where("createdAt", ">=", giftDayStart(now)).get();
-  const sentToday = today.docs.filter((doc) => doc.get("status") === "paid").length;
+  const capturedToday = await dailyLimitRef(uid).get();
+  const sentToday = Math.max(today.docs.filter(doc => doc.get("status") === "paid").length, Number(capturedToday.get("giftPurchases") || 0));
+  if ((senderModeration.get("cohort") ?? "public") !== (recipientModeration.get("cohort") ?? "public")) throw denied("unavailable");
   const verdict = canGift({
     fromUid: uid,
     toUid,
     match: { active: match.get("active") !== false, participants },
     blocked: blocked.exists || blockedBy.exists,
-    recipientBanned: recipientModeration.get("status") === "banned",
+    recipientBanned: ["hidden", "banned"].includes(recipientModeration.get("status")),
     recipientVerified: (await verifiedUsers([toUid])).has(toUid),
-    recipientExists: recipient.exists,
+    recipientExists: recipient.exists && Number.isFinite(recipient.get("age")) && recipient.get("age") >= 18 && recipient.get("age") <= 100,
     sentToday,
     recipientLifetime: recipient.exists ? (await webPassBenefits(toUid)).lifetime : false
   });
   if (!verdict.ok) throw denied(verdict.reason);
+
+  await prepareGiftQueue(toUid, now, await storeExpiryIfEnabled(toUid));
 
   const email = (request.auth?.token.email as string | undefined) ?? null;
   const mode = razorpayMode(process.env.RAZORPAY_KEY_ID);
@@ -219,7 +223,7 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
     const known = [...(order.extraPaymentIds ?? []), ...(order.refundedPaymentIds ?? [])].includes(paymentId);
     if (order.status === "paid") {
       if (order.paymentId === paymentId || known) return "duplicate";
-      tx.update(ref, { extraPaymentIds: FieldValue.arrayUnion(paymentId), updatedAt: FieldValue.serverTimestamp() });
+      tx.update(ref, { extraPaymentIds: FieldValue.arrayUnion(paymentId), extraRefundDue: true, updatedAt: FieldValue.serverTimestamp() });
       return "extra";
     }
     if (order.status === "refunded" || order.status === "orphaned" || order.status === "rejected") {
@@ -235,7 +239,7 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
       }
       if (known) return "closed";
       // Captured on an order that can no longer deliver a gift: never keep that money.
-      tx.update(ref, { extraPaymentIds: FieldValue.arrayUnion(paymentId), updatedAt: FieldValue.serverTimestamp() });
+      tx.update(ref, { extraPaymentIds: FieldValue.arrayUnion(paymentId), extraRefundDue: true, updatedAt: FieldValue.serverTimestamp() });
       return "extra";
     }
     if (order.status !== "created") return "closed";
@@ -250,16 +254,20 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
       db.doc(`blocks/${order.toUid}/blocked/${order.fromUid}`)
     );
     if (gift.exists) return "duplicate";
+    const approved = await verifiedUsers([order.fromUid, order.toUid], tx);
+    const lifetime = (await webPassBenefits(order.toUid, Date.now(), tx)).lifetime;
+    const giftLimitRef = dailyLimitRef(order.fromUid), giftLimit = await tx.get(giftLimitRef);
+    const overDailyLimit = Number(giftLimit.get("giftPurchases") || 0) >= 3;
     const participants = (match.get("participants") as string[] | undefined) ?? [];
     const verdict = giftCaptureVerdict({
       fromUid: order.fromUid,
       toUid: order.toUid,
       match: match.exists ? { active: match.get("active") !== false, participants } : undefined,
       blocked: blocked.exists || blockedBy.exists,
-      recipientExists: recipient.exists,
-      recipientBanned: recipientModeration.get("status") === "banned",
-      senderExists: sender.exists,
-      senderBanned: senderModeration.get("status") === "banned",
+      recipientExists: recipient.exists && Number.isFinite(recipient.get("age")) && recipient.get("age") >= 18 && recipient.get("age") <= 100,
+      recipientBanned: ["hidden", "banned"].includes(recipientModeration.get("status")) || !approved.has(order.toUid) || lifetime || overDailyLimit || (senderModeration.get("cohort") ?? "public") !== (recipientModeration.get("cohort") ?? "public"),
+      senderExists: sender.exists && Number.isFinite(sender.get("age")) && sender.get("age") >= 18 && sender.get("age") <= 100,
+      senderBanned: ["hidden", "banned"].includes(senderModeration.get("status")) || !approved.has(order.fromUid),
       mode: order.mode,
       emulator: emulator(),
       senderCohort: senderModeration.get("cohort"),
@@ -278,6 +286,7 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
     const now = Date.now();
     // Only what both members may read (the rules let both read the whole doc). The price,
     // the payment and all refund or reversal bookkeeping stay on the server-only order.
+    tx.set(giftLimitRef, { giftPurchases: FieldValue.increment(1) }, { merge: true });
     tx.set(giftRef, {
       fromUid: order.fromUid,
       toUid: order.toUid,
@@ -356,6 +365,10 @@ async function findGiftOrder(paymentId: unknown, orderId: unknown) {
     const ref = db.doc(`giftOrders/${orderId}`);
     if ((await ref.get()).exists) return ref;
   }
+  if (isRazorpayId(paymentId, "pay")) {
+    const jobs = await db.collection("giftRefundJobs").where("paymentId", "==", paymentId).limit(1).get();
+    if (!jobs.empty) return db.doc(`giftOrders/${jobs.docs[0].get("orderId")}`);
+  }
   return null;
 }
 
@@ -393,6 +406,7 @@ export async function handleGiftReversal(paymentId: unknown, orderId: unknown, e
     return true;
   });
   if (giftPayment) await reverseGift(ref.id, event === "payment.dispute.lost" ? "chargeback" : "refund");
+  if (typeof paymentId === "string") await settleGiftRefundJob(ref.id, paymentId, event === "payment.dispute.lost");
   return true;
 }
 
@@ -400,7 +414,7 @@ type WebhookPayload = {
   event?: string;
   payload?: {
     payment?: { entity?: { id?: string; order_id?: string } };
-    refund?: { entity?: { payment_id?: string } };
+    refund?: { entity?: { id?: string; payment_id?: string } };
     dispute?: { entity?: { payment_id?: string } };
   };
 };
@@ -429,25 +443,7 @@ export const razorpayGiftWebhook = onRequest(
     try {
       const eventPayment = body.payload?.payment?.entity;
       const paymentId = body.payload?.refund?.entity?.payment_id ?? body.payload?.dispute?.entity?.payment_id ?? eventPayment?.id;
-      if (event === "payment.captured" && isRazorpayId(eventPayment?.id, "pay") && isRazorpayId(eventPayment?.order_id, "order")) {
-        const order = await db.doc(`giftOrders/${eventPayment.order_id}`).get();
-        if (order.exists && order.get("mode") === razorpayMode(process.env.RAZORPAY_KEY_ID)) {
-          // Re-read the payment: events can arrive late, twice or out of order (e.g. after a refund).
-          const payment = await razorpay<RazorpayPayment>(`/payments/${eventPayment.id}`);
-          if (payment.id === eventPayment.id && paymentMatchesOrder(payment, { orderId: eventPayment.order_id, amountPaise: order.get("amountPaise") }) === "captured") {
-            const { outcome } = await grantGift(eventPayment.order_id, eventPayment.id);
-            if (outcome === "refund-in-flight") {
-              // Not acknowledged: Razorpay redelivers, and a later delivery (or the sweep) retries the refund.
-              response.sendStatus(503);
-              return;
-            }
-          }
-        }
-      } else if (event === "refund.processed" || event === "payment.refunded" || event === "payment.dispute.lost") {
-        await handleGiftReversal(paymentId, eventPayment?.order_id, event);
-      } else if (event.startsWith("payment.dispute.")) {
-        logger.info("Gift webhook dispute update", { event, hasPayment: isRazorpayId(paymentId, "pay") });
-      }
+      await handlePremiumGiftWebhook(event, paymentId, eventPayment?.order_id, body.payload?.refund?.entity?.id);
       response.sendStatus(200);
     } catch (error) {
       logger.error("Razorpay gift webhook failed", { event, error: String(error) });
@@ -455,3 +451,26 @@ export const razorpayGiftWebhook = onRequest(
     }
   }
 );
+
+/** Called only after raw-body signature validation by the primary or compatibility webhook. */
+export async function handlePremiumGiftWebhook(event: string, paymentId: unknown, orderId: unknown, refundId?: unknown): Promise<boolean> {
+  if (event === "payment.captured" && isRazorpayId(paymentId, "pay") && isRazorpayId(orderId, "order")) {
+    const order = await db.doc(`giftOrders/${orderId}`).get();
+    if (!order.exists) return false;
+    if (order.get("mode") !== razorpayMode(process.env.RAZORPAY_KEY_ID)) return true;
+    const payment = await razorpay<RazorpayPayment>(`/payments/${paymentId}`);
+    if (payment.id === paymentId && paymentMatchesOrder(payment, { orderId, amountPaise: order.get("amountPaise") }) === "captured") {
+      const { outcome } = await grantGift(orderId, paymentId);
+      if (outcome === "refund-in-flight") throw new HttpsError("unavailable", "The payment refund is still being confirmed.");
+    }
+    return true;
+  }
+  if (event === "refund.failed" && isRazorpayId(paymentId, "pay")) {
+    const order = await findGiftOrder(paymentId, orderId);
+    if (!order) return false;
+    await failGiftRefundJob(order.id, paymentId, refundId);
+    return true;
+  }
+  if (["refund.processed", "payment.refunded", "payment.dispute.lost"].includes(event)) return handleGiftReversal(paymentId, orderId, event);
+  return false;
+}

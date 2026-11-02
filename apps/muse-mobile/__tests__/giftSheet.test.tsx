@@ -34,7 +34,7 @@ test("it offers exactly Day, Week and Month, labelled and priced from the existi
     expect(words(tree)).toContain(`₹${plan.priceInr}`);
   });
   expect(words(tree)).not.toMatch(/6 months|Lifetime/);
-  expect(words(tree)).toContain("They'll get a notification and can accept it; if they don't, you're refunded after 7 days.");
+  expect(words(tree)).toContain("Your bank may take more time to return the money.");
 });
 
 test("choosing a size starts the gift for this match only, then waits while the page leaves", async () => {
@@ -72,7 +72,7 @@ test("Your gifts lists what was sent and received, in plain words", async () => 
   expect(text).toContain("Your gifts");
   expect(text).toContain("To Arjun");
   expect(text).toContain("Waiting for a reply");
-  expect(text).toContain("Declined, refunded to you");
+  expect(text).toContain("Declined · refund due or in progress");
   expect(text).toContain("From Meera");
   expect(text).toContain("Added to your Plus");
 });

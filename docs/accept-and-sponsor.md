@@ -1,5 +1,7 @@
 # Accept a like, women reply free, and gifted Plus
 
+**2 November 2026 update:** premium-only gifts have a separate hardened release; see [premium-gifts.md](premium-gifts.md) for current implementation, tests and rollout receipts. The gift sections below describe the earlier implementation and its historical blockers. `acceptFlow` and `womenSendFree` remain off and are not enabled by the gift release.
+
 Built on branch `feat/accept-and-sponsor` (2026-10-25/26). Local only: not pushed, not deployed. **Every switch is off**, so with nothing turned on Paire behaves exactly as before. Design: `docs/superpowers/specs/2026-10-25-accept-and-sponsor-design.md`.
 
 ## What it does

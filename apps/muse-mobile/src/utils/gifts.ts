@@ -10,9 +10,16 @@ export const giftPlanLabel = (plan: GiftPlanId) => {
 };
 
 /** Plain words for where a gift stands, from the point of view of whoever is reading. */
-export function giftStatusWord(status: GiftStatus, side: "sent" | "received"): string {
+export function giftStatusWord(status: GiftStatus, side: "sent" | "received", refundStatus?: string): string {
   if (side === "sent") {
-    return { pending: "Waiting for a reply", claimed: "Accepted", declined: "Declined, refunded to you", expired: "Not opened in time, refunded to you", refunded: "Refunded", void: "Couldn't be delivered, refunded to you" }[status];
+    if (["declined", "expired", "void", "refunded"].includes(status)) {
+      if (refundStatus === "needs_review") return "Refund needs help · contact support";
+      if (refundStatus === "chargeback") return "Payment reversed";
+      if (refundStatus === "processed") return "Refund processed · check your payment account";
+      if (refundStatus === "submitted") return "Refund requested · bank processing";
+      if (refundStatus === "pending") return "Refund pending · we will retry";
+    }
+    return { pending: "Waiting for a reply", claimed: "Accepted", declined: "Declined · refund due or in progress", expired: "Expired · refund due or in progress", refunded: "Refund sent to the payment method", void: "Not delivered · refund due or in progress" }[status];
   }
   return { pending: "Waiting for you", claimed: "Added to your Plus", declined: "You said no thanks", expired: "Expired", refunded: "Taken back", void: "Couldn't be delivered" }[status];
 }

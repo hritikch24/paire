@@ -1,3 +1,5 @@
+import { savePremiumQueue } from "./premiumQueue";
+import { appendPremiumCredit, premiumQueue, purchaseKey, reversePremiumCredit, reconcileSupportCredit } from "./lib/premiumQueue";
 import { createHash } from "crypto";
 import { DocumentSnapshot, FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
@@ -197,6 +199,11 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
         return "closed";
       }
       tx.update(ref, { ...record, status: verdict, [verdict === "chargeback" ? "chargebackAt" : "refundedAt"]: now });
+      const queue = kind === "plus" ? premiumQueue(ledger.get("premiumQueue")) : null;
+      if (queue) {
+        const next = reversePremiumCredit(queue, purchaseKey("ccavenue", orderId), now);
+        savePremiumQueue(tx, ledger.ref, next, now);
+      }
       if (kind === "chat" && unlock.get("status") === "active" && unlock.get("orderId") === orderId) {
         tx.update(unlock.ref, { status: "revoked", revokedAt: now, revokedReason: verdict === "chargeback" ? "chargeback" : "refund", updatedAt: FieldValue.serverTimestamp() });
       }
@@ -236,13 +243,18 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
         Number(support.get("expiresAt")) > now && Number.isFinite(support.get("startsAt"))) {
         tx.update(ref, { ...record, status: "paid", paidAt: now, startsAt: support.get("startsAt"), expiresAt: support.get("expiresAt"), awaiting: false, fulfilledBySupportGrant: true });
         tx.update(support.ref, { status: "reconciled", confirmedOrderId: orderId, reconciledAt: now });
+        const queue = premiumQueue(ledger.get("premiumQueue"));
+        if (queue) savePremiumQueue(tx, ledger.ref, { queue: reconcileSupportCredit(queue, purchaseKey("ccavenue", orderId)), retired: [] }, now);
         return "granted";
       }
       // Passes never overlap: this one starts when any running pass (web or store) ends.
-      const queuedUntil = Math.max(Number(ledger.get("until")) || 0, storeExpiry, await webPassExpiry(order.uid, now, tx));
-      const { startsAt, expiresAt } = planWindow(now, order.plan!, queuedUntil);
-      tx.set(ledger.ref, { until: expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() });
-      tx.update(ref, { ...record, status: "paid", paidAt: now, startsAt, expiresAt, awaiting: false });
+      const queue = premiumQueue(ledger.get("premiumQueue"));
+      const queuedUntil = queue ? benefits.expiresAt : Math.max(Number(ledger.get("until")) || 0, storeExpiry, benefits.expiresAt);
+      const added = queue && order.plan !== "lifetime" ? appendPremiumCredit(queue, purchaseKey("ccavenue", orderId), order.plan!, now) : null;
+      const { startsAt, expiresAt } = added ? added.window : planWindow(now, order.plan!, queuedUntil);
+      if (added) savePremiumQueue(tx, ledger.ref, added, now);
+      else tx.set(ledger.ref, { until: expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      tx.update(ref, { ...record, status: "paid", paidAt: now, startsAt, expiresAt, awaiting: false, ...(added ? { entitlementQueueVersion: 2 } : {}) });
       return "granted";
     }
     if (unlock.get("status") === "active" || (await webPassBenefits(order.uid, now, tx)).lifetime) {
@@ -269,7 +281,7 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
   if (outcome !== "orphaned") {
     if (kind === "plus") {
       // A refunded pass pulls the queue back to the passes that remain.
-      if (outcome === "revoked") await db.doc(`webPassLedger/${order.uid}`).set({ until: await webPassExpiry(order.uid), updatedAt: FieldValue.serverTimestamp() });
+      if (outcome === "revoked") await db.doc(`webPassLedger/${order.uid}`).set({ until: await webPassExpiry(order.uid), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
       if (outcome === "granted" || outcome === "revoked") await syncPremium(order.uid);
     } else {
       await syncChatAccess(order.uid);

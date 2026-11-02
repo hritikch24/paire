@@ -49,3 +49,5 @@ export { sendEngagementReminders, recordReminderOpen } from "./reminders";
 export { acceptLike } from "./acceptLike";
 export { confirmGiftPayment, createGiftOrder, razorpayGiftWebhook } from "./giftPayments";
 export { claimGift, declineGift, expireGifts, listGifts } from "./giftLifecycle";
+
+export { requestPlusGift, getPlusGiftRequests, closePlusGiftRequest } from "./giftRequests";
