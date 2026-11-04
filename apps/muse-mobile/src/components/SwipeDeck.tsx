@@ -249,7 +249,13 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
     .filter(Boolean)
     .join(" · ");
   const match = compatibilityLabel(profile.compatibility);
-  const topReason = reasonLines(profile.reasons)[0];
+  const reasons = reasonLines(profile.reasons);
+  const topReason = reasons[0];
+  // Web only: a taller card has room for a second honest "why you two" line.
+  const secondReason = Platform.OS === "web" && size.height >= 560 ? reasons[1] : undefined;
+  const web = Platform.OS === "web";
+  // Frosted chips read better over busy photos; native keeps its flat translucent chips.
+  const glass = web ? ({ backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" } as object) : {};
   const basicsLine = cardBasics(profile.basics, profile.languages);
 
   return (
@@ -341,6 +347,7 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
             paddingVertical={5}
             borderRadius={999}
             pointerEvents="none"
+            style={glass}
           >
             <Icon name="sparkles" size={14} color={colors.glow} />
             <Text color="white" fontSize="$2" fontWeight="700">
@@ -382,7 +389,7 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
         </Animated.View>
 
         <LinearGradient
-          colors={["transparent", "rgba(10,6,12,0.55)", "rgba(10,6,12,0.88)"]}
+          colors={web ? ["transparent", "rgba(10,6,12,0.6)", "rgba(10,6,12,0.92)"] : ["transparent", "rgba(10,6,12,0.55)", "rgba(10,6,12,0.88)"]}
           testID="discover-card-info"
           style={styles.info}
           pointerEvents="none"
@@ -452,11 +459,26 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
                 </Text>
               </XStack>
             ) : null}
+            {secondReason && !blindMode ? (
+              <XStack testID="discover-card-reason-2" alignItems="center" gap={6}>
+                <Icon name="sparkles-outline" size={14} color={colors.glow} />
+                <Text color="rgba(255,255,255,0.9)" fontSize="$2" numberOfLines={1} flex={1}>
+                  {secondReason}
+                </Text>
+              </XStack>
+            ) : null}
             <XStack alignItems="flex-end" justifyContent="space-between" gap="$3">
               <YStack flex={1} gap={2}>
-                <Text color="white" fontSize={28} lineHeight={34} fontWeight="700" numberOfLines={1}>
-                  {blindMode ? `Mystery match, ${profile.age}` : `${profile.displayName}, ${profile.age}`}
-                </Text>
+                <XStack alignItems="center" gap={8}>
+                  <Text color="white" fontSize={28} lineHeight={34} fontWeight="700" numberOfLines={1} flexShrink={1}>
+                    {blindMode ? `Mystery match, ${profile.age}` : `${profile.displayName}, ${profile.age}`}
+                  </Text>
+                  {web && profile.photoVerified === true && !blindMode ? (
+                    <XStack testID="card-verified" accessibilityLabel="Photo verified" role="img" alignItems="center" justifyContent="center" width={22} height={22} borderRadius={11} backgroundColor="#2E9E6B">
+                      <Icon name="checkmark" size={14} color="#FFFFFF" />
+                    </XStack>
+                  ) : null}
+                </XStack>
                 {location ? (
                   <Text color="rgba(255,255,255,0.85)" fontSize="$3" numberOfLines={1}>
                     {location}
@@ -498,6 +520,7 @@ const SwipeCard = forwardRef<SwipeDeckHandle, SwipeCardProps>(function SwipeCard
                   borderRadius={999}
                   backgroundColor="rgba(255,255,255,0.2)"
                   gap={4}
+                  style={glass}
                 >
                   <Text fontSize="$2">{item!.emoji}</Text>
                   <Text color="white" fontSize="$2" fontWeight="600">
