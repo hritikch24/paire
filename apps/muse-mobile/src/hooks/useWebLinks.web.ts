@@ -24,6 +24,9 @@ export function useWebLinks() {
       if (url.searchParams.get("admin") === "premium-buyers") {
         navigate = () => navigation.navigate("App", { screen: "RecentPremiumBuyers" });
         url.searchParams.delete("admin");
+      } else if (url.searchParams.get("admin") === "signup-funnel") {
+        navigate = () => navigation.navigate("App", { screen: "SignupFunnel" });
+        url.searchParams.delete("admin");
       } else if (url.searchParams.get("admin") === "notifications") {
         navigate = () => navigation.navigate("App", { screen: "AdminNotifications" });
         url.searchParams.delete("admin");

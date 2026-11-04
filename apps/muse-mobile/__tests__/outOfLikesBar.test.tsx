@@ -1,0 +1,30 @@
+import React from "react";
+import renderer, { act } from "react-test-renderer";
+import { OutOfLikesBar } from "../src/components/OutOfLikesBar";
+import { resetOfferMemory } from "../src/utils/offerDismissal";
+import type { MemberOffer } from "../src/config/member-offer";
+jest.mock("react-native", () => ({ Platform: { OS: "web" } }));
+jest.mock("tamagui", () => ({ Text: "Text", XStack: "XStack", YStack: "YStack" }));
+jest.mock("../src/components/MuseButton", () => ({ PrimaryButton: "PrimaryButton", SecondaryButton: "SecondaryButton" }));
+const offer = (): MemberOffer => ({ id: `bar-${Math.random()}`, discountPercent: 40, startsAt: Date.now(), expiresAt: Date.now() + 7 * 86400000, reason: "daily-limit", city: null, interest: null });
+beforeEach(() => resetOfferMemory());
+test("appears only at zero free likes, with the exact server-earned price and an honest reset line", async () => {
+  const open = jest.fn(); let tree!: renderer.ReactTestRenderer; const member = offer();
+  await act(async () => { tree = renderer.create(<OutOfLikesBar offer={member} likesLeft={3} onOpen={open} />); });
+  expect(tree.toJSON()).toBeNull();
+  await act(async () => tree.update(<OutOfLikesBar offer={member} likesLeft={0} onOpen={open} />));
+  const text = JSON.stringify(tree.toJSON());
+  expect(text).toContain("₹342"); expect(text).toContain("40% off"); expect(text).toContain("Free likes come back tomorrow");
+  expect(open).not.toHaveBeenCalled();
+  await act(async () => tree.root.findByType("PrimaryButton" as never).props.onPress()); expect(open).toHaveBeenCalledTimes(1);
+  await act(async () => tree.unmount());
+});
+test("Not now hides it, and an absent, unknown-allowance or expired offer shows nothing", async () => {
+  let tree!: renderer.ReactTestRenderer; const member = offer();
+  await act(async () => { tree = renderer.create(<OutOfLikesBar offer={member} likesLeft={0} onOpen={jest.fn()} />); });
+  await act(async () => tree.root.findByType("SecondaryButton" as never).props.onPress()); expect(tree.toJSON()).toBeNull();
+  await act(async () => tree.update(<OutOfLikesBar offer={null} likesLeft={0} onOpen={jest.fn()} />)); expect(tree.toJSON()).toBeNull();
+  await act(async () => tree.update(<OutOfLikesBar offer={offer()} likesLeft={undefined} onOpen={jest.fn()} />)); expect(tree.toJSON()).toBeNull();
+  await act(async () => tree.update(<OutOfLikesBar offer={{ ...offer(), expiresAt: Date.now() - 1 }} likesLeft={0} onOpen={jest.fn()} />)); expect(tree.toJSON()).toBeNull();
+  await act(async () => tree.unmount());
+});

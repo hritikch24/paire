@@ -554,6 +554,9 @@ service cloud.firestore {
     match /launchOfferCampaigns/{campaign} {
       allow read, write: if false;
     }
+    match /testLikeJobs/{uid} {
+      allow read, write: if false;
+    }
     match /runtime/{docId} {
       allow read, write: if false;
     }

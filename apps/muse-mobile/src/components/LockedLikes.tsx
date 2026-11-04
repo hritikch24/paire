@@ -2,9 +2,14 @@ import { Platform, type ViewStyle } from "react-native";
 import { Text, XStack, YStack } from "tamagui";
 import { Icon } from "./Icon";
 import { PrimaryButton } from "./MuseButton";
+import { useLaunchOffer } from "../hooks/useLaunchOffer";
+import { memberPrice } from "../config/member-offer";
+import { formatInr } from "../config/launch-offer";
 
 /** Decorative silhouettes: locked responses never include the real photos or identities. */
 export function LockedLikes({ count, hasMore, onUpgrade }: { count: number; hasMore?: boolean; onUpgrade: () => void }) {
+  const { quote } = useLaunchOffer();
+  const offer = Platform.OS === "web" && quote.data?.personalized && quote.data.personalized.expiresAt > Date.now() ? quote.data.personalized : null;
   return <YStack testID="likes-locked" marginHorizontal="$4" padding="$4" gap="$3" borderRadius={22} backgroundColor="$primarySoft" alignItems="center">
     <XStack gap="$2" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden>
       {Array.from({ length: Math.min(3, count) }, (_, index) => <YStack key={index} width={70} height={88} borderRadius={18} backgroundColor="$backgroundStrong" alignItems="center" justifyContent="center" overflow="hidden">
@@ -16,6 +21,7 @@ export function LockedLikes({ count, hasMore, onUpgrade }: { count: number; hasM
     </XStack>
     <XStack gap="$2" alignItems="center"><Icon name="lock-closed" color="primary" size={17} /><Text fontSize="$5" fontWeight="700" textAlign="center">{count === 1 && !hasMore ? "Someone liked you" : `${count}${hasMore ? "+" : ""} people liked you`}</Text></XStack>
     <Text fontSize="$2" color="$textMuted" lineHeight={21} textAlign="center">Get Paire Plus to see who likes you. Your likes include people outside your search filters.</Text>
-    <PrimaryButton testID="likes-upgrade" onPress={onUpgrade} alignSelf="stretch">See who likes you with Plus</PrimaryButton>
+    {offer ? <Text testID="likes-offer" fontSize="$2" fontWeight="700" color="$primary" textAlign="center">{`Your offer: Monthly Plus ${formatInr(memberPrice("month", offer.discountPercent))} (${offer.discountPercent}% off)`}</Text> : null}
+    <PrimaryButton testID="likes-upgrade" onPress={onUpgrade} alignSelf="stretch">{offer ? `See who likes you · ${offer.discountPercent}% off` : "See who likes you with Plus"}</PrimaryButton>
   </YStack>;
 }

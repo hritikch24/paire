@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import { AdminPremiumScreen } from "../screens/AdminPremiumScreen";
 import { AdminNotificationsScreen } from "../screens/AdminNotificationsScreen";
 import { RecentPremiumBuyersScreen } from "../screens/RecentPremiumBuyersScreen";
+import { SignupFunnelScreen } from "../screens/SignupFunnelScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { features } from "../config/features";
 import { useMatchAlerts, useMatchesSubscription, usePushRegistration } from "../hooks/useAppServices";
@@ -78,6 +79,7 @@ export function AppStack() {
       {Platform.OS === "web" ? <Stack.Screen name="AdminPremium" component={AdminPremiumScreen} /> : null}
       {Platform.OS === "web" ? <Stack.Screen name="AdminNotifications" component={AdminNotificationsScreen} /> : null}
       {Platform.OS === "web" ? <Stack.Screen name="RecentPremiumBuyers" component={RecentPremiumBuyersScreen} /> : null}
+      {Platform.OS === "web" ? <Stack.Screen name="SignupFunnel" component={SignupFunnelScreen} /> : null}
       <Stack.Screen name="MemberAdminDetail" component={MemberAdminDetailScreen} />
       <Stack.Screen name="VibeGuide" component={VibeGuideScreen} />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />

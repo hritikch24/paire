@@ -1,4 +1,5 @@
 import { MemberOfferBanner } from "../components/MemberOfferBanner";
+import { OutOfLikesBar } from "../components/OutOfLikesBar";
 import { useLaunchOffer } from "../hooks/useLaunchOffer";
 import { useWebScreenActive } from "../hooks/useWebScreenActive";
 import { DiscoverEmpty } from "../components/DiscoverEmpty";
@@ -789,6 +790,8 @@ function DiscoveryExperience() {
           />
         </XStack>
       ) : null}
+
+      {Platform.OS === "web" && !plus && mode !== "duo" ? <OutOfLikesBar offer={memberQuote.quote.data?.personalized} likesLeft={allowance.data && !allowance.isError ? allowance.data.remaining.likes : undefined} onOpen={() => navigation.navigate("Premium")} /> : null}
 
       {mode !== "duo" && (Platform.OS !== "web" || top) ? (
         <XStack testID="discover-footer" paddingHorizontal="$4" paddingBottom="$2" gap="$3" alignItems="center" justifyContent="space-between">
