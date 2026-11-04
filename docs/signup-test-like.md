@@ -8,6 +8,8 @@ Measures whether a new signup comes back. **Off by default.** Real members are n
 3. `adminGetSignupFunnel` (owner support access only) lists each test signup. "Returned" means `lastActiveAt` is later than the like's send time.
 4. Owner screen: `https://www.paire.in/app/?admin=signup-funnel`.
 
+Deploy: `firebase deploy --only firestore,functions:onTestSignupCompleted,functions:sendDueTestLikes,functions:adminGetSignupFunnel` (the index `testLikeJobs(status, dueAt)` must be READY before the scheduler can query).
+
 ## Turning it on (owner only, in Firestore)
 `runtime/testLike`:
 ```json
