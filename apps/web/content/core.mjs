@@ -44,7 +44,7 @@ export const core = [
   {
     path: "pricing/", crumb: "Pricing", published: D, updated: "2026-11-06", eyebrow: "PRICING",
     title: "Paire Annual & Lifetime Plus — 50% Member Offers",
-    description: "Annual Plus ₹749.50 and Lifetime Plus ₹1,070.72 for eligible members: 50% off. Compare exact totals, benefits and expiry. No auto-renewal.",
+    description: "Annual Plus %YEAR_MEMBER_PRICE% and Lifetime Plus %LIFETIME_MEMBER_PRICE% for eligible members: 50% off. Compare exact totals, benefits and expiry. No auto-renewal.",
     h1: "Free first. <em>Fair always.</em>",
     lede: "Joining, matching and safety on Paire are free. To send messages, choose a short Paire Plus pass or a one-time ₹49 Unlimited Chat unlock. Both end or stay on their own terms: nothing to cancel, no surprise renewals.",
     summary: [
@@ -70,7 +70,7 @@ export const core = [
 </tbody></table>
 <div data-launch-offer></div><!-- launch-offer-end -->
 <h2>Annual and Lifetime Plus</h2>
-<p>Annual Plus is &#8377;1,499 regular for 365 days, or ₹749.50 with an eligible 50% member offer. Lifetime Plus is ₹2,141.43 regular, or ₹1,070.72 with the same eligible offer. Check your fixed seven-day deadline in the app. Expired offers do not restart.</p>
+<p>Annual Plus is %YEAR_REGULAR_PRICE% regular for 365 days, or %YEAR_MEMBER_PRICE% with an eligible 50% member offer. Lifetime Plus is %LIFETIME_REGULAR_PRICE% regular, or %LIFETIME_MEMBER_PRICE% with the same eligible offer. Check your fixed seven-day deadline in the app. Expired offers do not restart.</p>
 <h2>Other Plus passes</h2>
 <ul>
 <li><strong>Monthly offer: ₹399 for 60 days</strong>: buy 1 month, get 1 month free. Member prices and eligibility are listed above; the app shows your exact offer.</li>

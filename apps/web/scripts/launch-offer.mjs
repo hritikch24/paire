@@ -46,5 +46,8 @@ export function renderLaunchOffer(html, now = Date.now()) {
     const price = member ? memberPrice(id, MEMBER_OFFER.minimumDiscount) : currentPrice(id, now);
     html = html.replace(new RegExp(String.raw`<h3 data-offer-plan="${id}">[\s\S]*?<\/h3>`, "g"), `<h3 data-offer-plan="${id}">${active || member ? `<s class="offer-reference">${formatInr(p.regular)} regular</s>` : ""}${formatInr(price)}<span>${id === "month" ? "total for 60 days" : id === "day" ? "total for 24 hours" : id === "lifetime" ? "pay once · no expiry" : id === "week" ? "total for 7 days" : id === "halfyear" ? "total for 180 days" : id === "year" ? "total for 365 days" : "messaging only · once"}</span>${member ? `<small class="offer-coupon">50% off for eligible members · checked in-app</small>` : active ? `<small class="offer-coupon">${formatInr(p.coupon)} with eligible promo</small>` : ""}</h3>`);
   }
-  return html;
+  return html.replace(/%((?:YEAR|LIFETIME)_(?:REGULAR|MEMBER)_PRICE)%/g, (_, key) => {
+    const [id, kind] = key.toLowerCase().split("_");
+    return formatInr(kind === "regular" ? OFFER_PRICES[id].regular : memberPrice(id, MEMBER_OFFER.minimumDiscount));
+  });
 }

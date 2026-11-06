@@ -2,7 +2,7 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { adminAuth, db } from "./admin";
 import { REGION } from "./config";
 import { getMemberOffer } from "./memberOffers";
-import { isMemberPlan, memberPrice, MEMBER_OFFER } from "./lib/member-offer";
+import { isMemberPlan, memberPrice, MEMBER_OFFER, MEMBER_PRICE_VERSION } from "./lib/member-offer";
 import { requireAuth } from "./lib/auth";
 import { currentPrice, LAUNCH_OFFER, normalizePromo, OFFER_PRICES, OfferPlan, offerActive, validPromo } from "./lib/launch-offer";
 
@@ -45,7 +45,7 @@ export async function promoCheckout<T extends object>(uid: string, plan: OfferPl
   const personalized = !code && isMemberPlan(plan) ? await getMemberOffer(uid) : null;
   const quoted = personalized && isMemberPlan(plan) ? memberPrice(plan, personalized.discountPercent) : code ? OFFER_PRICES[plan].coupon : currentPrice(plan);
   if (expectedAmount !== undefined && expectedAmount !== quoted) throw new HttpsError("failed-precondition", "The price changed. Refresh the offer before paying.");
-  if (!code) return create(quoted, personalized ? { campaign: MEMBER_OFFER.campaign, pricing: "member_offer", offerId: personalized.id, discountPercent: String(personalized.discountPercent), offerStartedAt: String(personalized.startsAt), offerExpiresAt: String(personalized.expiresAt) } : {});
+  if (!code) return create(quoted, personalized ? { campaign: MEMBER_OFFER.campaign, pricing: "member_offer", priceVersion: MEMBER_PRICE_VERSION, offerId: personalized.id, discountPercent: String(personalized.discountPercent), offerStartedAt: String(personalized.startsAt), offerExpiresAt: String(personalized.expiresAt) } : {});
   if (!validPromo(code)) throw new HttpsError("invalid-argument", "That promo code isn't valid.");
   const claimRef = db.doc(`launchOfferClaims/${uid}`);
   const existing = await claimRef.get();

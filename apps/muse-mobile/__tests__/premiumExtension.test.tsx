@@ -11,7 +11,7 @@ let mockChat: ChatAccess | undefined;
 let mockOfferCode: string | null = null;
 let mockOfferError = false;
 let mockMemberPercent: 30 | 40 | 50 | null = null;
-const mockPrices = { day: [4900, 3500, 2800], week: [15000, 9900, 8500], month: [57000, 39900, 35910], halfyear: [114143, 79900, 71910], year: [149900, 149900, 149900], lifetime: [214143, 149900, 134910], chat: [7000, 4900, 4410] };
+const mockPrices = { day: [4900, 3500, 2800], week: [15000, 9900, 8500], month: [57000, 39900, 35910], halfyear: [114143, 79900, 71910], year: [299800, 149900, 149900], lifetime: [642429, 149900, 134910], chat: [7000, 4900, 4410] };
 const mockUntil = Date.UTC(2026, 11, 18, 10);
 let mockPremium: { active: boolean; expiresAt: number | null; webPurchaseAvailable: boolean; upiPurchaseAvailable?: boolean; lifetime?: boolean } = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
 const mockInvalidate = jest.fn();
@@ -195,8 +195,8 @@ test("the exact earned Lifetime offer is passed to checkout after explicit selec
  await act(async()=>{tree=renderer.create(<PremiumScreen/>);});
  expect(tree.root.findAll(node=>node.props.accessibilityRole==="radio").map(node=>node.props.testID)).toEqual(["premium-plan-year","premium-plan-lifetime","premium-plan-month"]);
  await act(async()=>tree.root.findByProps({testID:"premium-plan-lifetime"}).props.onPress());
- expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Get Lifetime Plus · ₹1,070.72");expect(purchaseWebPass).not.toHaveBeenCalled();
- await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});expect(purchaseWebPass).toHaveBeenCalledWith("lifetime","#000",undefined,107072);
+ expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Get Lifetime Plus · ₹3,212.15");expect(purchaseWebPass).not.toHaveBeenCalled();
+ await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});expect(purchaseWebPass).toHaveBeenCalledWith("lifetime","#000",undefined,321215);
  await act(async()=>tree.unmount());
 });
 
@@ -205,11 +205,11 @@ test("annual checkout submits the exact 50 percent offer only after a deliberate
  jest.mocked(purchaseWebPass).mockResolvedValue({redirecting:true});let tree!:renderer.ReactTestRenderer;
  await act(async()=>{tree=renderer.create(<PremiumScreen/>);});
  await act(async()=>tree.root.findByProps({testID:"premium-plan-year"}).props.onPress());
- expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Get Annual Plus · ₹749.50");
- expect(tree.root.findByProps({testID:"premium-plan-year"}).props.accessibilityLabel).toContain("749.5 rupees");
+ expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Get Annual Plus · ₹1,499");
+ expect(tree.root.findByProps({testID:"premium-plan-year"}).props.accessibilityLabel).toContain("1499 rupees");
  expect(purchaseWebPass).not.toHaveBeenCalled();
  await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});
- expect(purchaseWebPass).toHaveBeenCalledWith("year","#000",undefined,74950);
+ expect(purchaseWebPass).toHaveBeenCalledWith("year","#000",undefined,149900);
  await act(async()=>tree.unmount());
 });
 
@@ -219,7 +219,7 @@ test("hosted checkout keeps the advertised member price when direct UPI is also 
  await act(async()=>{tree=renderer.create(<PremiumScreen/>);});
  await act(async()=>tree.root.findByProps({testID:"premium-plan-year"}).props.onPress());
  await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});
- expect(purchaseWebPass).toHaveBeenCalledWith("year","#000",undefined,74950);expect(startUpiUnlock).not.toHaveBeenCalled();
+ expect(purchaseWebPass).toHaveBeenCalledWith("year","#000",undefined,149900);expect(startUpiUnlock).not.toHaveBeenCalled();
  await act(async()=>tree.unmount());
 });
 test("direct UPI fallback shows its full catalog amount and hides the inapplicable member saving",async()=>{
@@ -227,7 +227,7 @@ test("direct UPI fallback shows its full catalog amount and hides the inapplicab
  jest.mocked(startUpiUnlock).mockResolvedValue({status:"owned"});let tree!:renderer.ReactTestRenderer;
  await act(async()=>{tree=renderer.create(<PremiumScreen/>);});
  await act(async()=>tree.root.findByProps({testID:"premium-plan-year"}).props.onPress());
- expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Pay ₹1,499 by UPI · Annual Plus");
+ expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Pay ₹2,998 by UPI · Annual Plus");
  expect(JSON.stringify(tree.toJSON())).not.toContain("50% OFF");
  await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});
  expect(startUpiUnlock).toHaveBeenCalledWith("year");expect(purchaseWebPass).not.toHaveBeenCalled();

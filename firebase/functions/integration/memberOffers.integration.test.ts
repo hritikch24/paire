@@ -56,9 +56,9 @@ test("an existing 30 percent offer upgrades once without resetting its original 
 });
 test("annual quote and checkout use the same exact discounted paise", async () => {
  const quote=await getLaunchOffer.run({data:{},auth:{uid,token:{}},rawRequest:{},acceptsStreaming:false} as never);
- expect(quote.plans.year).toMatchObject({regular:149900,amount:74950});
+ expect(quote.plans.year).toMatchObject({regular:299800,amount:149900});
  const create=jest.fn(async(amount:number,notes:Record<string,string>)=>({amount,notes}));
- const result=await promoCheckout(uid,"year",undefined,create,74950);
- expect(result.amount).toBe(74950);expect(result.notes.discountPercent).toBe("50");
- await expect(promoCheckout(uid,"year",undefined,create,149900)).rejects.toThrow("price changed");
+ const result=await promoCheckout(uid,"year",undefined,create,149900);
+ expect(result.amount).toBe(149900);expect(result.notes.discountPercent).toBe("50");
+ await expect(promoCheckout(uid,"year",undefined,create,74950)).rejects.toThrow("price changed");
 });

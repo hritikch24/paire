@@ -28,7 +28,8 @@ describe("Paire Plus on the web", () => {
     expect(passDays("day")).toBe(1);
     expect(isPlusPlan("week")).toBe(true);
     expect(isPlusPlan("lifetime")).toBe(true);
-    expect(PLUS_PASSES.lifetime.amountPaise).toBe(149900);
+    expect(PLUS_PASSES.year.amountPaise).toBe(299800);
+    expect(PLUS_PASSES.lifetime.amountPaise).toBe(642429);
     expect(planWindow(1234, "lifetime", 999999)).toEqual({ startsAt: 1234, expiresAt: null, lifetime: true });
     expect(isPlusPlan("toString")).toBe(false);
   });

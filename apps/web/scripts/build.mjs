@@ -205,7 +205,7 @@ if (!indexable) {
 }
 
 // llms.txt (a map for AI assistants) lists every page; llms-full.txt carries their full text.
-const section = (title, pages) => `\n## ${title}\n\n${pages.map((page) => `- [${page.crumb ?? stripHtml(page.h1)}](${origin}/${page.path}): ${page.description}`).join("\n")}\n`;
+const section = (title, pages) => `\n## ${title}\n\n${pages.map((page) => `- [${page.crumb ?? stripHtml(page.h1)}](${origin}/${page.path}): ${stripHtml(renderLaunchOffer(page.description))}`).join("\n")}\n`;
 writeFileSync(
   resolve(output, "llms.txt"),
   readFileSync(resolve(web, "site/llms.txt"), "utf8").trimEnd() + "\n" +

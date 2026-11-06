@@ -23,7 +23,7 @@ test("October expiry introduces the member program without reviving old codes", 
 
 test("public offers show exact annual and lifetime savings and eligibility",()=>{
  const html=renderLaunchOffer(home,LAUNCH_OFFER.endsAt+1000);
- assert.match(html,/₹285/);assert.match(html,/₹1,070.72/);assert.match(html,/seven-day offer/);assert.match(offerTable(LAUNCH_OFFER.endsAt),/City and hobby details personalize wording, not the price/);
+ assert.match(html,/₹285/);assert.match(html,/₹3,212.15/);assert.match(html,/seven-day offer/);assert.match(offerTable(LAUNCH_OFFER.endsAt),/City and hobby details personalize wording, not the price/);
  assert.doesNotMatch(html,/PAIRE250|first 250 accounts|30–31 OCTOBER ONLY/);
 });
 
@@ -31,8 +31,13 @@ test("annual and lifetime schema retain their own prices despite sharing old cat
  const html=renderLaunchOffer(home,Date.parse("2026-11-06T12:00:00+05:30"));
  const graph=JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
  const offers=graph.find(item=>item["@type"]==="WebApplication").offers;
- assert.equal(offers.find(item=>item.name.includes("Annual")).price,"1499");
- assert.equal(offers.find(item=>item.name.includes("Lifetime")).price,"2141.43");
- assert.match(html,/₹749.50/);assert.match(html,/50% off for eligible members/);
+ assert.equal(offers.find(item=>item.name.includes("Annual")).price,"2998");
+ assert.equal(offers.find(item=>item.name.includes("Lifetime")).price,"6424.29");
+ assert.match(html,/₹1,499/);assert.match(html,/50% off for eligible members/);
  assert.doesNotMatch(html,/30% off|Use all your free likes/);
+});
+
+test("current pricing descriptions resolve tokens after legacy price substitution",()=>{
+ const html=renderLaunchOffer("Annual %YEAR_REGULAR_PRICE% / %YEAR_MEMBER_PRICE%; Lifetime %LIFETIME_REGULAR_PRICE% / %LIFETIME_MEMBER_PRICE%");
+ assert.equal(html,"Annual ₹2,998 / ₹1,499; Lifetime ₹6,424.29 / ₹3,212.15");
 });

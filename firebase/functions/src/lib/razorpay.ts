@@ -14,8 +14,8 @@ export const PLUS_PASSES = {
   week: { days: 7, bonusDays: 0, amountPaise: 9900, label: PAYMENT_NAMES.labels.week, razorpayLabel: PAYMENT_NAMES.razorpayLabels.week },
   month: { days: 30, bonusDays: 30, amountPaise: 39900, label: PAYMENT_NAMES.labels.month, razorpayLabel: PAYMENT_NAMES.razorpayLabels.month },
   halfyear: { days: 180, bonusDays: 0, amountPaise: 79900, label: PAYMENT_NAMES.labels.halfyear, razorpayLabel: PAYMENT_NAMES.razorpayLabels.halfyear },
-  year: { days: 365, bonusDays: 0, amountPaise: 149900, label: PAYMENT_NAMES.labels.year, razorpayLabel: PAYMENT_NAMES.razorpayLabels.year },
-  lifetime: { days: 0, bonusDays: 0, amountPaise: 149900, label: PAYMENT_NAMES.labels.lifetime, razorpayLabel: PAYMENT_NAMES.razorpayLabels.lifetime }
+  year: { days: 365, bonusDays: 0, amountPaise: 299800, label: PAYMENT_NAMES.labels.year, razorpayLabel: PAYMENT_NAMES.razorpayLabels.year },
+  lifetime: { days: 0, bonusDays: 0, amountPaise: 642429, label: PAYMENT_NAMES.labels.lifetime, razorpayLabel: PAYMENT_NAMES.razorpayLabels.lifetime }
 } as const;
 export type PlusPlan = keyof typeof PLUS_PASSES;
 

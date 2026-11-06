@@ -19,7 +19,7 @@ async function seed() {
     await db.doc(`limits/${uid}/daily/${new Date().toISOString().slice(0,10).replaceAll('-','')}`).set({ likes: uid === free ? 0 : 10000 });
   }
   await db.doc(`razorpayOrders/qa_month_${monthly}`).set({ uid: monthly, plan: 'month', status: 'paid', currency: 'INR', mode: 'live', amountPaise: 29900, startsAt: Date.now() - 86400000, expiresAt: Date.now() + 59 * 86400000 });
-  await db.doc(`razorpayOrders/qa_year_${annual}`).set({ uid: annual, plan: "year", status: "paid", currency: "INR", mode: "live", amountPaise: 74950, startsAt: Date.now() - 86400000, expiresAt: Date.now() + 364 * 86400000 });
+  await db.doc(`razorpayOrders/qa_year_${annual}`).set({ uid: annual, plan: "year", status: "paid", currency: "INR", mode: "live", amountPaise: 149900, startsAt: Date.now() - 86400000, expiresAt: Date.now() + 364 * 86400000 });
   await db.doc(`lifetimePlusGrants/${lifetime}`).set({ status: 'active', startsAt: Date.now(), source: 'owner-gift', amountReportedPaise: 0 });
 }
 (async () => {
@@ -30,9 +30,9 @@ async function seed() {
       await context.route('**/*', async route => {
         const u = new URL(route.request().url());
         if (!['localhost', '127.0.0.1', '[::1]'].includes(u.hostname)) return route.abort();
-        if (u.pathname === '/qa-checkout/') return route.fulfill({ contentType: 'text/html; charset=utf-8', body: '<h1>Local fixture checkout · ₹749.50</h1>' });
+        if (u.pathname === '/qa-checkout/') return route.fulfill({ contentType: 'text/html; charset=utf-8', body: '<h1>Local fixture checkout · ₹1,499</h1>' });
         if (uid === free && route.request().method() === 'POST' && u.pathname.endsWith('/getPremiumStatus')) { const response = await route.fetch({url:route.request().url().replace(':5001/',':15001/')}), body = await response.json(); const status = body.result ?? body.data; status.webPurchaseAvailable = true; status.upiPurchaseAvailable = false; status.ccavenuePurchaseAvailable = false; return route.fulfill({ response, json: body }); }
-        if (uid === free && route.request().method() === 'POST' && u.pathname.endsWith('/createPlusOrder')) { orderRequest = route.request().postDataJSON(); return route.fulfill({ headers: { 'access-control-allow-origin': new URL(appUrl).origin }, json: { result: { orderId: 'order_QALIFETIME001', amount: 74950, currency: 'INR', keyId: 'rzp_test_LocalFixture', name: 'Local test', description: 'Annual Plus · 365 days', email: null, hostedUrl: new URL('/qa-checkout/', appUrl).href } } }); }
+        if (uid === free && route.request().method() === 'POST' && u.pathname.endsWith('/createPlusOrder')) { orderRequest = route.request().postDataJSON(); return route.fulfill({ headers: { 'access-control-allow-origin': new URL(appUrl).origin }, json: { result: { orderId: 'order_QALIFETIME001', amount: 149900, currency: 'INR', keyId: 'rzp_test_LocalFixture', name: 'Local test', description: 'Annual Plus · 365 days', email: null, hostedUrl: new URL('/qa-checkout/', appUrl).href } } }); }
         if (u.hostname === '127.0.0.1' && u.port === '5001') { const response = await route.fetch({url:route.request().url().replace(':5001/',':15001/')}); return route.fulfill({response}); }
         return route.continue();
       });
@@ -57,9 +57,9 @@ async function seed() {
           assert((await page.getByTestId('premium-plan-halfyear').innerText()).includes('Unlimited regular likes'));
           await page.getByTestId('premium-plan-halfyear').scrollIntoViewIfNeeded();
           for (const width of [320,390,768,1280]) { await page.setViewportSize({ width, height: 700 }); assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)); await page.screenshot({ path: `/tmp/annual-app-pricing-${uid}-${width}.png` }); }
-          await page.getByTestId('premium-plan-year').click(); assert.equal(await page.getByTestId('premium-extension').count(), uid === free ? 0 : 1); assert((await page.getByTestId('premium-plan-year').innerText()).includes(uid === free ? '₹749.50' : '₹1,499')); }
+          await page.getByTestId('premium-plan-year').click(); assert.equal(await page.getByTestId('premium-extension').count(), uid === free ? 0 : 1); assert((await page.getByTestId('premium-plan-year').innerText()).includes(uid === free ? '₹1,499' : '₹2,998')); }
         for (const width of [320,390,768,1280]) { await page.setViewportSize({ width, height: 700 }); assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)); const button = await page.getByTestId('premium-purchase').boundingBox(); assert(button.y >= 0 && button.y + button.height <= 700); await page.screenshot({ path: `/tmp/annual-app-${uid}-${width}.png` }); }
-        if (uid === free) { await page.getByTestId('premium-purchase').click(); await page.getByRole('heading', { name: 'Local fixture checkout · ₹749.50' }).waitFor(); assert.equal(orderRequest.data.plan, 'year'); assert.equal(orderRequest.data.expectedAmount, 74950); assert.equal((await db.doc(`billing/${uid}`).get()).get('lifetime'), false); }
+        if (uid === free) { await page.getByTestId('premium-purchase').click(); await page.getByRole('heading', { name: 'Local fixture checkout · ₹1,499' }).waitFor(); assert.equal(orderRequest.data.plan, 'year'); assert.equal(orderRequest.data.expectedAmount, 149900); assert.equal((await db.doc(`billing/${uid}`).get()).get('lifetime'), false); }
         assert.deepEqual(errors, []); console.log(`PASS ${uid}: real emulator entitlement, 320/390/768/1280px, reachable footer and ${uid === free ? 'annual plan sent to loopback checkout without a grant' : uid === monthly || uid === annual ? 'like accepted beyond 10,000 used' : 'permanent benefits without another purchase'}`);
       } catch (e) { console.error((await page.locator('body').innerText()).slice(0,4000)); await page.screenshot({ path: '/tmp/annual-app-qa-failure.png' }); throw e; } finally { await context.unrouteAll({behavior:"ignoreErrors"}); await context.close(); }
     }
