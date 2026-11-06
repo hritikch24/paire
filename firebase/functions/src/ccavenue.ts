@@ -312,13 +312,13 @@ type CreateResult = { status: "redirect"; redirect: CcavenueRedirect } | { statu
 
 /**
  * Starts a CCAvenue payment: Unlimited Chat by default, or a Paire Plus pass
- * with `plan` ("day" | "week" | "month" | "halfyear" | "lifetime"). The server sets the price and the
+ * with `plan` ("day" | "week" | "month" | "halfyear" | "year" | "lifetime"). The server sets the price and the
  * account; nothing the client sends changes them.
  */
 export const createCcavenueOrder = onCall({ region: REGION, secrets: SECRETS, timeoutSeconds: 30 }, async (request): Promise<CreateResult> => {
   const uid = requireAuth(request);
   const plan = (request.data as { plan?: unknown } | null)?.plan;
-  if (plan !== undefined && !isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a day, week, monthly, six-month or lifetime Plus pass.");
+  if (plan !== undefined && !isPlusPlan(plan)) throw new HttpsError("invalid-argument", "Choose a day, week, monthly, six-month, annual or lifetime Plus pass.");
   const kind: Kind = plan ? "plus" : "chat";
   if ((await webPassBenefits(uid)).lifetime) return { status: "owned" };
   const mode = ccavenueSellingMode();

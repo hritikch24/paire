@@ -12,12 +12,13 @@ export const OFFER_PRICES = {
   week: { regular: 15000, offer: 9900, coupon: 8500 },
   month: { regular: 57000, offer: 39900, coupon: 35910 },
   halfyear: { regular: 114143, offer: 79900, coupon: 71910 },
+  year: { regular: 149900, offer: 149900, coupon: 149900 },
   lifetime: { regular: 214143, offer: 149900, coupon: 134910 },
   chat: { regular: 7000, offer: 4900, coupon: 4410 }
 } as const;
 export type OfferPlan = keyof typeof OFFER_PRICES;
 export const offerActive = (now = Date.now()) => now >= LAUNCH_OFFER.startsAt && now < LAUNCH_OFFER.endsAt;
 export const currentPrice = (plan: OfferPlan, now = Date.now()) => offerActive(now) ? OFFER_PRICES[plan].offer : OFFER_PRICES[plan].regular;
-export const formatInr = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+export const formatInr = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: paise % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 export const normalizePromo = (code: unknown) => typeof code === "string" ? code.trim().toUpperCase() : "";
 export const validPromo = (code: string) => (LAUNCH_OFFER.codes as readonly string[]).includes(code);

@@ -12,7 +12,7 @@ export const PREMIUM_PLANS = [
   { id: "month", productId: "muse_premium_month", label: "1 month", days: 30, bonusDays: 30, priceInr: Platform.OS === "web" ? 399 : 299, detail: "30 days", badge: "Best value" }
 ] as const;
 /** Lifetime is web-only; native product IDs and store billing stay unchanged. */
-export const WEB_PREMIUM_PLANS = [...PREMIUM_PLANS, { id: "halfyear", productId: "web_halfyear_plus", label: "6 months", days: 180, bonusDays: 0, priceInr: 799, detail: "180 days", badge: "Longer access" }, { id: "lifetime", productId: "web_lifetime_plus", label: "Lifetime Plus", days: null, bonusDays: 0, priceInr: 1499, detail: "No expiry", badge: "Pay once" }] as const;
+export const WEB_PREMIUM_PLANS = [...PREMIUM_PLANS, { id: "halfyear", productId: "web_halfyear_plus", label: "6 months", days: 180, bonusDays: 0, priceInr: 799, detail: "180 days", badge: "Longer access" }, { id: "year", productId: "web_year_plus", label: "Annual Plus", days: 365, bonusDays: 0, priceInr: 1499, detail: "365 days", badge: "A year of possibility" }, { id: "lifetime", productId: "web_lifetime_plus", label: "Lifetime Plus", days: null, bonusDays: 0, priceInr: 1499, detail: "No expiry", badge: "Pay once" }] as const;
 export type PremiumPlanId = (typeof WEB_PREMIUM_PLANS)[number]["id"];
 export type PremiumPlan = (typeof WEB_PREMIUM_PLANS)[number];
 

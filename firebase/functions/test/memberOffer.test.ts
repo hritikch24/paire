@@ -35,5 +35,5 @@ test("hosted quote rejects altered amount, percentages, timestamps and metadata"
 test("the browser and hosted checkout share the exact server contract", () => {
  const server=readFileSync(resolve(__dirname,"../src/lib/member-offer.ts"),"utf8");
  expect(readFileSync(resolve(__dirname,"../../../apps/muse-mobile/src/config/member-offer.ts"),"utf8")).toBe(server);
- expect(readFileSync(resolve(__dirname,"../../../../kanoon-simplified/src/lib/member-offer.ts"),"utf8")).toBe(server);
+ expect(readFileSync(resolve(process.env.KRAFTAI_SOURCE_DIR ?? resolve(__dirname,"../../../../kanoon-simplified"),"src/lib/member-offer.ts"),"utf8")).toBe(server);
 });

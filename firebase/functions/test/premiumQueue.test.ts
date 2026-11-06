@@ -52,3 +52,14 @@ test("cache-only expiry is never an entitlement and ambiguous old paid windows f
   q=reversePremiumCredit(q,"ccavenue:recovered",start+5*DAY).queue;
   expect(queueBenefits(q,start+5*DAY).expiresAt).toBe(start+12*DAY);
 });
+
+test("annual unlimited likes wait for queued access, survive another pass refund and stop on their own reversal",()=>{
+ let q=appendPremiumCredit(empty(),"razorpay:week","week",start).queue;
+ q=appendPremiumCredit(q,"razorpay:annual","year",start).queue;
+ expect(queueBenefits(q,start)).toEqual({expiresAt:start+372*DAY,unlimitedLikesUntil:0});
+ q=reversePremiumCredit(q,"razorpay:week",start+DAY).queue;
+ expect(queueBenefits(q,start+DAY)).toEqual({expiresAt:start+366*DAY,unlimitedLikesUntil:start+366*DAY});
+ expect(queueBenefits(q,start+366*DAY).unlimitedLikesUntil).toBe(0);
+ q=reversePremiumCredit(q,"razorpay:annual",start+2*DAY).queue;
+ expect(queueBenefits(q,start+2*DAY)).toEqual({expiresAt:0,unlimitedLikesUntil:0});
+});

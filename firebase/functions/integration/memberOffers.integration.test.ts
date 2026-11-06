@@ -10,15 +10,15 @@ async function usage(likes:number,supers:number,day=0){await db.doc(`limits/${ui
 beforeEach(async()=>{uid=`member_offer_qa_${randomUUID()}`;jest.spyOn(Date,"now").mockReturnValue(NOW);await db.doc(`users/${uid}`).set({displayName:"Offer QA",onboardingComplete:true,city:"Pune",interests:["music"]});});
 afterEach(()=>jest.restoreAllMocks());
 test("welcome offer is persisted once with a fixed seven-day expiry",async()=>{
- const first=await getMemberOffer(uid);expect(first).toMatchObject({discountPercent:30,city:"Pune",interest:"music",startsAt:NOW,expiresAt:NOW+MEMBER_OFFER.durationMs});
+ const first=await getMemberOffer(uid);expect(first).toMatchObject({discountPercent:50,city:"Pune",interest:"music",startsAt:NOW,expiresAt:NOW+MEMBER_OFFER.durationMs});
  const later=await getMemberOffer(uid,NOW+3600000);expect(later?.id).toBe(first?.id);expect(later?.expiresAt).toBe(first?.expiresAt);
 });
-test("server usage upgrades 30 to 40 to 50 without extending expiry or losing earned savings",async()=>{
- const first=await getMemberOffer(uid);await usage(10,0);expect((await getMemberOffer(uid))?.discountPercent).toBe(40);
+test("member saving stays at 50 without usage requirements or resetting expiry",async()=>{
+ const first=await getMemberOffer(uid);await usage(10,0);expect((await getMemberOffer(uid))?.discountPercent).toBe(50);
  await usage(10,1);const best=await getMemberOffer(uid);expect(best?.discountPercent).toBe(50);expect(best?.expiresAt).toBe(first?.expiresAt);
  await usage(0,0);expect((await getMemberOffer(uid,NOW+86400000))?.discountPercent).toBe(50);
 });
-test("regular activity on three actual UTC days earns 40 percent",async()=>{await Promise.all([usage(1,0,0),usage(1,0,1),usage(1,0,2)]);expect((await getMemberOffer(uid))?.discountPercent).toBe(40);});
+test("returning activity does not change the 50 percent saving",async()=>{await Promise.all([usage(1,0,0),usage(1,0,1),usage(1,0,2)]);expect((await getMemberOffer(uid))?.discountPercent).toBe(50);});
 test("expired offers stay expired and never reset on a new visit",async()=>{
  const initial=await getMemberOffer(uid);expect(await getMemberOffer(uid,initial!.expiresAt)).toBeNull();expect(await getMemberOffer(uid,initial!.expiresAt+86400000)).toBeNull();
  expect((await db.doc(`memberOffers/${uid}`).get()).get("expiresAt")).toBe(initial!.expiresAt);
@@ -39,7 +39,7 @@ test("quote and creation callback agree; client-discount tampering cannot reach 
 });
 test("the callable ignores claimed discounts and derives the actual quote from server usage",async()=>{
  const quote=await getLaunchOffer.run({data:{discountPercent:100,city:"Other city"},auth:{uid,token:{}},rawRequest:{},acceptsStreaming:false} as never);
- expect(quote.personalized?.discountPercent).toBe(30);expect(quote.plans.month.amount).toBe(memberPrice("month",30));expect(quote.personalized?.city).toBe("Pune");
+ expect(quote.personalized?.discountPercent).toBe(50);expect(quote.plans.month.amount).toBe(memberPrice("month",50));expect(quote.personalized?.city).toBe("Pune");
 });
 test("concurrent quote requests share one offer id and one expiry",async()=>{
  const offers=await Promise.all(Array.from({length:5},()=>getMemberOffer(uid)));
@@ -47,4 +47,18 @@ test("concurrent quote requests share one offer id and one expiry",async()=>{
 });
 test("payment activation removes the offer without rewriting issued prices",async()=>{
  const existing=await getMemberOffer(uid);await db.doc(`billing/${uid}`).set({expiresAt:NOW+86400000});expect(await getMemberOffer(uid)).toBeNull();expect((await db.doc(`memberOffers/${uid}`).get()).get("id")).toBe(existing?.id);
+});
+
+test("an existing 30 percent offer upgrades once without resetting its original deadline", async () => {
+ const old={id:randomUUID(),campaign:MEMBER_OFFER.campaign,discountPercent:30,reason:"welcome",startsAt:NOW-86400000,expiresAt:NOW+6*86400000};
+ await db.doc(`memberOffers/${uid}`).set(old);
+ expect(await getMemberOffer(uid)).toMatchObject({id:old.id,discountPercent:50,startsAt:old.startsAt,expiresAt:old.expiresAt});
+});
+test("annual quote and checkout use the same exact discounted paise", async () => {
+ const quote=await getLaunchOffer.run({data:{},auth:{uid,token:{}},rawRequest:{},acceptsStreaming:false} as never);
+ expect(quote.plans.year).toMatchObject({regular:149900,amount:74950});
+ const create=jest.fn(async(amount:number,notes:Record<string,string>)=>({amount,notes}));
+ const result=await promoCheckout(uid,"year",undefined,create,74950);
+ expect(result.amount).toBe(74950);expect(result.notes.discountPercent).toBe("50");
+ await expect(promoCheckout(uid,"year",undefined,create,149900)).rejects.toThrow("price changed");
 });

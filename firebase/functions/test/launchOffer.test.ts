@@ -23,5 +23,5 @@ test("exact owner examples and extra ten percent for the remaining plans", () =>
 test("browser and checkout contract stay byte-identical to the server", () => {
   const here = readFileSync(resolve(__dirname, "../src/lib/launch-offer.ts"), "utf8");
   expect(readFileSync(resolve(__dirname, "../../../apps/muse-mobile/src/config/launch-offer.ts"), "utf8")).toBe(here);
-  expect(readFileSync(resolve(__dirname, "../../../../kanoon-simplified/src/lib/launch-offer.ts"), "utf8")).toBe(here);
+  expect(readFileSync(resolve(process.env.KRAFTAI_SOURCE_DIR ?? resolve(__dirname, "../../../../kanoon-simplified"), "src/lib/launch-offer.ts"), "utf8")).toBe(here);
 });

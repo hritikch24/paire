@@ -3,12 +3,12 @@ import { OFFER_PRICES } from "./launch-offer";
 /** Shared by the browser, Paire server and hosted checkout. Amounts are paise. */
 export const MEMBER_OFFER = {
   campaign: "member-growth-v1", startsAt: Date.parse("2026-11-01T00:00:00+05:30"),
-  durationMs: 7 * 86400000, discounts: [30, 40, 50], plans: ["month", "lifetime"]
+  durationMs: 7 * 86400000, discounts: [30, 40, 50], minimumDiscount: 50, plans: ["month", "year", "lifetime"]
 } as const;
 export type MemberDiscount = 30 | 40 | 50;
-export type MemberPlan = "month" | "lifetime";
+export type MemberPlan = "month" | "year" | "lifetime";
 export type MemberOffer = { id: string; discountPercent: MemberDiscount; startsAt: number; expiresAt: number; reason: string; city: string | null; interest: string | null };
-export const isMemberPlan = (id: string): id is MemberPlan => id === "month" || id === "lifetime";
+export const isMemberPlan = (id: string): id is MemberPlan => id === "month" || id === "year" || id === "lifetime";
 export const memberPrice = (plan: MemberPlan, discount: MemberDiscount) => Math.round(OFFER_PRICES[plan].regular * (100 - discount) / 100);
 export function engagementDiscount(likes: number, supers: number, activeDays: number, freeLikes = 10, freeSupers = 1): { percent: MemberDiscount; reason: string } {
   if (likes >= freeLikes && supers >= freeSupers) return { percent: 50, reason: "both-limits" };

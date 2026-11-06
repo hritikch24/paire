@@ -691,7 +691,7 @@ describe("Lifetime Plus", () => {
     expect(await statusOf(uid)).toMatchObject({ active: true, lifetime: true, expiresAt: null });
     await confirmLifetime(uid, payment); await webhook("payment.captured", paymentEvent(payment));
     expect((await admin.doc(`webPassLedger/${uid}`).get()).get("until")).toBe(0);
-    for (const plan of ["day", "week", "month", "halfyear", "lifetime"]) await expect(call(createPlusOrder, uid, { plan })).rejects.toThrow(/already have Lifetime Plus/);
+    for (const plan of ["day", "week", "month", "halfyear", "year", "lifetime"]) await expect(call(createPlusOrder, uid, { plan })).rejects.toThrow(/already have Lifetime Plus/);
     expect(await call(chat.createChatUnlockOrder, uid)).toEqual({ status: "owned" });
   });
 
@@ -832,17 +832,17 @@ describe("October offers through KraftAI and Razorpay", () => {
 
 describe("earned member offers and paid entitlements",()=>{
  beforeEach(()=>{jest.spyOn(Date,"now").mockReturnValue(Date.parse("2026-11-01T12:00:00+05:30"));});
- test("all three Monthly/Lifetime tiers survive hosted validation and grant their original access",async()=>{
+ test("Monthly, Annual and Lifetime quotes settle their exact price and duration",async()=>{
   const {memberPrice,validMemberQuote}=await import("../src/lib/member-offer");
   const {dayKey}=await import("../src/lib/ids");
-  for(const plan of ["month","lifetime"] as const)for(const percent of [30,40,50] as const){
+  for(const plan of ["month","year","lifetime"] as const)for(const percent of [50] as const){
    const uid=await buyer();await admin.doc(`limits/${uid}/daily/${dayKey(new Date(Date.now()))}`).set({likes:percent>=40?10:0,supers:percent===50?1:0});
    const order=await call(createPlusOrder,uid,{plan,expectedAmount:memberPrice(plan,percent)});
    const remote=fake.orders.get(order.orderId)!;expect(remote.amount).toBe(memberPrice(plan,percent));expect(remote.notes.discountPercent).toBe(String(percent));
    expect(validMemberQuote(plan,remote.amount,remote.notes,remote.created_at)).toBe(true);
    const payment=pay(order.orderId);const active=await call(confirmPlusPayment,uid,{orderId:order.orderId,paymentId:payment.id,signature:checkoutSignature(order.orderId,payment.id)});
    expect(active.active).toBe(true);
-   if(plan==="lifetime")expect(active.lifetime).toBe(true);else {const saved=(await admin.doc(`razorpayOrders/${order.orderId}`).get()).data()!;expect(saved.expiresAt-saved.startsAt).toBe(60*86400000);}
+   if(plan==="lifetime")expect(active.lifetime).toBe(true);else {const saved=(await admin.doc(`razorpayOrders/${order.orderId}`).get()).data()!;expect(saved.expiresAt-saved.startsAt).toBe((plan === "year" ? 365 : 60)*86400000);}
   }
  });
 });

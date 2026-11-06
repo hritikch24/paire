@@ -51,7 +51,7 @@ export function appendPremiumCredit(queue: PremiumQueue, key: string, plan: stri
   const milliseconds = typeof plan === "number" ? plan * DAY : isPlusPlan(plan) && plan !== "lifetime" ? passDays(plan) * DAY : 0;
   if (milliseconds <= 0 || !Number.isSafeInteger(milliseconds)) throw new Error("Invalid premium duration");
   const { queue: next, retired } = compact(queue, now);
-  next.credits = [...next.credits, { key, milliseconds, acceptedAt: now, unlimitedLikes: plan === "month" || plan === "halfyear" }];
+  next.credits = [...next.credits, { key, milliseconds, acceptedAt: now, unlimitedLikes: plan === "month" || plan === "halfyear" || plan === "year" }];
   return { queue: next, window: premiumWindows(next).at(-1)!, retired };
 }
 
@@ -70,13 +70,13 @@ export function initialPremiumQueue(orders: RecordData[], support: RecordData | 
   if (complimentary?.lastSource === "gift" && complimentary?.status === "active") throw new Error("Legacy gifted access needs review before adding another gift");
   type Segment = { from: number; until: number; key: string; unlimitedLikes: boolean };
   const paid = orders.filter(o => o.plan !== "lifetime" && o.status === (o.paymentSource === "upi" ? "approved" : "paid") && finite(o.expiresAt) > now).map(o => ({
-    from: Math.max(now, finite(o.startsAt)), until: finite(o.expiresAt), key: purchaseKey(String(o.paymentSource), String(o.id)), unlimitedLikes: o.plan === "month" || o.plan === "halfyear"
+    from: Math.max(now, finite(o.startsAt)), until: finite(o.expiresAt), key: purchaseKey(String(o.paymentSource), String(o.id)), unlimitedLikes: o.plan === "month" || o.plan === "halfyear" || o.plan === "year"
   })).filter(s => s.until > s.from).sort((a,b) => a.from-b.from || a.key.localeCompare(b.key));
   if (paid.some((s,i) => i > 0 && s.from < paid[i-1].until)) throw new Error("Overlapping existing paid passes need support review");
   const segments: Segment[] = [...paid];
   const grants = [
     { key: "legacy:store", until: storeExpiry, unlimitedLikes: false },
-    { key: "legacy:support", until: support?.status === "active" && finite(support.startsAt) <= now ? finite(support.expiresAt) : 0, unlimitedLikes: support?.plan === "month" || support?.plan === "halfyear" || (Array.isArray(support?.coveredOrderIds) && orders.some(o => (o.plan === "month" || o.plan === "halfyear") && (support!.coveredOrderIds as unknown[]).includes(o.id))) },
+    { key: "legacy:support", until: support?.status === "active" && finite(support.startsAt) <= now ? finite(support.expiresAt) : 0, unlimitedLikes: support?.plan === "month" || support?.plan === "halfyear" || support?.plan === "year" || (Array.isArray(support?.coveredOrderIds) && orders.some(o => (o.plan === "month" || o.plan === "halfyear" || o.plan === "year") && (support!.coveredOrderIds as unknown[]).includes(o.id))) },
     { key: "legacy:complimentary", until: complimentary?.status === "active" ? finite(complimentary.expiresAt) : 0, unlimitedLikes: false }
   ];
   for (const grant of grants) {

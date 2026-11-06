@@ -42,22 +42,22 @@ export const core = [
     related: ["features/", "verification/", "pricing/", "guides/best-dating-apps-india/"]
   },
   {
-    path: "pricing/", crumb: "Pricing", published: D, updated: "2026-10-24", eyebrow: "PRICING",
-    title: "Paire Pricing — Plus from ₹35, No Auto-Renewal",
-    description: "Paire Plus: ₹399 for 60 days, ₹35 for a day or ₹1,499 lifetime. Compare ₹99 weekly, ₹799 six-month and ₹49 chat-only options. No auto-renewal.",
+    path: "pricing/", crumb: "Pricing", published: D, updated: "2026-11-06", eyebrow: "PRICING",
+    title: "Paire Annual & Lifetime Plus — 50% Member Offers",
+    description: "Annual Plus ₹749.50 and Lifetime Plus ₹1,070.72 for eligible members: 50% off. Compare exact totals, benefits and expiry. No auto-renewal.",
     h1: "Free first. <em>Fair always.</em>",
     lede: "Joining, matching and safety on Paire are free. To send messages, choose a short Paire Plus pass or a one-time ₹49 Unlimited Chat unlock. Both end or stay on their own terms: nothing to cancel, no surprise renewals.",
     summary: [
       "Free forever: 10 likes a day (each with a note), 1 Super Like a day, an anonymous likes count, mutual matching, reading every message you receive, every privacy and safety control.",
       "Sending messages: your own Paire Plus pass, or Unlimited Chat for ₹49 once (all current and future matches, no expiry). Each person needs their own access to send.",
       "Paire Plus: ₹399 for 60 days with unlimited regular likes (buy 1 month, get 1 free), ₹35 for 24 hours, or Lifetime Plus for ₹1,499 once with no expiry. More options: ₹99 for 7 days and ₹799 for 180 days.",
-      "Every Plus plan reveals who likes you, adds messaging, priority likes, the age-gap filter and 5 Super Likes daily. Monthly, six-month and lifetime plans include unlimited regular likes; day and week passes include 100 regular likes daily.",
+      "Every Plus plan reveals who likes you, adds messaging, priority likes, the age-gap filter and 5 Super Likes daily. Monthly, six-month, annual and lifetime plans include unlimited regular likes; day and week passes include 100 regular likes daily.",
       "Passes never auto-renew. Men and women pay the same. Pay by UPI, card or netbanking."
     ],
     body: `
 <h2>What's free</h2>
 <table><thead><tr><th>Feature</th><th>Free</th><th>Paire Plus</th></tr></thead><tbody>
-<tr><td>Likes per day (each can carry a note)</td><td>10</td><td>Unlimited on monthly/six-month/lifetime; 100 on day/week</td></tr>
+<tr><td>Likes per day (each can carry a note)</td><td>10</td><td>Unlimited on monthly/six-month/annual/lifetime; 100 on day/week</td></tr>
 <tr><td>Super Likes per day</td><td>1</td><td>5</td></tr>
 <tr><td>See who likes you</td><td>Anonymous preview</td><td>Full profiles</td></tr>
 <tr><td>Read the messages you receive</td><td>Yes</td><td>Yes</td></tr>
@@ -69,7 +69,9 @@ export const core = [
 <tr><td>Age-gap filter</td><td>No</td><td>Yes</td></tr>
 </tbody></table>
 <div data-launch-offer></div><!-- launch-offer-end -->
-<h2>Paire Plus passes</h2>
+<h2>Annual and Lifetime Plus</h2>
+<p>Annual Plus is &#8377;1,499 regular for 365 days, or ₹749.50 with an eligible 50% member offer. Lifetime Plus is ₹2,141.43 regular, or ₹1,070.72 with the same eligible offer. Check your fixed seven-day deadline in the app. Expired offers do not restart.</p>
+<h2>Other Plus passes</h2>
 <ul>
 <li><strong>Monthly offer: ₹399 for 60 days</strong>: buy 1 month, get 1 month free. Member prices and eligibility are listed above; the app shows your exact offer.</li>
 <li><strong>₹35 for 24 hours</strong>: try Plus for a day, for example on a weekend.</li>
