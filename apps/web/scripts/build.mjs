@@ -221,10 +221,10 @@ writeFileSync(
   resolve(output, "llms-full.txt"),
   `# Paire: full text\n\n${readFileSync(resolve(web, "site/llms.txt"), "utf8").trim()}\n\n${diwaliOpen() ? `## Diwali Together\n\nURL: ${origin}/diwali-together/\nA voluntary Diwali 2026 edition of Paire for adults 18+ who are away from home, open 24 October to 10 November 2026 (India time); Diwali is Sunday 8 November 2026 per India Post. Members opt in inside the app, choose up to three days and three public plans (chai & mithai, mela stroll, lights walk, café meal, Diwali bash) and see nearby members with a matching day and plan. Matching is mutual only; other members never see exact dates. Paire does not host or organise events, does not show who has joined and cannot promise matches. The page also has a free, no-signup invitation card maker that runs in the browser; nothing is uploaded. Joining and matching are free; sending messages follows Paire's normal rules.\n\n` : ""}## Date Duet\n\nURL: ${origin}/date-duet/\nA free, no-signup two-person first-date planner for adults. Each person chooses activities, broad time-window preferences, a spending cap, maximum duration and setting. The blueprint respects both sets of choices or explains the differences. Share links carry preset choices in the URL fragment, readable and editable by link holders. There are no names, exact locations, real availability, automatic messages, matches or bookings. Answers are not sent to the visit counter; anonymous action counts measure use, not unique people or delivered invitations.\n\n` +
     contentPages.filter((page) => page.type !== "hub").map((page) => [
-      `---\n\n# ${stripHtml(page.h1)}\n\nURL: ${origin}/${page.path}\nUpdated: ${page.updated}\n\n${stripHtml(page.lede)}`,
-      page.summary ? `\n\nIn short:\n${page.summary.map((line) => `- ${stripHtml(line)}`).join("\n")}` : "",
-      `\n\n${stripHtml(page.body ?? "")}`,
-      page.faq?.length ? `\n\n## Questions\n\n${page.faq.map(([q, a]) => `Q: ${q}\nA: ${a}`).join("\n\n")}` : ""
+      `---\n\n# ${stripHtml(page.h1)}\n\nURL: ${origin}/${page.path}\nUpdated: ${page.updated}\n\n${stripHtml(renderLaunchOffer(page.lede))}`,
+      page.summary ? `\n\nIn short:\n${page.summary.map((line) => `- ${stripHtml(renderLaunchOffer(line))}`).join("\n")}` : "",
+      `\n\n${stripHtml(renderLaunchOffer(page.body ?? ""))}`,
+      page.faq?.length ? `\n\n## Questions\n\n${page.faq.map(([q, a]) => `Q: ${q}\nA: ${stripHtml(renderLaunchOffer(a))}`).join("\n\n")}` : ""
     ].join("")).join("\n\n") + "\n"
 );
 writeFileSync(
