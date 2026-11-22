@@ -16,6 +16,12 @@ import { parseTargetInput } from "./lib/validate";
 export const blockUser = onCall({ region: REGION }, async (request) => {
   const uid = requireAuth(request);
   const { targetUid } = parseTargetInput(request.data);
+  await blockMember(uid, targetUid);
+  return { ok: true };
+});
+
+/** The block itself, shared with Wedding Nods (where the other person is known only by a card). */
+export async function blockMember(uid: string, targetUid: string): Promise<void> {
   if (targetUid === uid) {
     throw new HttpsError("invalid-argument", "You can't block yourself.");
   }
@@ -37,8 +43,7 @@ export const blockUser = onCall({ region: REGION }, async (request) => {
     }
   });
   await applyBlockToDuos(uid, targetUid);
-  return { ok: true };
-});
+}
 
 /**
  * Auto-moderation: once enough different people report someone within the

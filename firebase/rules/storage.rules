@@ -13,6 +13,19 @@ service firebase.storage {
       allow list: if false;
       allow write: if false;
     }
+    // Wedding Nods invitation photos (optional). The member may add or delete their own; only
+    // moderators can read them. Deleted by the server after 30 days, when the wedding closes,
+    // and with the account.
+    match /wedding-invites/{uid}/{fileName} {
+      allow get, list: if request.auth != null && request.auth.token.moderator == true;
+      allow create: if request.auth != null && !('supportSession' in request.auth.token)
+        && request.auth.uid == uid
+        && fileName.matches('[A-Za-z0-9._-]{1,80}')
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)');
+      allow update: if false;
+      allow delete: if request.auth != null && !('supportSession' in request.auth.token) && request.auth.uid == uid;
+    }
     match /user-uploads/{uid}/photos/{fileName} {
       allow get: if request.auth != null && !('supportSession' in request.auth.token);
       allow list: if request.auth != null && !('supportSession' in request.auth.token) && request.auth.uid == uid;

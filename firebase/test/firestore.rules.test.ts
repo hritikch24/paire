@@ -1059,3 +1059,64 @@ describe("gift requests", () => {
    const db=context.firestore();await assertFails(db.doc("giftRefundJobs/private-refund").get());await assertFails(db.collection("giftRefundJobs").get());await assertFails(db.doc("giftRefundJobs/private-refund").set({status:"processed"}));
   }
 });
+
+// Wedding Nods: weddings, guests and nods are server-only; members read only their own mirrored spot.
+describe("wedding nods", () => {
+  const spot = { weddingId: "w1", label: "Riya & Arjun", date: "2026-12-14", closesAt: 1, nickname: "Saffron Peacock", side: "bride", ageBand: "25-29", clue: "navy sherwani", active: true, nodsUsed: 0, nodsTotal: 3, joinedAt: 1 };
+  const moderator = () => testEnv.authenticatedContext("mod", { email_verified: true, moderator: true }).firestore();
+
+  test("no client can read, list or write a wedding, its guests or its nods", async () => {
+    await seed({
+      "weddings/w1": { bucket: "b", keyHash: "k", names: ["arjun", "riya"], date: "2026-12-14", pin: "110001", status: "open", closesAt: 1 },
+      "weddings/w1/guests/alexa": { uid: "alexa", nickname: "Saffron Peacock", cardId: "abcdefghijklmnop" },
+      "weddings/w1/nods/alexa_jules": { from: "alexa", to: "jules" }
+    });
+    for (const db of [dbFor("alexa"), dbFor("jules"), dbFor("stranger"), moderator()]) {
+      await assertFails(db.doc("weddings/w1").get());
+      await assertFails(db.collection("weddings").get());
+      await assertFails(db.collection("weddings").where("pin", "==", "110001").get());
+      await assertFails(db.doc("weddings/w1/guests/alexa").get());
+      await assertFails(db.collection("weddings/w1/guests").get());
+      await assertFails(db.doc("weddings/w1/nods/alexa_jules").get());
+      await assertFails(db.collection("weddings/w1/nods").get());
+      await assertFails(db.doc("weddings/w2").set({ status: "open" }));
+      await assertFails(db.doc("weddings/w1/guests/alexa").update({ hidden: true }));
+      await assertFails(db.doc("weddings/w1/nods/alexa_jules").delete());
+      await assertFails(db.doc("weddings/w1/nods/jules_alexa").set({ from: "jules", to: "alexa" }));
+    }
+  });
+
+  test("a member reads only their own spot and cannot write it", async () => {
+    await seed({ "users/alexa/weddingSpots/w1": spot });
+    await assertSucceeds(dbFor("alexa").doc("users/alexa/weddingSpots/w1").get());
+    await assertSucceeds(dbFor("alexa").collection("users/alexa/weddingSpots").get());
+    await assertFails(dbFor("jules").doc("users/alexa/weddingSpots/w1").get());
+    await assertFails(dbFor("jules").collection("users/alexa/weddingSpots").get());
+    await assertFails(dbFor("alexa").doc("users/alexa/weddingSpots/w1").update({ nodsUsed: 0, clue: "changed" }));
+    await assertFails(dbFor("alexa").doc("users/alexa/weddingSpots/w2").set(spot));
+    await assertFails(dbFor("alexa").doc("users/alexa/weddingSpots/w1").delete());
+  });
+
+  test("invitation photos: owner uploads images only, moderators read, nobody else reads", async () => {
+    const put = (asUid: string, ownerUid: string, file: string, bytes: Uint8Array, contentType: string, claims: Record<string, unknown> = {}) =>
+      testEnv.authenticatedContext(asUid, claims).storage().ref(`wedding-invites/${ownerUid}/${file}`).put(bytes, { contentType }).then(() => undefined);
+    await assertSucceeds(put("alexa", "alexa", "card.jpg", new Uint8Array([1, 2, 3]), "image/jpeg"));
+    await assertFails(put("jules", "alexa", "x.jpg", new Uint8Array([1]), "image/jpeg"));
+    await assertFails(put("alexa", "alexa", "x.pdf", new Uint8Array([1]), "application/pdf"));
+    await assertFails(put("alexa", "alexa", "big.jpg", new Uint8Array(8 * 1024 * 1024 + 1), "image/jpeg"));
+    const file = (uid: string, claims: Record<string, unknown> = {}) => testEnv.authenticatedContext(uid, claims).storage().ref("wedding-invites/alexa/card.jpg");
+    await assertFails(file("alexa").getMetadata().then(() => undefined));
+    await assertFails(file("jules").getMetadata().then(() => undefined));
+    await assertFails(file("jules").delete());
+    await assertSucceeds(file("mod", { moderator: true }).getMetadata().then(() => undefined));
+    await assertSucceeds(testEnv.authenticatedContext("mod", { moderator: true }).storage().ref("wedding-invites/alexa").listAll().then(() => undefined));
+    await assertFails(testEnv.authenticatedContext("alexa").storage().ref("wedding-invites/alexa").listAll().then(() => undefined));
+    await assertSucceeds(file("alexa").delete());
+  });
+
+  test("support sessions cannot upload invitation photos", async () => {
+    await assertFails(
+      testEnv.authenticatedContext("support_session1", { supportSession: "session1", supportTarget: "alexa" }).storage().ref("wedding-invites/support_session1/x.jpg").put(new Uint8Array([1]), { contentType: "image/jpeg" }).then(() => undefined)
+    );
+  });
+});

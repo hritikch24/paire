@@ -6,6 +6,7 @@ import { adminAuth, bucket, db } from "./admin";
 import { REGION } from "./config";
 import { purgeVerificationData } from "./verificationCleanup";
 import { purgeDuoData } from "./duos";
+import { purgeWeddingData } from "./weddings";
 import { clearChatAccess } from "./chatEntitlement";
 import { clearPresence } from "./presence";
 import { requireAuth } from "./lib/auth";
@@ -51,6 +52,8 @@ export async function purgeUserData(uid: string): Promise<void> {
   await deleteQueryResults(db.collection("callRooms").where("participants", "array-contains", uid));
   // Duo chats belong to four people: leave them (erasing what this member wrote) instead of deleting them.
   await purgeDuoData(uid);
+  // Wedding Nods: the member's spots, nods and invitation photos, before users/{uid} (their index) goes.
+  await purgeWeddingData(uid);
   const matches = await db.collection("matches").where("participants", "array-contains", uid).get();
   for (const match of matches.docs) {
     await recursiveDelete(match.ref);

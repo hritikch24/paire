@@ -561,6 +561,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Wedding Nods. Weddings, their guests and nods are written and read only by Cloud Functions
+    // (and admins): no client can list, search or read a wedding, a guest card or a nod.
+    match /weddings/{weddingId}/{document=**} {
+      allow read, write: if false;
+    }
+    // A member's own spot (nickname, side, clue, nods used), mirrored by the server so the app can show it.
+    match /users/{uid}/weddingSpots/{weddingId} {
+      allow read: if isReadUser(uid);
+      allow write: if false;
+    }
+
     // Messages the chat-safety check flagged. Written by Cloud Functions only;
     // reviewed by moderators in the Firebase console.
     match /chatFlags/{flagId} {

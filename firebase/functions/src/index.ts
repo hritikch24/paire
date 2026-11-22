@@ -52,3 +52,5 @@ export { confirmGiftPayment, createGiftOrder, razorpayGiftWebhook } from "./gift
 export { claimGift, declineGift, expireGifts, listGifts } from "./giftLifecycle";
 
 export { requestPlusGift, getPlusGiftRequests, closePlusGiftRequest } from "./giftRequests";
+
+export { joinWedding, getWeddingGuests, sendNod, leaveWedding, weddingGuestSafety, cleanupWeddings } from "./weddings";

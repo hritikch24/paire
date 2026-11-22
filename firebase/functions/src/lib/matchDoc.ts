@@ -16,11 +16,13 @@ export type BuildMatchDocArgs = {
   notes: Record<string, string | undefined>;
   /** Who chose "I'll message first". */
   firstMove: Record<string, boolean>;
+  /** Where the match came from, when not an ordinary mutual like (for example "wedding"). */
+  source?: string;
 };
 
 /** The exact match document a mutual like creates. Shared by `swipe` and accepting a like. */
 export function buildMatchDoc(args: BuildMatchDocArgs): { id: string; data: Record<string, unknown> } {
-  const { uid, targetUid, me, target, superLikedBy, notes, firstMove } = args;
+  const { uid, targetUid, me, target, superLikedBy, notes, firstMove, source } = args;
   const id = pairId(uid, targetUid);
   const participants = [uid, targetUid].sort();
   return {
@@ -39,7 +41,8 @@ export function buildMatchDoc(args: BuildMatchDocArgs): { id: string; data: Reco
       // The notes sent with each like open the chat, so it never starts empty.
       sparks: sparksOf(notes),
       // "I'll message first": set when exactly one of them chose it.
-      firstMoveBy: firstMoveOf(firstMove)
+      firstMoveBy: firstMoveOf(firstMove),
+      ...(source ? { source } : {})
     }
   };
 }
