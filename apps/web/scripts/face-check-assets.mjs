@@ -50,6 +50,14 @@ export async function prepareFaceCheckAssets(output) {
     try {
       text = await readFile(cached);
     } catch {
+      // The pinned v1.22.0 notices are committed (upstream's repository can no longer be fetched from).
+      try {
+        text = await readFile(resolve(import.meta.dirname, "../vendor", `onnxruntime-1.22.0-${file}`));
+      } catch {
+        text = undefined;
+      }
+    }
+    if (!text) {
       const response = await fetch(
         `https://raw.githubusercontent.com/microsoft/onnxruntime/v1.22.0/${file}`,
         { signal: AbortSignal.timeout(30_000) },
