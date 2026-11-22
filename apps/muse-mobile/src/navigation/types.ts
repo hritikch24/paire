@@ -36,6 +36,8 @@ export type AppStackParamList = {
   };
   WorkCircles: undefined;
   WorkCircle: { circle: WorkSector };
+  WeddingNods: undefined;
+  Wedding: { weddingId: string };
   EditProfile: undefined;
   EditPhotos: undefined;
   Settings: undefined;

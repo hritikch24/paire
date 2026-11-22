@@ -147,3 +147,46 @@ export async function deleteProfilePhoto(url: string): Promise<void> {
     headers: { Authorization: `Firebase ${await user.getIdToken()}` }
   }).catch(() => undefined);
 }
+
+/**
+ * Wedding Nods: the optional photo of the invitation. It goes to a private folder only
+ * moderators can read (never shown to other guests) and is deleted after 30 days.
+ * Returns the storage path to pass to joinWedding.
+ */
+export async function uploadWeddingInvite(photo: PickedPhoto): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in");
+  const fileUri = await preparePhoto(photo);
+  const name = `wedding-invites/${user.uid}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
+  const encodedPath = encodeURIComponent(name);
+  const authHeader = { Authorization: `Firebase ${await user.getIdToken()}` };
+  const failed = (status: number) => new Error(`Photo upload failed (${status}). Please try again.`);
+  try {
+    const start = await fetch(resolveServerUrl(`${storageApiBase}/v0/b/${storageBucket}/o?name=${encodedPath}`), {
+      method: "POST",
+      headers: {
+        ...authHeader,
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "start",
+        "X-Goog-Upload-Header-Content-Type": "image/jpeg"
+      },
+      body: JSON.stringify({ name, contentType: "image/jpeg" })
+    });
+    const sessionUrl = start.headers.get("x-goog-upload-url");
+    if (!start.ok || !sessionUrl) throw failed(start.status);
+    const uploadUrl = sessionUrl.replace(/^https?:\/\/[^/]+/, storageApiBase);
+    const image = await fetch(fileUri);
+    const bytes = await image.blob();
+    if (bytes.size > 8 * 1024 * 1024) throw new Error("Please choose a smaller photo.");
+    const response = await fetch(resolveServerUrl(uploadUrl), {
+      method: "POST",
+      headers: { ...authHeader, "X-Goog-Upload-Command": "upload, finalize", "X-Goog-Upload-Offset": "0" },
+      body: bytes
+    });
+    if (response.status < 200 || response.status >= 300) throw failed(response.status);
+    return name;
+  } finally {
+    if (fileUri.startsWith("blob:")) URL.revokeObjectURL(fileUri);
+  }
+}

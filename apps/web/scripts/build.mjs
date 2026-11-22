@@ -17,6 +17,7 @@ import { resolve } from "node:path";
 import { cities } from "../content/cities.mjs";
 import { compare } from "../content/compare.mjs";
 import { workCircles } from "../content/work-circles.mjs";
+import { weddingNods } from "../content/wedding-nods.mjs";
 import { core } from "../content/core.mjs";
 import { guidesA } from "../content/guides-a.mjs";
 import { guidesB } from "../content/guides-b.mjs";
@@ -116,7 +117,7 @@ for (const page of ["index.html", "diwali-together/index.html", "garba-nights/in
 
 // Guides, city pages, comparisons, about, pricing… (apps/web/content). Existing pages are listed
 // too so content can link to them in "Keep reading".
-const contentPages = [...core, ...compare, ...cities, ...guidesA, ...guidesB, ...workCircles];
+const contentPages = [...core, ...compare, ...cities, ...guidesA, ...guidesB, ...workCircles, ...weddingNods];
 const linkable = [
   ...contentPages,
   ...(diwaliOpen() ? [{ path: "diwali-together/", crumb: "Diwali Together", h1: "Diwali Together", description: "A voluntary Diwali edition of Paire for adults away from home, with a free invitation card maker. Open until 10 November 2026." }] : []),
@@ -211,6 +212,7 @@ writeFileSync(
   readFileSync(resolve(web, "site/llms.txt"), "utf8").trimEnd() + "\n" +
     section("About Paire", core.filter((page) => page.type !== "hub")) +
     section("Work Circles", workCircles) +
+    section("Wedding Nods", weddingNods) +
     `\n## Interactive experiences\n\n${diwaliOpen() ? `- [Diwali Together](${origin}/diwali-together/): A voluntary Diwali 2026 edition for adults away from home, open until 10 November 2026 India time, plus a free no-signup invitation card maker. Paire does not host events or promise matches.\n` : ""}- [Date Duet](${origin}/date-duet/): A free two-person first-date planner, shared by link. Uses mutual activities, time-window preferences, spending caps, pace and setting. No account, automatic match or booking.\n- [Dating vibe quiz](${origin}/vibe-quiz/): A playful personality quiz, not a scientific compatibility score.\n` +
     section("Paire compared with other apps", compare) +
     section("Dating guides for India", [...guidesA, ...guidesB]) +

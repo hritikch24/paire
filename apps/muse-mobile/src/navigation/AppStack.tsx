@@ -1,4 +1,5 @@
 import { WorkCirclesScreen, WorkCircleScreen } from "../screens/WorkCirclesScreen";
+import { WeddingNodsScreen, WeddingScreen } from "../screens/WeddingNodsScreen";
 import { useWebLinks } from "../hooks/useWebLinks";
 import { DiwaliPromo } from "../components/DiwaliPromo";
 import { NotificationPrompt } from "../components/NotificationPrompt";
@@ -67,6 +68,8 @@ export function AppStack() {
       />
       {Platform.OS === "web" ? <Stack.Screen name="WorkCircles" component={WorkCirclesScreen} /> : null}
       {Platform.OS === "web" ? <Stack.Screen name="WorkCircle" component={WorkCircleScreen} /> : null}
+      {Platform.OS === "web" ? <Stack.Screen name="WeddingNods" component={WeddingNodsScreen} /> : null}
+      {Platform.OS === "web" ? <Stack.Screen name="Wedding" component={WeddingScreen} /> : null}
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="EditPhotos" component={EditPhotosScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />

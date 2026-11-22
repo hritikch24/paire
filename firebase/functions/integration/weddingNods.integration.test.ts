@@ -79,6 +79,15 @@ beforeAll(async () => { await trust(false); });
 afterAll(async () => {
   await trust(false);
   await Promise.all(clients.map(async (client) => { await terminate(client.db); await deleteApp(client.app); }));
+  // Leave nothing behind: other suites scan the shared discovery index for the newest members.
+  for (const wedding of (await admin.collection("weddings").get()).docs) await admin.recursiveDelete(wedding.ref);
+  for (const client of clients) {
+    const uid = client.uid;
+    for (const match of (await admin.collection("matches").where("participants", "array-contains", uid).get()).docs) await admin.recursiveDelete(match.ref);
+    for (const path of [`discovery/${uid}`, `moderation/${uid}`]) await admin.doc(path).delete();
+    for (const path of [`users/${uid}`, `swipes/${uid}`, `blocks/${uid}`, `limits/${uid}`]) await admin.recursiveDelete(admin.doc(path));
+  }
+  for (const report of (await admin.collection("reports").where("source", "==", "wedding").get()).docs) await report.ref.delete();
 });
 
 /** A fresh wedding for each test: its own PIN code and a date a few weeks away. */

@@ -39,6 +39,9 @@ export function useWebLinks() {
       } else if (url.searchParams.get("circles") === "1") {
         navigate = () => navigation.navigate("App", { screen: "WorkCircles" });
         url.searchParams.delete("circles");
+      } else if (url.searchParams.get("wedding") === "1") {
+        navigate = () => navigation.navigate("App", { screen: "WeddingNods" });
+        url.searchParams.delete("wedding");
       } else if (valid(profile)) {
         navigate = () => navigation.navigate("App", { screen: "ProfileView", params: { source: profile === uid ? "self" : "shared", uid: profile! } });
         url.searchParams.delete("profile");

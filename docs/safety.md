@@ -33,6 +33,12 @@ A named review owner, staffing/response targets, escalation and appeals are stil
 - Report or block one person from "People in this chat", even after the chat has ended. Blocking closes every Duo chat the two share, for everyone, without saying who blocked whom; blocking your own partner ends the Duo.
 - Anyone can leave a Duo chat or their Duo in one tap. The one-night-stand setting is never used or shown in Duos.
 
+## Wedding Nods
+- Attendance is self-declared and never described as verified. Guests are anonymous cards (nickname, side, age band, clue); there is no group chat, no public room and no list of weddings.
+- The clue is screened by the chat-safety scanner plus checks for names, numbers, handles, links and room numbers. Cards carry no uid; report and block go through `weddingGuestSafety`, which resolves the card on the server. Reporting also blocks, writes a normal `reports` record (with `source: "wedding"`), and three different reporters hide the guest from that wedding.
+- An admin can hide a whole wedding (`scripts/set-wedding-status.mjs`). Invitation photos are readable only by moderators and deleted after 30 days.
+- A nod never exposes who nodded whom; only a mutual nod creates a match. Details: `docs/wedding-nods.md`.
+
 ## Privacy & control (India v2)
 All free, for everyone, enforced on the server or in the security rules:
 - **Likes with a note only:** a like needs a note unless it answers theirs. Notes are refused when the chat-safety scanner flags anything: money, phone numbers, links, abuse or sexual demands.
