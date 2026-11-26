@@ -53,9 +53,9 @@ describe("who may send", () => {
     expect(entitled({ unlimited: true, premiumUntil: NOW - 1 }, NOW)).toBe(true);
   });
 
-  it("a free sender (a woman, with the switch on) may send; without the switch or the mirror flag she may not", () => {
+  it("an obsolete freeSender flag grants no access", () => {
     const free = parseChatPolicy({ enforcePaidChat: true, womenSendFree: true });
-    expect(maySend(free, { unlimited: false, premiumUntil: 0, freeSender: true }, NOW, NOW)).toBe(true);
+    expect(maySend(free, { unlimited: false, premiumUntil: 0, freeSender: true }, NOW, NOW)).toBe(false);
     expect(maySend(parseChatPolicy({ enforcePaidChat: true, womenSendFree: false }), { unlimited: false, premiumUntil: 0, freeSender: true }, NOW, NOW)).toBe(false);
     // A man with no pass stays locked, and a missing mirror grants nothing.
     expect(maySend(free, { unlimited: false, premiumUntil: 0, freeSender: false }, NOW, NOW)).toBe(false);
@@ -65,8 +65,8 @@ describe("who may send", () => {
     expect(entitled({ unlimited: false, premiumUntil: 0, freeSender: true }, NOW)).toBe(false);
   });
 
-  it("anyone may send while the gate is off", () => {
-    expect(maySend(parseChatPolicy({}), undefined, NOW, NOW)).toBe(true);
+  it("a missing runtime switch grants no access", () => {
+    expect(maySend(parseChatPolicy({}), undefined, NOW, NOW)).toBe(false);
   });
 
   it("older chats keep sending free only inside a configured grace period", () => {

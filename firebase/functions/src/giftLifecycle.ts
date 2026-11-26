@@ -56,6 +56,7 @@ const ENDED_UNUSED = ["declined", "expired", "void"];
 
 /** gifts/{id}: what both members may read. */
 type GiftDoc = {
+  durationDays?: number;
   fromUid: string;
   toUid: string;
   matchId: string;
@@ -175,7 +176,7 @@ export const claimGift = onCall({ region: REGION, secrets: ["RAZORPAY_KEY_SECRET
     }
     if (verdict !== "ok") return { verdict };
     const queue = await prepareGiftQueue(uid, now, storeExpiry, tx);
-    const added = appendPremiumCredit(queue, giftCreditKey(giftId), gift.plan, now);
+    const added = appendPremiumCredit(queue, giftCreditKey(giftId), gift.plan, now, gift.durationDays);
     savePremiumQueue(tx, ledgerRef, added, now);
     tx.update(giftRef, { status: "claimed", claimedAt: now });
     tx.update(orderRef, { claimedAt: now, startsAt: added.window.startsAt, endsAt: added.window.expiresAt, entitlementQueueVersion: 2 });

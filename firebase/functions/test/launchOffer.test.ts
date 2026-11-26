@@ -25,3 +25,10 @@ test("browser and checkout contract stay byte-identical to the server", () => {
   expect(readFileSync(resolve(__dirname, "../../../apps/muse-mobile/src/config/launch-offer.ts"), "utf8")).toBe(here);
   expect(readFileSync(resolve(process.env.KRAFTAI_SOURCE_DIR ?? resolve(__dirname, "../../../../kanoon-simplified"), "src/lib/launch-offer.ts"), "utf8")).toBe(here);
 });
+
+test("fixed price version, every amount and duration match the browser and hosted checkout", () => {
+  const contract=readFileSync(resolve(__dirname,"../src/lib/fixed-catalog.ts"),"utf8");
+  expect(readFileSync(resolve(__dirname,"../../../apps/muse-mobile/src/config/fixed-catalog.ts"),"utf8")).toBe(contract);
+  const host=process.env.KRAFTAI_SOURCE_DIR ?? resolve(__dirname,"../../../../kanoon-simplified");
+  expect(readFileSync(resolve(host,"src/lib/fixed-catalog.ts"),"utf8")).toBe(contract);
+});

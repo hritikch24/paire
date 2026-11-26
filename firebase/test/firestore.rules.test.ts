@@ -361,6 +361,7 @@ describe("server-only collections", () => {
 });
 
 describe("matches and messages", () => {
+  beforeEach(async () => { await seed({ "moderation/alexa": { chatAccess: { unlimited: true } }, "moderation/jules": { chatAccess: { unlimited: true } } }); });
   const contacts = JSON.parse(fs.readFileSync(path.join(__dirname, "../../apps/muse-mobile/__tests__/fixtures/chatContact.json"), "utf8")) as { blocked: string[]; allowed: string[] };
 
   test("client contact patterns match the server write policy", () => {
@@ -583,6 +584,7 @@ function duoChat() {
 }
 
 describe("duos and duo chats", () => {
+  beforeEach(async () => { await seed({ "moderation/a": { chatAccess: { unlimited: true } }, "moderation/b": { chatAccess: { unlimited: true } }, "moderation/c": { chatAccess: { unlimited: true } }, "moderation/d": { chatAccess: { unlimited: true } } }); });
   const sendAs = (uid: string, unread: Record<string, unknown>) => {
     const db = dbFor(uid);
     const batch = db.batch();
@@ -653,7 +655,8 @@ describe("duos and duo chats", () => {
 });
 
 describe("mandatory photo verification", () => {
-  const approval = (photos: string[]) => ({ status: "ok", emailVerified: true, verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } });
+  beforeEach(async () => { await seed({ "moderation/alexa": { chatAccess: { unlimited: true } } }); });
+  const approval = (photos: string[]) => ({ chatAccess: { unlimited:true }, status: "ok", emailVerified: true, verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } });
   const send = (uid: string, id: string) => dbFor(uid).collection(`matches/${id}/messages`).add({ senderId: uid, text: "Hello", createdAt: serverTimestamp() });
   test("a banned member cannot continue contact even in a closed verification preview", async () => {
     await seed({ "matches/alexa_jules": matchDoc(), "moderation/jules": { status: "banned" } });
@@ -680,7 +683,7 @@ describe("mandatory photo verification", () => {
     await assertFails(send("alexa", "alexa_jules"));
   });
   test("shared test-cohort accounts chat without a photo check, unless banned", async () => {
-    await seed({ "runtime/trust": { requireVerification: true }, "matches/alexa_jules": matchDoc(), "users/alexa": validProfile("alexa"), "users/jules": validProfile("jules"), "moderation/alexa": { cohort: "test", emailVerified: true }, "moderation/jules": { cohort: "test", emailVerified: true } });
+    await seed({ "runtime/trust": { requireVerification: true }, "matches/alexa_jules": matchDoc(), "users/alexa": validProfile("alexa"), "users/jules": validProfile("jules"), "moderation/alexa": { chatAccess:{unlimited:true}, cohort: "test", emailVerified: true }, "moderation/jules": { cohort: "test", emailVerified: true } });
     await assertSucceeds(send("alexa", "alexa_jules"));
     await seed({ "moderation/jules": { cohort: "test", emailVerified: false } });
     await assertFails(send("alexa", "alexa_jules"));
@@ -738,22 +741,22 @@ describe("paid chat: Paire Plus or Unlimited Chat to send", () => {
       [`unread.${other}`]: increment(1)
     });
 
-  test("without a policy (or with it off) sending stays free, as before", async () => {
+  test("a missing or disabled switch never grants sending", async () => {
     await seed({ "matches/alexa_jules": matchDoc(), "moderation/alexa": member() });
-    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
     await seed({ "runtime/trust": { requireVerification: false, enforcePaidChat: false } });
-    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
     // An announced date still in the future: free until then.
     await seed(enforced({ enforceFrom: Date.now() + HOUR }));
-    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
   });
 
-  test("with no policy document at all, verified members still send free (the gate never fails closed on a missing policy)", async () => {
+  test("verified members without a paid entitlement cannot send", async () => {
     const photos = ["https://example.com/frozen.jpg"];
     const approval = { status: "ok", emailVerified: true, verification: { schemaVersion: 2, storageBound: true, status: "verified", photoUrls: photos, verifiedAt: Date.now() - 1000, expiresAt: Date.now() + 60000 } };
     await testEnv.withSecurityRulesDisabled(async (context) => { await context.firestore().doc("runtime/trust").delete(); });
     await seed({ "matches/alexa_jules": matchDoc(), "users/alexa": validProfile("alexa", { photoUrls: photos }), "users/jules": validProfile("jules", { photoUrls: photos }), "moderation/alexa": approval, "moderation/jules": approval });
-    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
   });
 
   test("unpaid members can't send through the batch, a lone message or a lone preview", async () => {
@@ -775,10 +778,10 @@ describe("paid chat: Paire Plus or Unlimited Chat to send", () => {
     await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
   });
 
-  test("a free sender (woman) sends only while runtime/trust.womenSendFree is on; a sender without the flag is refused", async () => {
+  test("historic freeSender flags confer no entitlement", async () => {
     const woman = { unlimited: false, premiumUntil: 0, freeSender: true };
     await seed({ ...enforced({ womenSendFree: true }), "matches/alexa_jules": matchDoc(), "moderation/jules": member(), "moderation/alexa": member(woman) });
-    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
     // The recipient (a man with no pass, no flag) still can't reply.
     await assertFails(sendBatch("jules", "alexa_jules", ["alexa"]));
     // Switch off, absent or not exactly true: the flag alone grants nothing.
@@ -864,7 +867,7 @@ describe("paid chat: Paire Plus or Unlimited Chat to send", () => {
     await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
   });
 
-  test("chats from before the gate may keep a grace period; newer chats don't", async () => {
+  test("all chat creation dates require paid sending", async () => {
     const start = Date.now() - HOUR;
     await seed({
       ...enforced({ enforceFrom: start, legacyGraceUntil: Date.now() + HOUR }),
@@ -872,7 +875,7 @@ describe("paid chat: Paire Plus or Unlimited Chat to send", () => {
       "matches/alexa_jules": { ...matchDoc(), createdAt: firebase.firestore.Timestamp.fromMillis(start - HOUR) },
       "matches/alexa_kai": { ...matchDoc(), id: "alexa_kai", participants: ["alexa", "kai"], unread: { alexa: 0, kai: 0 }, createdAt: firebase.firestore.Timestamp.fromMillis(start + 1000) }
     });
-    await assertSucceeds(sendBatch("alexa", "alexa_jules", ["jules"]));
+    await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
     await assertFails(sendBatch("alexa", "alexa_kai", ["kai"]));
     await seed(enforced({ enforceFrom: start, legacyGraceUntil: Date.now() - 1000 }));
     await assertFails(sendBatch("alexa", "alexa_jules", ["jules"]));
@@ -899,7 +902,7 @@ describe("paid chat: Paire Plus or Unlimited Chat to send", () => {
     const members = Object.fromEntries(["a", "b", "c", "d"].flatMap((uid) => [[`users/${uid}`, validProfile(uid, { photoUrls: photos })], [`moderation/${uid}`, approved(uid === "a" ? unlimited : undefined, uid === "d" ? Date.now() - 1 : Date.now() + 60000)]]));
     // Every flag off (production today): match + 4 moderation + 4 profiles + runtime/trust.
     await seed({ "runtime/trust": { requireVerification: false }, "matches/duo_a_b__c_d": duoChat(), ...members });
-    await assertSucceeds(sendBatch("b", "duo_a_b__c_d", ["a", "c", "d"]));
+    await assertFails(sendBatch("b", "duo_a_b__c_d", ["a", "c", "d"]));
     await assertSucceeds(sendBatch("a", "duo_a_b__c_d", ["b", "c", "d"]));
     // Gate on: the paid sender still sends, the unpaid one doesn't.
     await seed(enforced());

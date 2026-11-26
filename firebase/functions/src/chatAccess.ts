@@ -1,4 +1,5 @@
-import { currentPrice, formatInr } from "./lib/launch-offer";
+import { FIXED_CATALOG } from "./lib/fixed-catalog";
+import { formatInr } from "./lib/launch-offer";
 import { promoCheckout } from "./launchOffer";
 import { createHash } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
@@ -9,7 +10,7 @@ import { razorpayConfigured, syncPremium, webPassBenefits } from "./billing";
 import { chatPolicy, syncChatAccess } from "./chatEntitlement";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth, requireReadAuth, isSupportSession } from "./lib/auth";
-import { ChatAccessMirror, entitled, paidChatEnforced, razorpayMode, RazorpayMode, unlockPaymentVerdict, UnlockPayment, unlockReceipt } from "./lib/chatAccess";
+import { ChatAccessMirror, entitled, razorpayMode, RazorpayMode, unlockPaymentVerdict, UnlockPayment, unlockReceipt } from "./lib/chatAccess";
 import { checkoutHost, requireHostedCheckout } from "./lib/kraftai";
 import { CHECKOUT_PRODUCTS } from "./lib/checkout-products";
 import { isRazorpayId, validCheckoutSignature } from "./lib/razorpay";
@@ -88,7 +89,7 @@ export type UnlockOffer = {
 };
 
 async function unlockOffer(uid: string, access: ChatAccessMirror | null): Promise<UnlockOffer> {
-  const priceInr = currentPrice("chat") / 100;
+  const priceInr = FIXED_CATALOG.chat.amount / 100;
   const methods: UnlockOffer["methods"] = [
     ...((await salesOpen()) ? ["razorpay" as const] : []),
     ...((await upiSalesOpen()) ? ["upi" as const] : []),
@@ -135,14 +136,12 @@ export async function chatAccessStatus(uid: string, readOnly = false): Promise<C
   if (!fresh && !readOnly) await syncPremium(uid).catch(() => null);
   const cached = readOnly ? await db.doc(`moderation/${uid}`).get() : null;
   const access = cached ? (cached.get("chatAccess") as ChatAccessMirror | undefined) ?? null : await syncChatAccess(uid);
-  const policy = await chatPolicy();
   const now = Date.now();
-  const graceOpen = policy.enforceFrom > 0 && policy.legacyGraceUntil > now;
   return {
-    enforced: paidChatEnforced(policy, now),
-    enforceFrom: policy.enforcePaidChat && policy.enforceFrom > now ? policy.enforceFrom : null,
-    legacyCutoff: graceOpen ? policy.enforceFrom : null,
-    legacyGraceUntil: graceOpen ? policy.legacyGraceUntil : null,
+    enforced: true,
+    enforceFrom: null,
+    legacyCutoff: null,
+    legacyGraceUntil: null,
     canSend: entitled(access ?? undefined, now),
     unlimited: access?.unlimited === true,
     premiumUntil: access && access.premiumUntil > now ? access.premiumUntil : null,
@@ -308,7 +307,7 @@ type RazorpayOrder = { id?: string; status?: string; amount?: number; currency?:
 type CheckoutPayload = { orderId: string; amount: number; currency: string; keyId: string | undefined; name: string; description: string; email: string | null; hostedUrl: string | null };
 type CreateResult = { status: "checkout"; checkout: CheckoutPayload } | { status: "owned" } | { status: "pending" };
 
-const checkoutPayload = (orderId: string, email: string | null, amount: number = currentPrice("chat")): CheckoutPayload => ({
+const checkoutPayload = (orderId: string, email: string | null, amount: number = FIXED_CATALOG.chat.amount): CheckoutPayload => ({
   orderId,
   amount,
   currency: CHAT_UNLOCK.currency,

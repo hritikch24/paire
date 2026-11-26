@@ -148,6 +148,8 @@ async function waitFor(check: () => Promise<boolean>, timeoutMs = 20000) {
 }
 
 async function sendMessage(client: Client, matchId: string, otherUid: string, text: string) {
+  // These fixtures exercise chat safety, verification and first-move rules with a paid sender.
+  await admin.doc(`moderation/${client.uid}`).set({chatAccess:{unlimited:true}},{merge:true});
   const batch = writeBatch(client.db);
   batch.set(doc(collection(client.db, "matches", matchId, "messages")), {
     senderId: client.uid,
@@ -337,10 +339,10 @@ describe("discovery, matching and chat", () => {
 
   test("passes can be undone, likes cannot", async () => {
     const dev = await makeClient("dev");
-    await onboard(dev, { name: "Dev", gender: "man", showMe: ["woman"], age: 29 });
+    await onboard(dev, { name: "Dev", gender: "woman", showMe: ["woman"], age: 29 });
     await casey.call("swipe", { targetUid: dev.uid, type: "nope" });
     await casey.call("undoSwipe", { targetUid: dev.uid });
-    expect((await admin.doc(`swipes/${casey.uid}/outgoing/${dev.uid}`).get()).exists).toBe(false);
+    expect((await admin.doc(`swipes/${casey.uid}/outgoing/${dev.uid}`).get()).get("type")).toBe("rewound");
     await expect(alexa.call("undoSwipe", { targetUid: jules.uid })).rejects.toThrow();
   });
 
@@ -533,6 +535,7 @@ describe("duos: double dates with a friend", () => {
 
     // Everyone can message the group; a scam warning reaches the other three only.
     const sendToGroup = async (client: Client, text: string) => {
+      await admin.doc(`moderation/${client.uid}`).set({chatAccess:{unlimited:true}},{merge:true});
       const others = chat.participants.filter((uid: string) => uid !== client.uid);
       const batch = writeBatch(client.db);
       const ref = doc(collection(client.db, "matches", matchId, "messages"));

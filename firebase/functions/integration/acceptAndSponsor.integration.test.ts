@@ -167,7 +167,7 @@ async function snapshot(path: string): Promise<Record<string, unknown>> {
   return out;
 }
 
-test("accept, reply free, gift a week, claim: the whole story, and Plus and Unlimited Chat records stay as they were", async () => {
+test("accept, deny unpaid sends, gift a week, claim: the whole story, and Plus and Unlimited Chat records stay as they were", async () => {
   await setSwitches({});
   const [she, he] = [await makeMember("she", "Asha", "woman"), await makeMember("he", "Dev", "man")];
   const matchId = [she.uid, he.uid].sort().join("_");
@@ -190,15 +190,15 @@ test("accept, reply free, gift a week, claim: the whole story, and Plus and Unli
   expect((await admin.doc(`matches/${matchId}`).get()).get("active")).toBe(true);
 
   // The switches as the app reads them. She sends free; he does not.
-  expect(await she.call("getSendPolicy")).toEqual({ acceptFlow: true, womenSendFree: true, giftSales: true, freeSender: true });
-  expect(await he.call("getSendPolicy")).toEqual({ acceptFlow: true, womenSendFree: true, giftSales: true, freeSender: false });
-  expect((await mirrorOf(she.uid))?.freeSender).toBe(true);
+  expect(await she.call("getSendPolicy")).toEqual({ acceptFlow: true, womenSendFree: false, giftSales: true, freeSender: false });
+  expect(await he.call("getSendPolicy")).toEqual({ acceptFlow: true, womenSendFree: false, giftSales: true, freeSender: false });
+
   expect(Boolean((await mirrorOf(he.uid))?.freeSender)).toBe(false);
 
   // He has no pass: the rules refuse his message. She replies free: allowed, with no pass of hers.
   await expect(send(he, matchId, she.uid, "Hi Asha")).rejects.toMatchObject({ code: "permission-denied" });
-  await send(she, matchId, he.uid, "Hi Dev, thanks for the like");
-  expect((await admin.collection(`matches/${matchId}/messages`).get()).size).toBe(1);
+  await expect(send(she, matchId, he.uid, "Hi Dev, thanks for the like")).rejects.toMatchObject({code:"permission-denied"});
+  expect((await admin.collection(`matches/${matchId}/messages`).get()).size).toBe(0);
   expect((await admin.doc(`billing/${she.uid}`).get()).exists).toBe(false);
   expect(((await mirrorOf(she.uid))?.premiumUntil ?? 0)).toBe(0);
   expect(Boolean((await mirrorOf(she.uid))?.unlimited)).toBe(false);
@@ -206,7 +206,7 @@ test("accept, reply free, gift a week, claim: the whole story, and Plus and Unli
   // She gifts him a week: a real order, a captured payment, the confirm path. Nothing is granted yet.
   const { orderId } = await call(gifts.createGiftOrder, she.uid, { matchId, plan: "week" });
   const order = fake.orders.get(orderId)!;
-  expect(order).toMatchObject({ amount: 9900, currency: "INR", notes: { plan: "week", product: "gift_plan" } });
+  expect(order).toMatchObject({ amount: 17900, currency: "INR", notes: { plan: "week", product: "gift_plan" } });
   expect(order.receipt).toMatch(/^gift_plan_week_\d+$/);
   const payment = pay(orderId);
   await expect(send(he, matchId, she.uid, "Still no pass")).rejects.toMatchObject({ code: "permission-denied" });
@@ -234,10 +234,10 @@ test("accept, reply free, gift a week, claim: the whole story, and Plus and Unli
   expect((await admin.doc(`webPassLedger/${he.uid}`).get()).get("premiumQueue.credits")).toEqual(expect.arrayContaining([expect.objectContaining({key:`gift:${orderId}`,milliseconds:7*DAY})]));
   expect((await admin.doc(`gifts/${orderId}`).get()).get("status")).toBe("claimed");
 
-  // Back on: she sends free again, with nothing else needed.
+  // Legacy free-send flags never confer a paid entitlement.
   await setSwitches({});
-  expect(await she.call("getSendPolicy")).toMatchObject({ womenSendFree: true, freeSender: true });
-  await send(she, matchId, he.uid, "Back to free");
+  expect(await she.call("getSendPolicy")).toMatchObject({ womenSendFree: false, freeSender: false });
+  await expect(send(she, matchId, he.uid, "Still unpaid")).rejects.toMatchObject({ code: "permission-denied" });
 
   // The existing Plus and Unlimited Chat records: no new or changed document, and no purchase of hers.
   expect(await snapshot("razorpayOrders")).toEqual(before.razorpayOrders);

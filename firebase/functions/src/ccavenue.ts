@@ -1,3 +1,4 @@
+import { FIXED_CATALOG, FIXED_PRICE_VERSION } from "./lib/fixed-catalog";
 import { savePremiumQueue } from "./premiumQueue";
 import { appendPremiumCredit, premiumQueue, purchaseKey, reversePremiumCredit, reconcileSupportCredit } from "./lib/premiumQueue";
 import { createHash } from "crypto";
@@ -27,7 +28,7 @@ import {
   returnUrl,
   rupees
 } from "./lib/ccavenue";
-import { isPlusPlan, planWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
+import { isPlusPlan, passWindow, planWindow, PlusPlan } from "./lib/razorpay";
 import { consumeDailyQuota } from "./quota";
 import { verifiedUsers } from "./trust";
 
@@ -62,6 +63,7 @@ const OPEN_MS = 6 * 60 * 60_000;
 type Kind = "chat" | "plus";
 type Status = "created" | "paid" | "failed" | "refunded" | "chargeback" | "duplicate" | "orphaned" | "rejected";
 type CcOrder = {
+  durationDays?: number;
   uid: string;
   kind: Kind;
   plan?: PlusPlan;
@@ -250,8 +252,8 @@ export async function settleCcavenueOrder(orderId: string): Promise<SettleResult
       // Passes never overlap: this one starts when any running pass (web or store) ends.
       const queue = premiumQueue(ledger.get("premiumQueue"));
       const queuedUntil = queue ? benefits.expiresAt : Math.max(Number(ledger.get("until")) || 0, storeExpiry, benefits.expiresAt);
-      const added = queue && order.plan !== "lifetime" ? appendPremiumCredit(queue, purchaseKey("ccavenue", orderId), order.plan!, now) : null;
-      const { startsAt, expiresAt } = added ? added.window : planWindow(now, order.plan!, queuedUntil);
+      const added = queue && order.plan !== "lifetime" ? appendPremiumCredit(queue, purchaseKey("ccavenue", orderId), order.plan!, now, order.durationDays) : null;
+      const { startsAt, expiresAt } = added ? added.window : order.durationDays ? passWindow(now,order.durationDays,queuedUntil) : planWindow(now, order.plan!, queuedUntil);
       if (added) savePremiumQueue(tx, ledger.ref, added, now);
       else tx.set(ledger.ref, { until: expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
       tx.update(ref, { ...record, status: "paid", paidAt: now, startsAt, expiresAt, awaiting: false, ...(added ? { entitlementQueueVersion: 2 } : {}) });
@@ -349,10 +351,13 @@ export const createCcavenueOrder = onCall({ region: REGION, secrets: SECRETS, ti
 
   let orderId = newCcavenueOrderId();
   while ((await db.doc(`ccavenueOrders/${orderId}`).get()).exists) orderId = newCcavenueOrderId();
-  const amountPaise = kind === "plus" ? PLUS_PASSES[plan as PlusPlan].amountPaise : CHAT_UNLOCK.amountPaise;
+  const quote = FIXED_CATALOG[plan as PlusPlan ?? "chat"];
+  const amountPaise = quote.amount;
   await db.doc(`ccavenueOrders/${orderId}`).set({
     uid,
     kind,
+    priceVersion: FIXED_PRICE_VERSION,
+    durationDays: quote.days,
     ...(kind === "plus" ? { plan, product: "paire_plus" } : { product: CHAT_UNLOCK.product }),
     amountPaise,
     currency: "INR",

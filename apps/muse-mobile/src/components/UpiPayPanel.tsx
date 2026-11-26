@@ -21,7 +21,7 @@ export function UpiPayPanel({ order, onSubmitted }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showUtr, setShowUtr] = useState(Boolean(order.utr));
+  const [showUtr, setShowUtr] = useState(Boolean(order.referenceRequired || order.utr));
   const phoneWeb = Platform.OS === "web" && typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
   const canOpenApp = Platform.OS !== "web" || phoneWeb;
   const what = order.kind === "plus" ? "starts your pass" : "unlocks chat";
@@ -88,11 +88,11 @@ export function UpiPayPanel({ order, onSubmitted }: Props) {
       <Text fontSize="$2" color="$textMuted" lineHeight={20}>
         {`Paire finds your payment by its exact amount (${order.amountLabel}) and then ${what}, usually within a few hours.`}
       </Text>
-      <PrimaryButton testID="upi-submit" loading={busy} disabled={utr.replace(/\s/g, "").length > 0 && utr.replace(/\s/g, "").length !== 12} onPress={() => void submit()}>
+      <PrimaryButton testID="upi-submit" loading={busy} disabled={(order.referenceRequired || utr.replace(/\s/g, "").length > 0) && utr.replace(/\s/g, "").length !== 12} onPress={() => void submit()}>
         I've paid
       </PrimaryButton>
       {showUtr ? (
-        <MuseInput testID="upi-utr" inputMode="numeric" maxLength={14} placeholder="12-digit UPI reference (optional)" value={utr} onChangeText={(value) => setUtr(value.replace(/[^0-9 ]/g, ""))} />
+        <MuseInput testID="upi-utr" inputMode="numeric" maxLength={14} placeholder={order.referenceRequired ? "12-digit UPI reference" : "12-digit UPI reference (optional)"} value={utr} onChangeText={(value) => setUtr(value.replace(/[^0-9 ]/g, ""))} />
       ) : (
         <Text fontSize="$1" color="$primary" accessibilityRole="button" onPress={() => setShowUtr(true)}>Have the 12-digit UPI reference (UTR)? Add it to speed things up (optional)</Text>
       )}

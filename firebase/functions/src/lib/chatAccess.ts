@@ -1,26 +1,6 @@
+import { FIXED_CATALOG } from "./fixed-catalog";
 import { OFFER_PRICES } from "./launch-offer";
 import { CHAT_UNLOCK } from "../config";
-
-/**
- * Who may send chat messages. One model for the app, the functions and the
- * Firestore rules:
- *
- *   may send = paid chat isn't enforced
- *           || the sender owns Unlimited Chat (one-time, account-wide, no expiry)
- *           || the sender's Paire Plus pass is still running
- *           || the chat existed before enforcement and its grace period is running
- *           || the sender is a woman and runtime/trust.womenSendFree is on
- *
- * Only the sender's own access counts: receiving and reading are always free,
- * and a paying member can message someone who hasn't paid. Payment never
- * bypasses matching, blocks, bans, verification or "I'll message first"; the
- * rules check those separately and first.
- *
- * The rules can't afford another document read per message (Duo chats already
- * read every member's moderation record), so the server mirrors each member's
- * access onto moderation/{uid}.chatAccess, which the rules read anyway. The
- * sources of truth are chatUnlocks/{uid} and billing/{uid}.
- */
 
 /** Paid-chat fields of runtime/trust: the sending gate and the Unlimited Chat sales switch. */
 export type ChatPolicy = {
@@ -82,8 +62,8 @@ export function inLegacyGrace(policy: ChatPolicy, chatCreatedAt: number, now: nu
   return policy.enforceFrom > 0 && chatCreatedAt > 0 && chatCreatedAt < policy.enforceFrom && now < policy.legacyGraceUntil;
 }
 
-export function maySend(policy: ChatPolicy, access: Partial<ChatAccessMirror> | undefined, chatCreatedAt: number, now: number): boolean {
-  return !paidChatEnforced(policy, now) || entitled(access, now) || inLegacyGrace(policy, chatCreatedAt, now) || (policy.womenSendFree && access?.freeSender === true);
+export function maySend(_policy: ChatPolicy, access: Partial<ChatAccessMirror> | undefined, _chatCreatedAt: number, now: number): boolean {
+  return entitled(access, now);
 }
 
 export type RazorpayMode = "test" | "live";
@@ -114,7 +94,7 @@ export function unlockPaymentVerdict(payment: UnlockPayment | null | undefined, 
   if (
     !payment ||
     payment.order_id !== order.orderId ||
-    !Object.values(OFFER_PRICES.chat).some(amount => amount === order.amountPaise) ||
+    (order.amountPaise !== FIXED_CATALOG.chat.amount && !Object.values(OFFER_PRICES.chat).some(amount => amount === order.amountPaise)) ||
     order.currency !== CHAT_UNLOCK.currency ||
     payment.amount !== order.amountPaise ||
     payment.currency !== CHAT_UNLOCK.currency

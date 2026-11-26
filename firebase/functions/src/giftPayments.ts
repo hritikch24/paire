@@ -1,3 +1,4 @@
+import { FIXED_CATALOG, FIXED_PRICE_VERSION } from "./lib/fixed-catalog";
 import { dailyLimitRef } from "./quota";
 import { FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
@@ -48,6 +49,8 @@ const emulator = () => process.env.FUNCTIONS_EMULATOR === "true";
 
 type GiftOrderStatus = "created" | "paid" | "refunded" | "orphaned" | "rejected";
 type GiftOrderRecord = {
+  durationDays?: number;
+  priceVersion?: string;
   fromUid: string;
   toUid: string;
   matchId: string;
@@ -90,7 +93,7 @@ const checkoutPayload = (orderId: string, plan: GiftPlan, email: string | null) 
   amount: giftAmountPaise(plan),
   currency: "INR" as const,
   keyId: process.env.RAZORPAY_KEY_ID,
-  description: PLUS_PASSES[plan].razorpayLabel,
+  description: PLUS_PASSES[plan].razorpayLabel.replace(/1 month \+ 1 month free/i, "30 days"),
   email,
   // name, and hostedUrl when Checkout opens on kraftai.in (lib/kraftai.ts).
   ...checkoutHost(orderId)
@@ -178,7 +181,7 @@ export const createGiftOrder = onCall({ region: REGION, secrets: SECRETS, timeou
     throw new HttpsError("unavailable", "The payment service returned an unexpected order. Please try again.");
   }
   const createdAt = Date.now();
-  const record: GiftOrderRecord = { fromUid: uid, toUid, matchId, plan, amountPaise, currency: "INR", status: "created", mode, createdAt };
+  const record: GiftOrderRecord = { fromUid: uid, toUid, matchId, plan, amountPaise, durationDays: FIXED_CATALOG[plan].days, priceVersion: FIXED_PRICE_VERSION, currency: "INR", status: "created", mode, createdAt };
   const batch = db.batch();
   batch.set(db.doc(`giftOrders/${order.id}`), record);
   batch.set(checkoutRef, { state: "open", orderId: order.id, updatedAt: createdAt });
@@ -292,6 +295,7 @@ export async function grantGift(orderId: string, paymentId: string): Promise<{ o
       toUid: order.toUid,
       matchId: order.matchId,
       plan: order.plan,
+      ...(order.durationDays ? { durationDays: order.durationDays } : {}),
       status: "pending",
       createdAt: now,
       expiresAt: now + GIFT_PENDING_MS

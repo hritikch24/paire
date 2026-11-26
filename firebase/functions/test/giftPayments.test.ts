@@ -14,24 +14,24 @@ import { dayKey } from "../src/lib/ids";
 
 describe("gift order body", () => {
   test("the server prices each gift from the existing pass table", () => {
-    expect(giftOrderBody("day", 1).amount).toBe(3500);
-    expect(giftOrderBody("week", 1).amount).toBe(9900);
-    expect(giftOrderBody("month", 1).amount).toBe(39900);
+    expect(giftOrderBody("day", 1).amount).toBe(5900);
+    expect(giftOrderBody("week", 1).amount).toBe(17900);
+    expect(giftOrderBody("month", 1).amount).toBe(34900);
   });
 
   test("exact body: INR, gift_plan receipt and notes with only plan and product", () => {
     expect(giftOrderBody("week", 1_761_000_000_000)).toEqual({
-      amount: 9900,
+      amount: 17900,
       currency: "INR",
       receipt: "gift_plan_week_1761000000000",
-      notes: { plan: "week", product: "gift_plan" }
+      notes: { plan: "week", product: "gift_plan", pricing:"fixed", priceVersion:"paire-web-2026-11" }
     });
     expect(GIFT_PRODUCT).toBe("gift_plan");
   });
 
   test("notes never carry a uid, a match id or a name", () => {
     const body = giftOrderBody("month", Date.now());
-    expect(Object.keys(body.notes).sort()).toEqual(["plan", "product"]);
+    expect(Object.keys(body.notes).sort()).toEqual(["plan", "priceVersion", "pricing", "product"]);
     expect(body.receipt.startsWith("gift_plan_month_")).toBe(true);
     // Razorpay receipts are at most 40 characters.
     expect(body.receipt.length).toBeLessThanOrEqual(40);

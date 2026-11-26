@@ -206,7 +206,7 @@ async function failure(promise: Promise<unknown>): Promise<{ code: string; reaso
 }
 const giftOf = async (id: string) => (await admin.doc(`gifts/${id}`).get()).data()!;
 /** All a member may read on gifts/{id} (the rules let both members read the whole doc). */
-const MEMBER_FIELDS = ["claimedAt", "createdAt", "expiresAt", "fromUid", "matchId", "plan", "status", "toUid"];
+const MEMBER_FIELDS = ["durationDays", "claimedAt", "createdAt", "expiresAt", "fromUid", "matchId", "plan", "status", "toUid"];
 async function expectMemberFieldsOnly(id: string) {
   const fields = Object.keys(await giftOf(id));
   expect(fields.filter((field) => !MEMBER_FIELDS.includes(field))).toEqual([]);
@@ -259,12 +259,12 @@ describe("claiming a gift", () => {
     expect(pushes[0].message.body).toBe("Jules accepted your gift.");
   });
 
-  test("the month gift runs 60 days, exactly as bought", async () => {
+  test("the month gift runs 30 days, exactly as bought", async () => {
     const { her, him, matchId } = await pair();
     const { giftId } = await paidGift(her, matchId, "month");
     await call(life.claimGift, him, { giftId });
     const saved = await orderOf(giftId);
-    expect(saved.endsAt - saved.startsAt).toBe(60 * DAY);
+    expect(saved.endsAt - saved.startsAt).toBe(30 * DAY);
   });
 
   test("claiming twice (two tabs at once, then again) grants once", async () => {
@@ -298,7 +298,7 @@ describe("claiming a gift", () => {
     await admin.doc(`gifts/${giftId}`).update({ expiresAt: Date.now() - 1 });
     expect(await failure(call(life.claimGift, him, { giftId }))).toMatchObject({ code: "failed-precondition", reason: "expired" });
     expect((await giftOf(giftId)).status).toBe("expired");
-    expect(refundsFor(payment)).toEqual([{ paymentId: payment.id, amount: 9900, notes: { reason: "expired", product: "gift_plan" } }]);
+    expect(refundsFor(payment)).toEqual([{ paymentId: payment.id, amount: 17900, notes: { reason: "expired", product: "gift_plan" } }]);
     expect(await failure(call(life.claimGift, him, { giftId }))).toMatchObject({ code: "failed-precondition" });
     expect(refundsFor(payment)).toHaveLength(1);
     expect((await admin.doc(`complimentaryPlusGrants/${him}`).get()).exists).toBe(false);
@@ -333,7 +333,7 @@ describe("claiming a gift", () => {
     const plus = pay(orderId);
     await call(confirmPlusPayment, him, { orderId, paymentId: plus.id, signature: checkoutSignature(orderId, plus.id) });
     const bought = (await admin.doc(`razorpayOrders/${orderId}`).get()).data()!;
-    expect(bought.expiresAt - bought.startsAt).toBe(60 * DAY);
+    expect(bought.expiresAt - bought.startsAt).toBe(30 * DAY);
     const { giftId } = await paidGift(her, matchId, "week");
     const result = await call(life.claimGift, him, { giftId });
     const saved = await orderOf(giftId);
@@ -375,7 +375,7 @@ describe("declining a gift", () => {
     expect(await call(life.declineGift, him, { giftId })).toEqual({ status: "declined" });
     expect(await call(life.declineGift, him, { giftId })).toEqual({ status: "declined" });
     expect((await giftOf(giftId)).status).toBe("declined");
-    expect(refundsFor(payment)).toEqual([{ paymentId: payment.id, amount: 9900, notes: { reason: "declined", product: "gift_plan" } }]);
+    expect(refundsFor(payment)).toEqual([{ paymentId: payment.id, amount: 17900, notes: { reason: "declined", product: "gift_plan" } }]);
     expect((await admin.doc(`complimentaryPlusGrants/${him}`).get()).exists).toBe(false);
     expect((await billingOf(him))?.expiresAt ?? 0).toBe(0);
     expect((await failure(call(life.claimGift, him, { giftId }))).code).toBe("failed-precondition");
@@ -443,7 +443,7 @@ describe("the daily expiry sweep", () => {
     await admin.doc(`giftOrders/${inFlight.giftId}`).update({ refundDue: true, refundAttemptAt: Date.now() });
     await life.runGiftExpiry(Date.now());
     await life.runGiftExpiry(Date.now());
-    expect(refundsFor(crashed.payment)).toEqual([{ paymentId: crashed.payment.id, amount: 3500, notes: { reason: "declined", product: "gift_plan" } }]);
+    expect(refundsFor(crashed.payment)).toEqual([{ paymentId: crashed.payment.id, amount: 5900, notes: { reason: "declined", product: "gift_plan" } }]);
     expect((await orderOf(crashed.giftId)).refundDue).toBeUndefined();
     expect(refundsFor(inFlight.payment)).toHaveLength(0);
     expect((await orderOf(inFlight.giftId)).refundDue).toBe(true);
@@ -614,8 +614,8 @@ describe("refunds left in flight at capture", () => {
     await admin.doc(`giftOrders/${fresh.orderId}`).update({ status: "orphaned", paymentId: fresh.payment.id, refundAttemptAt: Date.now() });
     await life.runGiftExpiry(Date.now());
     await life.runGiftExpiry(Date.now());
-    expect(refundsFor(stale.payment)).toEqual([{ paymentId: stale.payment.id, amount: 3500, notes: { reason: "orphaned", product: "gift_plan" } }]);
-    expect(refundsFor(rejected.payment)).toEqual([{ paymentId: rejected.payment.id, amount: 3500, notes: { reason: "rejected", product: "gift_plan" } }]);
+    expect(refundsFor(stale.payment)).toEqual([{ paymentId: stale.payment.id, amount: 5900, notes: { reason: "orphaned", product: "gift_plan" } }]);
+    expect(refundsFor(rejected.payment)).toEqual([{ paymentId: rejected.payment.id, amount: 5900, notes: { reason: "rejected", product: "gift_plan" } }]);
     expect((await orderOf(stale.orderId)).refundId).toEqual(expect.any(String));
     expect(refundsFor(fresh.payment)).toHaveLength(0);
     expect((await orderOf(fresh.orderId)).refundId).toBeUndefined();
@@ -629,7 +629,7 @@ describe("refunds left in flight at capture", () => {
     await life.runGiftExpiry(Date.now());
     expect(refundsFor(payment)).toHaveLength(1);
     // A manual retry uses the same durable job and cannot refund twice.
-    await refundGiftPayment(orderId, payment.id, 3500, "orphaned");
+    await refundGiftPayment(orderId, payment.id, 5900, "orphaned");
     expect(refundsFor(payment)).toHaveLength(1);
     expect((await orderOf(orderId)).refundId).toEqual(expect.any(String));
   });
@@ -702,7 +702,7 @@ describe("listing gifts", () => {
     const { her, him, matchId } = await pair();
     const batch = admin.batch();
     for (let i = 0; i < 55; i += 1) {
-      batch.set(admin.doc(`gifts/order_Seed${counter}x${i}z`), { fromUid: her, toUid: him, matchId, plan: "day", amountPaise: 3500, status: "declined", createdAt: 1_000 + i, expiresAt: 1_000 + i + 7 * DAY, paymentId: `pay_Seed${i}aaaaaa` });
+      batch.set(admin.doc(`gifts/order_Seed${counter}x${i}z`), { fromUid: her, toUid: him, matchId, plan: "day", amountPaise: 5900, status: "declined", createdAt: 1_000 + i, expiresAt: 1_000 + i + 7 * DAY, paymentId: `pay_Seed${i}aaaaaa` });
     }
     await batch.commit();
     const { sent } = await call(life.listGifts, her);
@@ -815,7 +815,7 @@ describe("independent gifted premium credits", () => {
     const payment=pay(orderId);
     await admin.doc(`giftOrders/${orderId}`).update({status:"orphaned",paymentId:payment.id});
     if(kind==="failed-call") failingRefundPayment=payment.id; else lostRefundResponsePayment=payment.id;
-    await refundGiftPayment(orderId,payment.id,3500,"orphaned");
+    await refundGiftPayment(orderId,payment.id,5900,"orphaned");
     const {giftRefundKey,runGiftRefund}=await import("../src/giftRefunds");
     const job=admin.doc(`giftRefundJobs/${giftRefundKey(orderId,payment.id)}`);
     expect((await job.get()).get("status")).toBe("pending");

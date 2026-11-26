@@ -1,4 +1,4 @@
-import { currentPrice } from "./launch-offer";
+import { FIXED_CATALOG } from "./fixed-catalog";
 import { Platform } from "react-native";
 
 /**
@@ -7,12 +7,12 @@ import { Platform } from "react-native";
  * localised price is shown and charged when store billing is live.
  */
 export const PREMIUM_PLANS = [
-  { id: "day", productId: "muse_premium_day", label: "1 day", days: 1, bonusDays: 0, priceInr: Platform.OS === "web" ? 35 : 20, detail: "24 hours", badge: "Try it" },
-  { id: "week", productId: "muse_premium_week", label: "1 week", days: 7, bonusDays: 0, priceInr: 99, detail: "7 days", badge: "Popular" },
-  { id: "month", productId: "muse_premium_month", label: "1 month", days: 30, bonusDays: 30, priceInr: Platform.OS === "web" ? 399 : 299, detail: "30 days", badge: "Best value" }
+  { id: "day", productId: "muse_premium_day", label: "1 day", days: 1, bonusDays: 0, priceInr: Platform.OS === "web" ? 59 : 20, detail: "24 hours", badge: "Try it" },
+  { id: "week", productId: "muse_premium_week", label: "1 week", days: 7, bonusDays: 0, priceInr: Platform.OS === "web" ? 179 : 99, detail: "7 days", badge: "Popular" },
+  { id: "month", productId: "muse_premium_month", label: "1 month", days: 30, bonusDays: Platform.OS === "web" ? 0 : 30, priceInr: Platform.OS === "web" ? 349 : 299, detail: "30 days", badge: "Best value" }
 ] as const;
 /** Lifetime is web-only; native product IDs and store billing stay unchanged. */
-export const WEB_PREMIUM_PLANS = [...PREMIUM_PLANS, { id: "halfyear", productId: "web_halfyear_plus", label: "6 months", days: 180, bonusDays: 0, priceInr: 799, detail: "180 days", badge: "Longer access" }, { id: "year", productId: "web_year_plus", label: "Annual Plus", days: 365, bonusDays: 0, priceInr: 2998, detail: "365 days", badge: "A year of possibility" }, { id: "lifetime", productId: "web_lifetime_plus", label: "Lifetime Plus", days: null, bonusDays: 0, priceInr: 6424.29, detail: "No expiry", badge: "Pay once" }] as const;
+export const WEB_PREMIUM_PLANS = [...PREMIUM_PLANS, { id: "halfyear", productId: "web_halfyear_plus", label: "6 months", days: 180, bonusDays: 0, priceInr: 1249, detail: "180 days", badge: "Longer access" }, { id: "year", productId: "web_year_plus", label: "Annual Plus", days: 365, bonusDays: 0, priceInr: 1799, detail: "365 days", badge: "A year of possibility" }, { id: "lifetime", productId: "web_lifetime_plus", label: "Lifetime Plus", days: null, bonusDays: 0, priceInr: 3699, detail: "No expiry", badge: "Pay once" }] as const;
 export type PremiumPlanId = (typeof WEB_PREMIUM_PLANS)[number]["id"];
 export type PremiumPlan = (typeof WEB_PREMIUM_PLANS)[number];
 
@@ -27,7 +27,7 @@ export function webPlan(plan: Omit<PremiumPlan, "priceInr"> & { priceInr: number
   if (plan.id === "lifetime") return { days: null, perDay: null, savePercent: 0, label: plan.label, detail: "One payment. Plus with no expiry." };
   const days = (plan.days ?? 0) + plan.bonusDays;
   const perDay = plan.priceInr / days;
-  const daily = Platform.OS === "web" ? currentPrice("day") / 100 : PREMIUM_PLANS[0].priceInr;
+  const daily = Platform.OS === "web" ? FIXED_CATALOG.day.amount / 100 : PREMIUM_PLANS[0].priceInr;
   return {
     days,
     perDay: dailyPrice(plan.priceInr, days, 2),

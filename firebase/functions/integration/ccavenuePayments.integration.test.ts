@@ -80,7 +80,7 @@ beforeEach(async () => {
 /** The member pays on CCAvenue's page: CCAvenue records the order with this status. */
 function pay(orderId: string, overrides: Partial<FakeOrder> = {}): FakeOrder {
   tracking += 1;
-  const order: FakeOrder = { order_no: orderId, reference_no: String(tracking), order_status: "Shipped", order_amt: 49.0, order_currncy: "INR", ...overrides };
+  const order: FakeOrder = { order_no: orderId, reference_no: String(tracking), order_status: "Shipped", order_amt: 79.0, order_currncy: "INR", ...overrides };
   fake.orders.set(orderId, order);
   return order;
 }
@@ -130,13 +130,13 @@ describe("CCAvenue orders", () => {
     expect(Object.fromEntries(plain)).toMatchObject({
       merchant_id: "123456",
       order_id: orderId,
-      amount: "49.00",
+      amount: "79.00",
       currency: "INR",
       redirect_url: "https://www.paire.in/pay/ccavenue/",
       billing_email: `${uid}@example.com`
     });
     expect(plain.get("merchant_param1")).not.toContain(uid);
-    expect(await orderOf(orderId)).toMatchObject({ uid, kind: "chat", amountPaise: 4900, currency: "INR", mode: "test", status: "created" });
+    expect(await orderOf(orderId)).toMatchObject({ uid, kind: "chat", amountPaise: 7900, currency: "INR", mode: "test", status: "created" });
   });
 
   test("offered only while sales are on, after a match, to accounts in good standing, never with test money for real accounts", async () => {
@@ -172,10 +172,10 @@ describe("settling a payment", () => {
     const uid = await buyer();
     const { orderId } = await start(uid, { plan: "month" });
     const startsAt = Date.now(), expiresAt = startsAt + 60 * 86_400_000;
-    await admin.doc(`supportPlusGrants/${uid}`).set({ uid, status: "active", startsAt, expiresAt, amountReportedPaise: 39900, coveredOrderIds: [orderId], confirmationSource: "owner_statement" });
+    await admin.doc(`supportPlusGrants/${uid}`).set({ uid, status: "active", startsAt, expiresAt, amountReportedPaise: 34900, coveredOrderIds: [orderId], confirmationSource: "owner_statement" });
     expect(await billing.syncPremium(uid)).toMatchObject({ active: true, expiresAt });
     expect((await admin.doc(`moderation/${uid}`).get()).get("chatAccess.premiumUntil")).toBe(expiresAt);
-    const remote = pay(orderId, { order_amt: 399 });
+    const remote = pay(orderId, { order_amt: 349 });
     await call(cc.confirmCcavenueOrder, uid, { orderId });
     expect(await orderOf(orderId)).toMatchObject({ status: "paid", expiresAt, fulfilledBySupportGrant: true });
     expect((await admin.doc(`supportPlusGrants/${uid}`).get()).get("status")).toBe("reconciled");
@@ -191,7 +191,7 @@ describe("settling a payment", () => {
     const paid = pay(orderId);
     const back = await respond({ encResp: encResp(orderId), orderNo: orderId });
     expect(back).toEqual({ status: 303, location: `https://www.paire.in/app/?ccavenue=${orderId}` });
-    expect(await unlockOf(uid)).toMatchObject({ status: "active", orderId, source: "ccavenue", paymentId: `ccavenue:${paid.reference_no}`, amountPaise: 4900, mode: "test" });
+    expect(await unlockOf(uid)).toMatchObject({ status: "active", orderId, source: "ccavenue", paymentId: `ccavenue:${paid.reference_no}`, amountPaise: 7900, mode: "test" });
     expect((await admin.doc(`moderation/${uid}`).get()).get("chatAccess")).toMatchObject({ unlimited: true });
     expect(await orderOf(orderId)).toMatchObject({ status: "paid", trackingId: paid.reference_no });
     // The app's own check and a second tab: harmless, never a second order.
@@ -248,7 +248,7 @@ describe("settling a payment", () => {
     await call(cc.confirmCcavenueOrder, uid, { orderId: first.orderId });
     expect(await call(cc.confirmCcavenueOrder, uid, { orderId: second.orderId })).toMatchObject({ status: "paid", refunding: true });
     expect(await orderOf(second.orderId)).toMatchObject({ status: "duplicate", refundReason: "already-owned" });
-    expect(fake.refunds).toContainEqual(expect.objectContaining({ reference_no: extra.reference_no, refund_amount: "49.00" }));
+    expect(fake.refunds).toContainEqual(expect.objectContaining({ reference_no: extra.reference_no, refund_amount: "79.00" }));
     expect(await unlockOf(uid)).toMatchObject({ orderId: first.orderId });
   });
 
@@ -266,7 +266,7 @@ describe("settling a payment", () => {
 
   test("a test payment for a real account is rejected, not granted", async () => {
     const real = await buyer({ cohort: "public" });
-    await admin.doc("ccavenueOrders/PAFORGEDTEST0001").set({ uid: real, kind: "chat", product: "paire_unlimited_chat", amountPaise: 4900, currency: "INR", mode: "test", status: "created", createdAt: Date.now() });
+    await admin.doc("ccavenueOrders/PAFORGEDTEST0001").set({ uid: real, kind: "chat", product: "paire_unlimited_chat", amountPaise: 7900, currency: "INR", mode: "test", status: "created", createdAt: Date.now() });
     pay("PAFORGEDTEST0001");
     await respond({ encResp: encResp("PAFORGEDTEST0001") });
     expect(await unlockOf(real)).toBeUndefined();
@@ -283,7 +283,7 @@ describe("CCAvenue replaces direct UPI", () => {
       await admin.doc("runtime/trust").set({ requireVerification: false, upiSales: true, ccavenueSales: false });
       const created = await call(upi.createUpiUnlockOrder, waiting);
       if (created.status !== "order") throw new Error("expected a UPI order");
-      await call(upi.submitUpiPayment, waiting, { orderId: created.order.orderId });
+      await call(upi.submitUpiPayment, waiting, { orderId: created.order.orderId, utr: "812345670123" });
 
       await admin.doc("runtime/trust").set({ requireVerification: false, upiSales: true, ccavenueSales: true });
       const fresh = await buyer();
@@ -302,8 +302,8 @@ describe("Paire Plus through CCAvenue", () => {
   test.each([20, 29])("previously issued ₹%i day orders still settle at their stored quote after the ₹35 price change", async (legacyPrice) => {
     const uid = await buyer();
     const { orderId, plain } = await start(uid, { plan: "day", amountPaise: 1 });
-    expect(plain.get("amount")).toBe("35.00");
-    expect((await orderOf(orderId))!.amountPaise).toBe(3500);
+    expect(plain.get("amount")).toBe("59.00");
+    expect((await orderOf(orderId))!.amountPaise).toBe(5900);
     // A pre-change quote retained in the database, with its real old amount.
     await admin.doc(`ccavenueOrders/${orderId}`).update({ amountPaise: legacyPrice * 100 });
     pay(orderId, { order_amt: legacyPrice });
@@ -317,16 +317,16 @@ describe("Paire Plus through CCAvenue", () => {
     const uid = await buyer();
     expect(await call(billing.getPremiumStatus, uid)).toMatchObject({ active: false, ccavenuePurchaseAvailable: true });
     const { orderId, plain } = await start(uid, { plan: "week" });
-    expect(plain.get("amount")).toBe("99.00");
-    const order = pay(orderId, { order_amt: 99 });
+    expect(plain.get("amount")).toBe("179.00");
+    const order = pay(orderId, { order_amt: 179 });
     await respond({ encResp: encResp(orderId) });
     const saved = (await orderOf(orderId))!;
     expect(saved).toMatchObject({ kind: "plus", plan: "week", status: "paid" });
     expect(saved.expiresAt - saved.startsAt).toBe(7 * 24 * 60 * 60 * 1000);
     expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt")).toBe(saved.expiresAt);
     const extension = await start(uid, { plan: "day" });
-    expect(extension.plain.get("amount")).toBe("35.00");
-    const extensionPayment = pay(extension.orderId, { order_amt: 35 });
+    expect(extension.plain.get("amount")).toBe("59.00");
+    const extensionPayment = pay(extension.orderId, { order_amt: 59 });
     await call(cc.confirmCcavenueOrder, uid, { orderId: extension.orderId });
     expect(await orderOf(extension.orderId)).toMatchObject({ startsAt: saved.expiresAt, expiresAt: saved.expiresAt + 86_400_000 });
     extensionPayment.order_status = "Refunded";
@@ -340,19 +340,19 @@ describe("Paire Plus through CCAvenue", () => {
   test("the month pass runs 60 days: buy 1 month, get 1 month free, at the 1-month price", async () => {
     const uid = await buyer();
     const { orderId, plain } = await start(uid, { plan: "month" });
-    expect(plain.get("amount")).toBe("399.00");
-    pay(orderId, { order_amt: 399 });
+    expect(plain.get("amount")).toBe("349.00");
+    pay(orderId, { order_amt: 349 });
     await call(cc.confirmCcavenueOrder, uid, { orderId });
     const saved = (await orderOf(orderId))!;
     expect(saved).toMatchObject({ kind: "plus", plan: "month", status: "paid" });
-    expect(saved.expiresAt - saved.startsAt).toBe(60 * 24 * 60 * 60 * 1000);
+    expect(saved.expiresAt - saved.startsAt).toBe(30 * 24 * 60 * 60 * 1000);
   });
 
   test("six-month CCAvenue checkout grants exactly 180 days and unlimited regular likes", async () => {
     const uid = await buyer();
     const { orderId, plain } = await start(uid, { plan: "halfyear", amountPaise: 1 });
-    expect(plain.get("amount")).toBe("799.00");
-    const remote = pay(orderId, { order_amt: 799 });
+    expect(plain.get("amount")).toBe("1249.00");
+    const remote = pay(orderId, { order_amt: 1249 });
     await call(cc.confirmCcavenueOrder, uid, { orderId });
     const saved = (await orderOf(orderId))!;
     expect(saved.expiresAt - saved.startsAt).toBe(180 * 86400000);
@@ -365,7 +365,7 @@ describe("Paire Plus through CCAvenue", () => {
   test("old ₹299 monthly quotes still settle for 60 days after new quotes become ₹399", async () => {
     const uid = await buyer();
     const { orderId } = await start(uid, { plan: "month" });
-    await admin.doc(`ccavenueOrders/${orderId}`).update({ amountPaise: 29900 });
+    await admin.doc(`ccavenueOrders/${orderId}`).update({ amountPaise: 29900,priceVersion:null,durationDays:null });
     pay(orderId, { order_amt: 299 });
     await call(cc.confirmCcavenueOrder, uid, { orderId });
     const saved = (await orderOf(orderId))!;

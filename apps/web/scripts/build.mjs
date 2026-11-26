@@ -9,7 +9,7 @@
  * EXPO_PUBLIC_FIREBASE_* / EXPO_PUBLIC_FUNCTIONS_REGION in the hosting
  * environment to point it elsewhere. Emulators and test hooks are always off.
  */
-import { offerModule, memberModule, renderLaunchOffer } from "./launch-offer.mjs";
+
 import { prepareFaceCheckAssets } from "./face-check-assets.mjs";
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -83,8 +83,8 @@ writeFileSync(
 
 cpSync(resolve(web, "site"), output, { recursive: true });
 await prepareFaceCheckAssets(output);
-writeFileSync(resolve(output, "launch-offer-contract.js"), offerModule);
-writeFileSync(resolve(output, "member-offer-contract.js"), memberModule);
+
+
 
 // Meta Pixel for ads (PAIRE_META_PIXEL_ID in Vercel): PageView everywhere, Lead when someone opens the app,
 // and the app itself reports CompleteRegistration and Purchase (src/services/analytics.ts).
@@ -107,7 +107,7 @@ for (const page of ["index.html", "diwali-together/index.html", "garba-nights/in
   const file = resolve(output, page);
   writeFileSync(
     file,
-    renderLaunchOffer(closeDiwali(expireCampaigns(readFileSync(file, "utf8"))))
+    (closeDiwali(expireCampaigns(readFileSync(file, "utf8"))))
       .split("%SITE_URL%").join(origin)
       .replace('content="/og-image.png"', `content="${origin}/og-image.png"`)
       .replace(/<footer class="wrap">[\s\S]*?<\/footer>/, FOOTER)
@@ -126,7 +126,7 @@ const linkable = [
 ];
 for (const page of contentPages) {
   mkdirSync(resolve(output, page.path), { recursive: true });
-  writeFileSync(resolve(output, page.path, "index.html"), renderLaunchOffer(renderPage(page, { origin, pages: linkable, extraHead: `${pixel}${visitBeacon}<script type="module" src="/launch-offer.js"></script>` })));
+  writeFileSync(resolve(output, page.path, "index.html"), (renderPage(page, { origin, pages: linkable, extraHead: `${pixel}${visitBeacon}` })));
 }
 
 // IndexNow (Bing, Yandex, Seznam…; ChatGPT search reads Bing's index): the key file is
@@ -206,7 +206,7 @@ if (!indexable) {
 }
 
 // llms.txt (a map for AI assistants) lists every page; llms-full.txt carries their full text.
-const section = (title, pages) => `\n## ${title}\n\n${pages.map((page) => `- [${page.crumb ?? stripHtml(page.h1)}](${origin}/${page.path}): ${stripHtml(renderLaunchOffer(page.description))}`).join("\n")}\n`;
+const section = (title, pages) => `\n## ${title}\n\n${pages.map((page) => `- [${page.crumb ?? stripHtml(page.h1)}](${origin}/${page.path}): ${stripHtml((page.description))}`).join("\n")}\n`;
 writeFileSync(
   resolve(output, "llms.txt"),
   readFileSync(resolve(web, "site/llms.txt"), "utf8").trimEnd() + "\n" +
@@ -223,10 +223,10 @@ writeFileSync(
   resolve(output, "llms-full.txt"),
   `# Paire: full text\n\n${readFileSync(resolve(web, "site/llms.txt"), "utf8").trim()}\n\n${diwaliOpen() ? `## Diwali Together\n\nURL: ${origin}/diwali-together/\nA voluntary Diwali 2026 edition of Paire for adults 18+ who are away from home, open 24 October to 10 November 2026 (India time); Diwali is Sunday 8 November 2026 per India Post. Members opt in inside the app, choose up to three days and three public plans (chai & mithai, mela stroll, lights walk, café meal, Diwali bash) and see nearby members with a matching day and plan. Matching is mutual only; other members never see exact dates. Paire does not host or organise events, does not show who has joined and cannot promise matches. The page also has a free, no-signup invitation card maker that runs in the browser; nothing is uploaded. Joining and matching are free; sending messages follows Paire's normal rules.\n\n` : ""}## Date Duet\n\nURL: ${origin}/date-duet/\nA free, no-signup two-person first-date planner for adults. Each person chooses activities, broad time-window preferences, a spending cap, maximum duration and setting. The blueprint respects both sets of choices or explains the differences. Share links carry preset choices in the URL fragment, readable and editable by link holders. There are no names, exact locations, real availability, automatic messages, matches or bookings. Answers are not sent to the visit counter; anonymous action counts measure use, not unique people or delivered invitations.\n\n` +
     contentPages.filter((page) => page.type !== "hub").map((page) => [
-      `---\n\n# ${stripHtml(page.h1)}\n\nURL: ${origin}/${page.path}\nUpdated: ${page.updated}\n\n${stripHtml(renderLaunchOffer(page.lede))}`,
-      page.summary ? `\n\nIn short:\n${page.summary.map((line) => `- ${stripHtml(renderLaunchOffer(line))}`).join("\n")}` : "",
-      `\n\n${stripHtml(renderLaunchOffer(page.body ?? ""))}`,
-      page.faq?.length ? `\n\n## Questions\n\n${page.faq.map(([q, a]) => `Q: ${q}\nA: ${stripHtml(renderLaunchOffer(a))}`).join("\n\n")}` : ""
+      `---\n\n# ${stripHtml(page.h1)}\n\nURL: ${origin}/${page.path}\nUpdated: ${page.updated}\n\n${stripHtml((page.lede))}`,
+      page.summary ? `\n\nIn short:\n${page.summary.map((line) => `- ${stripHtml((line))}`).join("\n")}` : "",
+      `\n\n${stripHtml((page.body ?? ""))}`,
+      page.faq?.length ? `\n\n## Questions\n\n${page.faq.map(([q, a]) => `Q: ${q}\nA: ${stripHtml((a))}`).join("\n\n")}` : ""
     ].join("")).join("\n\n") + "\n"
 );
 writeFileSync(

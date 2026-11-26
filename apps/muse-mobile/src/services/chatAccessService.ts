@@ -41,7 +41,7 @@ type CreateResult = { status: "checkout"; checkout: CheckoutOrder } | { status: 
 type ConfirmResult = { status: "owned" | "pending"; access: ChatAccess };
 
 /**
- * Unlimited Chat on the web. The server creates the ₹49 order for the signed-in
+ * Unlimited Chat on the web. The server creates the fixed-price order for the signed-in
  * account (reusing an open one, never a second charge), Razorpay Checkout takes
  * the payment, and the server confirms it with Razorpay before unlocking. A
  * Checkout success alone never unlocks anything. Throws CheckoutCancelled if
@@ -74,6 +74,7 @@ export async function purchaseChatUnlock(theme: string, returnToChat?: string, p
 
 /** A UPI order for Unlimited Chat: pay this exact amount to Paire's UPI ID, then submit the UTR. */
 export type UpiOrder = {
+  referenceRequired?: boolean;
   orderId: string;
   kind: "chat" | "plus";
   /** "Unlimited Chat" or "Paire Plus · 7 days". */

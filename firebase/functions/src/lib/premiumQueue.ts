@@ -45,10 +45,10 @@ function compact(queue: PremiumQueue, now: number) {
   return { queue: { ...queue, anchor, credits: queue.credits.slice(drop) }, retired: windows.slice(0, drop) };
 }
 
-export function appendPremiumCredit(queue: PremiumQueue, key: string, plan: string | number, now: number) {
+export function appendPremiumCredit(queue: PremiumQueue, key: string, plan: string | number, now: number, durationDays?: number) {
   const existing = premiumWindows(queue).find(w => w.key === key);
   if (existing) return { queue, window: existing, retired: [] };
-  const milliseconds = typeof plan === "number" ? plan * DAY : isPlusPlan(plan) && plan !== "lifetime" ? passDays(plan) * DAY : 0;
+  const milliseconds = durationDays !== undefined ? durationDays * DAY : typeof plan === "number" ? plan * DAY : isPlusPlan(plan) && plan !== "lifetime" ? passDays(plan) * DAY : 0;
   if (milliseconds <= 0 || !Number.isSafeInteger(milliseconds)) throw new Error("Invalid premium duration");
   const { queue: next, retired } = compact(queue, now);
   next.credits = [...next.credits, { key, milliseconds, acceptedAt: now, unlimitedLikes: plan === "month" || plan === "halfyear" || plan === "year" }];

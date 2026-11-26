@@ -1,8 +1,6 @@
 import { useLaunchOffer } from "../hooks/useLaunchOffer";
-import { MemberOfferBanner } from "../components/MemberOfferBanner";
-import { LaunchOfferCode } from "../components/LaunchOfferCode";
-import { isMemberPlan } from "../config/member-offer";
-import { currentPrice, OFFER_PRICES, formatInr, offerActive } from "../config/launch-offer";
+import { FIXED_CATALOG } from "../config/fixed-catalog";
+import { formatInr } from "../config/launch-offer";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
@@ -16,7 +14,7 @@ import { Icon } from "../components/Icon";
 import { PrimaryButton, SecondaryButton } from "../components/MuseButton";
 import { Screen } from "../components/Screen";
 import { ScreenHeader } from "../components/ScreenHeader";
-import { ALLOWANCE, dailyPrice, MONTH_OFFER, PREMIUM_PLANS, WEB_PREMIUM_PLANS, PremiumPlanId, webPlan } from "../config/premium";
+import { ALLOWANCE, dailyPrice, PREMIUM_PLANS, WEB_PREMIUM_PLANS, PremiumPlanId, webPlan } from "../config/premium";
 import {
   fetchPassProducts,
   fetchPremiumStatus,
@@ -40,10 +38,8 @@ import { useWebScreenActive } from "../hooks/useWebScreenActive";
 
 export function PremiumScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  // On the web the month pass (with a free month) leads and is chosen by default.
   const [selected, setSelected] = useState<PremiumPlanId>(webCheckout ? "month" : "week");
   const launch = useLaunchOffer();
-  const promoCode = launch.quote.data?.code ?? undefined;
   const [moreOptions, setMoreOptions] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -53,9 +49,7 @@ export function PremiumScreen() {
   const resetTime = allowance.data ? new Date(allowance.data.resetsAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZoneName: "short" }) : null;
   const premium = useQuery({ queryKey: ["premium", uid], queryFn: fetchPremiumStatus, enabled: Boolean(uid) && screenActive, refetchInterval: 300_000, retry: 1 });
   const hostedSales = premium.data?.webPurchaseAvailable === true;
-  const methodCatalog = premium.data?.upiPurchaseAvailable === true || (ccavenueCheckout && premium.data?.ccavenuePurchaseAvailable === true);
-  const webPlans = WEB_PREMIUM_PLANS.map(item => ({ ...item, priceInr: !hostedSales && methodCatalog ? item.priceInr : (launch.quote.data?.plans[item.id]?.amount ?? currentPrice(item.id)) / 100 }));
-  const memberOffer = hostedSales ? launch.quote.data?.personalized : null;
+  const webPlans = WEB_PREMIUM_PLANS.map(item => ({ ...item, bonusDays: 0 as const, priceInr: (launch.quote.data?.plans[item.id]?.amount ?? FIXED_CATALOG[item.id].amount) / 100 }));
   const plan = (webCheckout ? webPlans : PREMIUM_PLANS).find((item) => item.id === selected)!;
   const lifetimePlan = webCheckout && plan.id === "lifetime";
   const refreshAllowance = allowance.refetch;
@@ -72,13 +66,13 @@ export function PremiumScreen() {
   const ready = Boolean(premium.data && !premium.isError && (!webCheckout || (!launch.quote.isError && !launch.quote.isFetching)) && !lifetimeOwned && (webCheckout || !premium.data.active));
   // UPI straight to Paire when it's on (scan or open PhonePe/any UPI app); otherwise Razorpay on the
   // web, or the store's localised product in the app.
-  const byUpi = premium.data?.upiPurchaseAvailable === true && !hostedSales && !promoCode;
+  const byUpi = premium.data?.upiPurchaseAvailable === true && !hostedSales;
   const upiOrder = useQuery({ queryKey: ["upi-plus-order", uid], queryFn: () => fetchOpenUpiOrder("plus"), enabled: Boolean(uid && (byUpi || webCheckout)), retry: 1 });
   const [shownOrder, setShownOrder] = useState<UpiOrder | null>(null);
   const openOrder = shownOrder ?? upiOrder.data ?? null;
   const upiSubmitted = openOrder?.status === "submitted";
   // CCAvenue (cards, UPI, netbanking, wallets) on the web: its own button, or the main one when it's the only way.
-  const byCcavenue = ccavenueCheckout && premium.data?.ccavenuePurchaseAvailable === true && !promoCode;
+  const byCcavenue = ccavenueCheckout && premium.data?.ccavenuePurchaseAvailable === true;
   const ccavenueOnly = byCcavenue && !byUpi && premium.data?.webPurchaseAvailable !== true;
   const canPurchase = byUpi ? ready && !upiSubmitted : ccavenueOnly ? ready && !upiSubmitted : webCheckout ? ready && premium.data?.webPurchaseAvailable === true : Boolean(product && ready && premium.data?.purchaseAvailable);
   const payByCcavenue = async () => {
@@ -103,8 +97,7 @@ export function PremiumScreen() {
   const priceLabel = webCheckout || byUpi ? formatInr(Math.round(methodPrice * 100)) : (product?.priceString ?? `₹${plan.priceInr.toLocaleString("en-IN")}`);
   const offer = webCheckout ? webPlan(plan) : null;
   const extensionDuration = offer?.days ? `${offer.days} ${offer.days === 1 ? "day" : "days"}` : "";
-  // "2 months" says the offer in two words on the buy button.
-  const buyLabel = offer && plan.bonusDays ? "2 months" : plan.label;
+  const buyLabel = plan.label;
   const primaryPlans = ["year", "lifetime", "month"].map(id => webPlans.find(item => item.id === id)!);
   const secondaryPlans = ["day", "week", "halfyear"].map(id => webPlans.find(item => item.id === id)!);
   const plans = webCheckout ? [...primaryPlans, ...(moreOptions ? secondaryPlans : [])] : PREMIUM_PLANS;
@@ -125,11 +118,11 @@ export function PremiumScreen() {
     setBusy(true); setMessage(null);
     let leaving = false;
     try {
-      const result = restore ? await restorePasses(uid) : webCheckout ? await purchaseWebPass(plan.id, colors.gradient[1] ?? "#B83A5E", promoCode, Math.round(plan.priceInr * 100)) : await purchasePass(uid, product!);
+      const result = restore ? await restorePasses(uid) : webCheckout ? await purchaseWebPass(plan.id, colors.gradient[1] ?? "#B83A5E", undefined, Math.round(plan.priceInr * 100)) : await purchasePass(uid, product!);
       // Checkout on kraftai.in: the page is leaving, so keep the button busy (no second order).
       if ("redirecting" in result) { leaving = true; return; }
       const pending = "pending" in result && result.pending === true;
-      if (!restore && webCheckout && (result.active || pending)) trackConversion("Purchase", { value: plan.priceInr, currency: "INR" });
+      if (!restore && webCheckout && result.active && !pending && !extending) trackConversion("Purchase", { value: plan.priceInr, currency: "INR" });
       setMessage(result.active ? "Your Plus pass is active. Enjoy a little more possibility." : restore ? "No active pass was found. Consumable passes may need support to recover after reinstalling." : pending ? "Payment received. Your bank is still confirming it; your pass starts as soon as it does (usually a few minutes). Refresh below." : "Purchase received. Refresh your status in a moment while we confirm it.");
       await premium.refetch(); await allowance.refetch();
       void queryClient.invalidateQueries({ queryKey: ["chat-access"] });
@@ -169,39 +162,25 @@ export function PremiumScreen() {
             <Text fontSize="$2" lineHeight={21}>{`Add ${extensionDuration} after your current expiry. Your new expiry will be ${new Date(premium.data.expiresAt + (offer!.days ?? 0) * 86_400_000).toLocaleString("en-IN")}. You keep all your remaining time.`}</Text>
           </YStack>
         ) : null}
-        {!lifetimeOwned && webCheckout ? <Text fontSize="$1" color="$textMuted">Member offers apply to payments through KraftAI and Razorpay. Other payment methods show their own total before payment.</Text> : null}
-        {!lifetimeOwned && webCheckout ? <MemberOfferBanner offer={memberOffer} /> : null}
-        {!lifetimeOwned && webCheckout ? <LaunchOfferCode offer={launch} available={premium.data?.webPurchaseAvailable === true} /> : null}
         {!lifetimeOwned ? <YStack gap="$2" accessibilityRole="radiogroup" accessibilityLabel="Plus pass duration">
           {plans.map((item, index) => {
             const active = selected === item.id;
             const view = webCheckout ? webPlan(item) : null;
-            const deal = Boolean(view && item.bonusDays);
-            const saving = memberOffer && isMemberPlan(item.id) ? OFFER_PRICES[item.id].regular - Math.round(item.priceInr * 100) : 0;
             const card = (
               <Pressable key={item.id} testID={`premium-plan-${item.id}`} accessibilityRole="radio" accessibilityState={{ checked: active }} accessibilityLabel={`${view?.label ?? item.label}, ${item.priceInr} rupees, ${view?.days === null ? "no expiry, pay once" : view ? `${view.days} days, ${view.perDay} rupees a day` : item.detail}, no auto-renewal`} onPress={() => setSelected(item.id)}>
                 {webCheckout ? <YStack borderWidth={active ? 2 : 1} borderColor={active ? "$primary" : "$border"} borderRadius={22} backgroundColor={active ? "$primarySoft" : "$backgroundStrong"} padding="$4" gap="$3">
                   <XStack alignItems="center" gap="$2" flexWrap="wrap">
                     <Icon name={active ? "radio-button-on" : "radio-button-off"} color={active ? "primary" : "textMuted"} size={22} />
                     <Text fontSize={21} fontWeight="700" flex={1}>{item.id === "month" ? "Monthly Plus" : item.label}</Text>
-                    {saving > 0 ? <YStack borderRadius={999} paddingHorizontal="$2" paddingVertical={4} backgroundColor="$primary"><Text color="$primaryForeground" fontSize={11} fontWeight="700">{`${memberOffer!.discountPercent}% OFF`}</Text></YStack> : null}
                   </XStack>
-                  <Text fontSize="$2" color="$textMuted">{item.id === "year" ? "A full year. One clear price." : item.id === "lifetime" ? "All Plus. No expiry to think about." : view?.days === null ? "Pay once" : `${view?.days} days of Plus${item.bonusDays ? " · includes 30 bonus days" : ""}`}</Text>
+                  <Text fontSize="$2" color="$textMuted">{item.id === "year" ? "365 days of Plus." : item.id === "lifetime" ? "All Plus. No expiry to think about." : view?.days === null ? "Pay once" : `${view?.days} days of Plus`}</Text>
                   <YStack gap={3}>
-                    {saving > 0 ? <Text fontSize="$2" color="$textMuted" textDecorationLine="line-through">{`${formatInr(OFFER_PRICES[item.id].regular)} regular`}</Text> : null}
                     <XStack alignItems="baseline" gap="$2" flexWrap="wrap"><Text fontSize={34} lineHeight={42} fontWeight="700">{formatInr(Math.round(item.priceInr * 100))}</Text><Text fontSize="$2" color="$textMuted">{item.id === "lifetime" ? "once" : "total"}</Text></XStack>
-                    <Text fontSize="$2" color={saving > 0 ? "$primary" : "$textMuted"}>{saving > 0 ? `You save ${formatInr(saving)}${view?.perDay ? ` · ₹${view.perDay}/day` : ""}` : view?.perDay ? `₹${view.perDay}/day · paid once` : "One payment · no auto-renewal"}</Text>
+                    <Text fontSize="$2" color="$textMuted">{view?.perDay ? `₹${view.perDay}/day · paid once` : "One payment · no auto-renewal"}</Text>
                   </YStack>
                   <Text fontSize="$2" lineHeight={21}>{["month", "halfyear", "year", "lifetime"].includes(item.id) ? "Unlimited regular likes" : "100 regular likes daily"} · See who likes you · Messaging with your mutual matches</Text>
                   {item.id === "lifetime" ? <Text fontSize="$1" color="$textMuted" lineHeight={18}>On this account while the Plus service operates. Community rules and refund terms apply.</Text> : null}
-                </YStack> : <YStack borderWidth={active || deal ? 2 : 1} borderColor={active ? "$primary" : deal ? "$primary" : "$border"} borderRadius={20} backgroundColor={active ? "$primarySoft" : "$backgroundStrong"} overflow="hidden">
-                  {deal ? (
-                    <XStack testID="premium-month-offer" backgroundColor="$primary" paddingHorizontal="$4" paddingVertical={6} alignItems="center" gap="$2">
-                      <Text fontSize="$2" aria-hidden>🎁</Text>
-                      <Text fontSize="$2" fontWeight="700" color="$primaryForeground" flex={1}>{MONTH_OFFER}</Text>
-                      <Text fontSize="$1" fontWeight="700" color="$primaryForeground">{launch.quote.data?.personalized ? `SAVE ${launch.quote.data.personalized.discountPercent}%` : "60 DAYS TOTAL"}</Text>
-                    </XStack>
-                  ) : null}
+                </YStack> : <YStack borderWidth={active ? 2 : 1} borderColor={active ? "$primary" : "$border"} borderRadius={20} backgroundColor={active ? "$primarySoft" : "$backgroundStrong"} overflow="hidden">
                   <XStack padding="$4" alignItems="center" gap="$3">
                     <Icon name={active ? "radio-button-on" : "radio-button-off"} color={active ? "primary" : "textMuted"} />
                     <YStack flex={1} flexShrink={webCheckout ? 1 : undefined} gap={3}>
@@ -209,15 +188,14 @@ export function PremiumScreen() {
                       <Text fontSize="$2" color="$textMuted">{view ? view.detail : nativeBillingAvailable ? item.detail : `₹${dailyPrice(item.priceInr, item.days ?? 1)}/day · ${item.detail}`}</Text>
                     </YStack>
                     <YStack alignItems="flex-end" gap={2}>
-                      {view && (Boolean(memberOffer && isMemberPlan(item.id)) || (launch.quote.data?.active ?? offerActive())) ? <Text fontSize="$1" color="$textMuted" textDecorationLine="line-through">{`${formatInr(OFFER_PRICES[item.id].regular)} regular`}</Text> : null}
-                      {view ? <Text fontSize="$6" fontWeight="700" color={deal ? "$primary" : "$text"}>{`₹${item.priceInr.toLocaleString("en-IN")}`}</Text> : null}
+                      {view ? <Text fontSize="$6" fontWeight="700" color="$text">{`₹${item.priceInr.toLocaleString("en-IN")}`}</Text> : null}
                       <Text fontSize={view ? "$1" : "$6"} fontWeight={view ? "400" : "700"} color={view ? "$textMuted" : "$text"}>{view ? view.days === null ? "Pay once" : `total · ₹${view.perDay}/day` : products.data?.find((product) => product.identifier === item.productId)?.priceString ?? `₹${item.priceInr}`}</Text>
                       {!view ? <Text fontSize="$1" fontWeight="700" color="$primary">{products.data?.length ? item.detail : item.badge}</Text> : null}
                     </YStack>
                   </XStack>
                   {view ? <YStack paddingHorizontal="$4" paddingBottom="$3" gap={3}>
                     <Text fontSize="$2" fontWeight="600">{["month", "halfyear", "year", "lifetime"].includes(item.id) ? "Unlimited regular likes" : "100 regular likes daily"} · 5 Super Likes daily</Text>
-                    <Text fontSize="$1" color="$textMuted" lineHeight={18}>{item.id === "year" ? "365 days to connect at your pace. All Plus benefits, paid once for the year." : item.id === "month" ? "Time to build a connection. Messaging and liker reveals for 60 days." : item.id === "day" ? "Try all Plus features for 24 hours, with the smallest upfront payment." : item.id === "lifetime" ? "Pay once for all Plus benefits and messaging. No expiry on this account." : item.id === "halfyear" ? "180 days of Plus. A lower daily cost than the monthly offer." : "7 days of messaging, liker reveals and all other Plus features."}</Text>
+                    <Text fontSize="$1" color="$textMuted" lineHeight={18}>{item.id === "year" ? "365 days to connect at your pace. All Plus benefits, paid once for the year." : item.id === "month" ? "Time to build a connection. Messaging and liker reveals for 30 days." : item.id === "day" ? "Try all Plus features for 24 hours, with the smallest upfront payment." : item.id === "lifetime" ? "Pay once for all Plus benefits and messaging. No expiry on this account." : item.id === "halfyear" ? "180 days of Plus. A lower daily cost than Monthly Plus." : "7 days of messaging, liker reveals and all other Plus features."}</Text>
                   </YStack> : null}
                 </YStack>}
               </Pressable>
@@ -249,7 +227,7 @@ export function PremiumScreen() {
             ["See who likes you", "Reveal pending liker profiles and their notes, including people outside your search range and filters. Like someone back to match."],
             ["Priority likes", "Your likes are listed ahead of other plain likes in their “Likes you”. A note still beats everything, so write one."],
             ["Age-gap filter", "Show only Silver Foxes and Cougars (35+), or only people into someone older, and see each person's side on their card."],
-            ["A pass, not a trap", `${webCheckout ? "1 day, 7 days, 2 months, 6 months, 365 days or lifetime access" : "1 day, 7 days or 30 days"}. ${lifetimePlan || lifetimeOwned ? "Lifetime has no expiry." : "Fixed-duration passes simply end."} No auto-renewal, no cancellation hunt.`]
+            ["A pass, not a trap", `${webCheckout ? "1 day, 7 days, 30 days, 180 days, 365 days or lifetime access" : "1 day, 7 days or 30 days"}. ${lifetimePlan || lifetimeOwned ? "Lifetime has no expiry." : "Fixed-duration passes simply end."} No auto-renewal, no cancellation hunt.`]
           ].map(([title, description]) => (
             <XStack key={title} gap="$3" alignItems="flex-start">
               <Icon name="add-circle-outline" color="primary" size={22} />

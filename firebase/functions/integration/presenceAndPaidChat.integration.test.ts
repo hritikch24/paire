@@ -1,4 +1,3 @@
-import { currentPrice } from "../src/lib/launch-offer";
 /**
  * Presence and the paid-chat gate end to end, through the Functions emulator,
  * the real security rules and the same client SDK calls the app makes. Uses
@@ -251,10 +250,10 @@ describe("paid chat gate", () => {
     await gate(false);
   });
 
-  test("with the gate off (the default), everyone keeps chatting free", async () => {
-    await send(asha, matchId, [dev.uid]);
-    await send(dev, matchId, [asha.uid]);
-    expect(await dev.call<ChatAccess>("getChatAccess")).toMatchObject({ enforced: false, canSend: false });
+  test("disabling the historical switch cannot permit an unpaid send", async () => {
+    await expect(send(asha, matchId, [dev.uid])).rejects.toMatchObject({code:"permission-denied"});
+    await expect(send(dev, matchId, [asha.uid])).rejects.toMatchObject({code:"permission-denied"});
+    expect(await dev.call<ChatAccess>("getChatAccess")).toMatchObject({ enforced: true, canSend: false });
   });
 
   test("unpaid members can't send by direct writes; a paid sender reaches an unpaid recipient who can read but not reply", async () => {
@@ -272,7 +271,7 @@ describe("paid chat gate", () => {
     const access = await dev.call<ChatAccess>("getChatAccess");
     expect(access).toMatchObject({ enforced: true, canSend: false, unlimited: false });
     // Sales aren't switched on in this environment: no checkout can open, nobody is charged.
-    expect(access.unlock).toMatchObject({ status: "unavailable", reason: "sales-off", priceInr: currentPrice("chat") / 100 });
+    expect(access.unlock).toMatchObject({ status: "unavailable", reason: "sales-off", priceInr: 79 });
     await expect(dev.call("createChatUnlockOrder", { amount: 1 })).rejects.toThrow(/isn't available yet/);
     // Clients can't hand themselves the mirror.
     await expect(setDoc(doc(dev.db, "moderation", dev.uid), { chatAccess: { unlimited: true } }, { merge: true })).rejects.toMatchObject({ code: "permission-denied" });

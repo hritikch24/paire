@@ -1,3 +1,4 @@
+import { FIXED_CATALOG } from "./lib/fixed-catalog";
 import { WEB_PUSH_SECRETS } from "./webPush";
 import { handlePremiumGiftWebhook } from "./giftPayments";
 import { savePremiumQueue } from "./premiumQueue";
@@ -18,6 +19,7 @@ import {
   isPlusPlan,
   isRazorpayId,
   planWindow,
+  passWindow,
   paymentMatchesOrder,
   PLUS_PASSES,
   PlusPlan,
@@ -106,8 +108,9 @@ export async function grantWebPass(orderId: string, paymentId: string): Promise<
     if (benefits.lifetime) { tx.update(ref, { ...record, status: "duplicate" }); return "duplicate"; }
     const queue = premiumQueue(ledger.get("premiumQueue"));
     const queuedUntil = queue ? benefits.expiresAt : Math.max(Number(ledger.get("until")) || 0, storeExpiry, benefits.expiresAt);
-    const added = queue && order.plan !== "lifetime" ? appendPremiumCredit(queue, purchaseKey("razorpay", orderId), order.plan, now) : null;
-    const window = added ? { startsAt: added.window.startsAt, expiresAt: added.window.expiresAt } : planWindow(now, order.plan, queuedUntil);
+    const duration = fresh.get("durationDays");
+    const added = queue && order.plan !== "lifetime" ? appendPremiumCredit(queue, purchaseKey("razorpay", orderId), order.plan, now, duration ?? undefined) : null;
+    const window = added ? { startsAt: added.window.startsAt, expiresAt: added.window.expiresAt } : typeof duration === "number" ? passWindow(now, duration, queuedUntil) : planWindow(now, order.plan, queuedUntil);
     tx.update(ref, { ...record, ...window, status: "paid", paidAt: now, ...(added ? { entitlementQueueVersion: 2 } : {}) });
     if (added) savePremiumQueue(tx, ledgerRef, added, now);
     else tx.set(ledgerRef, { until: window.expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
@@ -172,7 +175,7 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
     if (previousId) {
       if (promoNotes.promo) throw new HttpsError("failed-precondition", "Finish your earlier Lifetime checkout before using a promo code.");
       const prior = await db.doc(`razorpayOrders/${previousId}`).get();
-      if (prior.get("uid") === uid && prior.get("plan") === "lifetime" && prior.get("status") === "created" && prior.get("amountPaise") === pass.amountPaise) return { orderId: previousId, amount: pass.amountPaise, currency: "INR", keyId: process.env.RAZORPAY_KEY_ID, description: pass.razorpayLabel, email: request.auth?.token.email ?? null, ...checkoutHost(previousId) };
+      if (prior.get("uid") === uid && prior.get("plan") === "lifetime" && prior.get("status") === "created" && prior.get("amountPaise") === pass.amountPaise) return { orderId: previousId, amount: pass.amountPaise, currency: "INR", keyId: process.env.RAZORPAY_KEY_ID, description: pass.razorpayLabel.replace(/1 month \+ 1 month free/i, "30 days"), email: request.auth?.token.email ?? null, ...checkoutHost(previousId) };
       await checkoutRef.set({ state: "closed", updatedAt: Date.now() });
       throw new HttpsError("aborted", "Your earlier checkout changed. Refresh your pass status and try again.");
     }
@@ -195,6 +198,7 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
       plan,
       amountPaise: pass.amountPaise,
       ...promoNotes,
+      durationDays: FIXED_CATALOG[plan].days,
       currency: "INR",
       status: "created",
       mode: razorpayMode(process.env.RAZORPAY_KEY_ID),
@@ -206,7 +210,7 @@ export const createPlusOrder = onCall({ region: REGION, secrets: SECRETS, timeou
       amount: pass.amountPaise,
       currency: "INR",
       keyId: process.env.RAZORPAY_KEY_ID,
-      description: pass.razorpayLabel,
+      description: pass.razorpayLabel.replace(/1 month \+ 1 month free/i, "30 days"),
       email: (request.auth?.token.email as string | undefined) ?? null,
       // name, and hostedUrl when Checkout opens on kraftai.in (lib/kraftai.ts).
       ...checkoutHost(order.id)

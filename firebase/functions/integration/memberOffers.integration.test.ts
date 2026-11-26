@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { db } from "../src/admin";
 import { getMemberOffer } from "../src/memberOffers";
 import { promoCheckout, getLaunchOffer } from "../src/launchOffer";
-import { MEMBER_OFFER, memberPrice } from "../src/lib/member-offer";
+import { MEMBER_OFFER } from "../src/lib/member-offer";
 import { dayKey } from "../src/lib/ids";
 const NOW=MEMBER_OFFER.startsAt+12*3600000;
 let uid: string;
@@ -31,34 +31,15 @@ test.each(["active-month","lifetime-grant","cached-lifetime","banned","incomplet
  if(state==="incomplete")await db.doc(`users/${uid}`).update({onboardingComplete:false});
  expect(await getMemberOffer(uid)).toBeNull();expect((await db.doc(`memberOffers/${uid}`).get()).exists).toBe(false);
 });
-test("quote and creation callback agree; client-discount tampering cannot reach payment creation",async()=>{
- await usage(10,1);const create=jest.fn(async(amount:number,notes:Record<string,string>)=>({amount,notes}));
- const result=await promoCheckout(uid,"month",undefined,create,28500);expect(result.amount).toBe(28500);expect(result.notes).toMatchObject({campaign:MEMBER_OFFER.campaign,pricing:"member_offer",discountPercent:"50"});
- expect(Object.values(result.notes).join(" ")).not.toContain(uid);
- create.mockClear();await expect(promoCheckout(uid,"month",undefined,create,1)).rejects.toThrow("price changed");expect(create).not.toHaveBeenCalled();
-});
-test("the callable ignores claimed discounts and derives the actual quote from server usage",async()=>{
- const quote=await getLaunchOffer.run({data:{discountPercent:100,city:"Other city"},auth:{uid,token:{}},rawRequest:{},acceptsStreaming:false} as never);
- expect(quote.personalized?.discountPercent).toBe(50);expect(quote.plans.month.amount).toBe(memberPrice("month",50));expect(quote.personalized?.city).toBe("Pune");
-});
-test("concurrent quote requests share one offer id and one expiry",async()=>{
- const offers=await Promise.all(Array.from({length:5},()=>getMemberOffer(uid)));
- expect(new Set(offers.map(o=>o?.id)).size).toBe(1);expect(new Set(offers.map(o=>o?.expiresAt)).size).toBe(1);
-});
-test("payment activation removes the offer without rewriting issued prices",async()=>{
- const existing=await getMemberOffer(uid);await db.doc(`billing/${uid}`).set({expiresAt:NOW+86400000});expect(await getMemberOffer(uid)).toBeNull();expect((await db.doc(`memberOffers/${uid}`).get()).get("id")).toBe(existing?.id);
-});
-
-test("an existing 30 percent offer upgrades once without resetting its original deadline", async () => {
- const old={id:randomUUID(),campaign:MEMBER_OFFER.campaign,discountPercent:30,reason:"welcome",startsAt:NOW-86400000,expiresAt:NOW+6*86400000};
- await db.doc(`memberOffers/${uid}`).set(old);
- expect(await getMemberOffer(uid)).toMatchObject({id:old.id,discountPercent:50,startsAt:old.startsAt,expiresAt:old.expiresAt});
-});
-test("annual quote and checkout use the same exact discounted paise", async () => {
- const quote=await getLaunchOffer.run({data:{},auth:{uid,token:{}},rawRequest:{},acceptsStreaming:false} as never);
- expect(quote.plans.year).toMatchObject({regular:299800,amount:149900});
- const create=jest.fn(async(amount:number,notes:Record<string,string>)=>({amount,notes}));
- const result=await promoCheckout(uid,"year",undefined,create,149900);
- expect(result.amount).toBe(149900);expect(result.notes.discountPercent).toBe("50");
- await expect(promoCheckout(uid,"year",undefined,create,74950)).rejects.toThrow("price changed");
+test("fixed prices reject expired promo codes and stale client amounts before order creation", async () => {
+ const create = jest.fn(async (amount:number, notes:Record<string,string>) => ({amount,notes}));
+ for(const [code,amount] of [["PAIRE250",34900],[null,28500],[null,1]] as const) {
+   await expect(promoCheckout(uid,"month",code,create,amount)).rejects.toThrow();
+ }
+ expect(create).not.toHaveBeenCalled();
+ const quote = await getLaunchOffer.run({data:{discountPercent:100},auth:{uid,token:{}}} as never);
+ expect(quote.personalized).toBeNull();
+ const result = await promoCheckout(uid,"month",null,create,quote.plans.month.amount);
+ expect(result).toEqual({amount:34900,notes:{pricing:"fixed",priceVersion:"paire-web-2026-11"}});
+ expect((await db.doc(`memberOffers/${uid}`).get()).exists).toBe(false);
 });

@@ -178,17 +178,17 @@ describe("creating a gift order", () => {
   test("a week gift for her active match: server price, gift_plan notes, its own collection, and no Plus records", async () => {
     const { her, him, matchId } = await pair();
     const result = await call(gifts.createGiftOrder, her, { matchId, plan: "week", amountPaise: 1, toUid: "someone-else" });
-    expect(result).toMatchObject({ amount: 9900, currency: "INR", keyId: "rzp_test_PaireSandbox1", email: `${her}@example.com` });
+    expect(result).toMatchObject({ amount: 17900, currency: "INR", keyId: "rzp_test_PaireSandbox1", email: `${her}@example.com` });
     expect(typeof result.description).toBe("string");
     expect(typeof result.name).toBe("string");
     expect(result.hostedUrl).toContain(`order=${result.orderId}`);
     const remote = fake.orders.get(result.orderId)!;
-    expect(remote).toMatchObject({ amount: 9900, currency: "INR", notes: { plan: "week", product: "gift_plan" } });
-    expect(Object.keys(remote.notes).sort()).toEqual(["plan", "product"]);
+    expect(remote).toMatchObject({ amount: 17900, currency: "INR", notes: { plan: "week", product: "gift_plan" } });
+    expect(Object.keys(remote.notes).sort()).toEqual(["plan", "priceVersion", "pricing", "product"]);
     expect(remote.receipt).toMatch(/^gift_plan_week_\d+$/);
     expect(JSON.stringify(remote)).not.toContain(her);
     expect(JSON.stringify(remote)).not.toContain(him);
-    expect(await order(result.orderId)).toMatchObject({ fromUid: her, toUid: him, matchId, plan: "week", amountPaise: 9900, currency: "INR", status: "created", mode: "test" });
+    expect(await order(result.orderId)).toMatchObject({ fromUid: her, toUid: him, matchId, plan: "week", amountPaise: 17900, currency: "INR", status: "created", mode: "test" });
     expect(typeof (await order(result.orderId))!.createdAt).toBe("number");
     expect((await admin.doc(`razorpayOrders/${result.orderId}`).get()).exists).toBe(false);
     expect((await admin.doc(`billing/${her}`).get()).exists).toBe(false);
@@ -205,7 +205,7 @@ describe("creating a gift order", () => {
     expect(fake.orders.size).toBe(before);
     const other = await call(gifts.createGiftOrder, her, { matchId, plan: "month" });
     expect(other.orderId).not.toBe(first.orderId);
-    expect(other.amount).toBe(39900);
+    expect(other.amount).toBe(34900);
   });
 
   test("bad input is refused before anything else", async () => {
@@ -256,7 +256,7 @@ describe("creating a gift order", () => {
     const second = await member("man");
     const secondMatch = await matchUp(her, second);
     const fourthOrder = await call(gifts.createGiftOrder, her, { matchId: secondMatch, plan: "day" });
-    expect(fourthOrder.amount).toBe(3500);
+    expect(fourthOrder.amount).toBe(5900);
     // Three paid gifts: the next one is refused.
     for (const plan of ["day", "week", "month"]) {
       const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan });
@@ -295,10 +295,10 @@ describe("confirming a gift payment", () => {
     expect(saved).toMatchObject({ status: "paid", paymentId: payment.id });
     // Only what both members may read: the payment and the price stay on the server-only order.
     expect(await gift(orderId)).toEqual({
-      fromUid: her, toUid: him, matchId, plan: "week", status: "pending",
+      fromUid: her, toUid: him, matchId, plan: "week", durationDays:7, status: "pending",
       createdAt: saved.paidAt, expiresAt: saved.paidAt + 7 * 86_400_000
     });
-    expect(saved).toMatchObject({ amountPaise: 9900, paymentId: payment.id });
+    expect(saved).toMatchObject({ amountPaise: 17900, paymentId: payment.id });
     expect(pushes).toHaveLength(1);
     expect(pushes[0].uid).toBe(him);
     expect(pushes[0].message.kind).toBe("matches");
@@ -341,7 +341,7 @@ describe("confirming a gift payment", () => {
 
   test("a wrong amount or currency is refused and creates no gift", async () => {
     const { her, matchId } = await pair();
-    for (const overrides of [{ amount: 3500 }, { currency: "USD" }]) {
+    for (const overrides of [{ amount: 5900 }, { currency: "USD" }]) {
       const { orderId } = await call(gifts.createGiftOrder, her, { matchId, plan: overrides.amount ? "week" : "month" });
       expect((await reasonOf(confirm(her, pay(orderId, overrides)))).code).toBe("failed-precondition");
       expect(await gift(orderId)).toBeUndefined();
@@ -360,7 +360,7 @@ describe("confirming a gift payment", () => {
       const payment = pay(orderId);
       expect(await reasonOf(confirm(her, payment))).toEqual({ code: "failed-precondition", reason: "refunded" });
       expect(await order(orderId)).toMatchObject({ status: "orphaned", paymentId: payment.id, refundReason: "orphaned" });
-      expect(fake.refunds.filter((refund) => refund.paymentId === payment.id)).toEqual([{ paymentId: payment.id, amount: 9900, notes: { reason: "orphaned", product: "gift_plan" } }]);
+      expect(fake.refunds.filter((refund) => refund.paymentId === payment.id)).toEqual([{ paymentId: payment.id, amount: 17900, notes: { reason: "orphaned", product: "gift_plan" } }]);
       expect(await gift(orderId)).toBeUndefined();
       expect(pushes).toHaveLength(0);
     }
@@ -387,7 +387,7 @@ describe("confirming a gift payment", () => {
     const payment = pay(orderId);
     expect((await reasonOf(confirm(her, payment))).code).toBe("failed-precondition");
     expect(await order(orderId)).toMatchObject({ status: "rejected", paymentId: payment.id });
-    expect(fake.refunds.some((refund) => refund.paymentId === payment.id && refund.amount === 3500)).toBe(true);
+    expect(fake.refunds.some((refund) => refund.paymentId === payment.id && refund.amount === 5900)).toBe(true);
     expect(await gift(orderId)).toBeUndefined();
   });
 
@@ -415,7 +415,7 @@ describe("the gift webhook", () => {
     expect(await webhook("payment.captured", paymentEvent(payment), "wrong_secret")).toBe(401);
     expect(await gift(orderId)).toBeUndefined();
 
-    const stray = { id: rid("order"), amount: 9900, currency: "INR", status: "paid", receipt: "plus_week_1", notes: {} };
+    const stray = { id: rid("order"), amount: 17900, currency: "INR", status: "paid", receipt: "plus_week_1", notes: {} };
     fake.orders.set(stray.id, stray);
     const strayPayment = pay(stray.id);
     expect(await webhook("payment.captured", paymentEvent(strayPayment))).toBe(200);
@@ -432,7 +432,7 @@ describe("the gift webhook", () => {
     expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
     expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
     expect(await gift(orderId)).toMatchObject({ toUid: him, plan: "month", status: "pending" });
-    expect((await order(orderId))!.amountPaise).toBe(39900);
+    expect((await order(orderId))!.amountPaise).toBe(34900);
     expect(pushes.filter((push) => push.uid === him)).toHaveLength(1);
     expect(await confirm(her, payment)).toEqual({ status: "paid", giftId: orderId });
   });
@@ -480,7 +480,7 @@ describe("the gift webhook", () => {
     expect(before).toMatchObject({ status: "refunded", refundedPaymentIds: [a.id] });
     const b = pay(orderId);
     expect(await webhook("payment.captured", paymentEvent(b))).toBe(200);
-    expect(fake.refunds.filter((refund) => refund.paymentId === b.id)).toEqual([{ paymentId: b.id, amount: 9900, notes: { reason: "second-payment-on-paid-order", product: "gift_plan" } }]);
+    expect(fake.refunds.filter((refund) => refund.paymentId === b.id)).toEqual([{ paymentId: b.id, amount: 17900, notes: { reason: "second-payment-on-paid-order", product: "gift_plan" } }]);
     const after = (await order(orderId))!;
     expect(after).toMatchObject({ status: "refunded", extraPaymentIds: [b.id], refundedPaymentIds: [a.id] });
     expect(after.paymentId).toBeUndefined();

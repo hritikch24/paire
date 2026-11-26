@@ -8,17 +8,15 @@ import { callFunction } from "../src/services/firebase";
 import { showToast } from "../src/components/Toast";
 
 let mockChat: ChatAccess | undefined;
-let mockOfferCode: string | null = null;
 let mockOfferError = false;
-let mockMemberPercent: 30 | 40 | 50 | null = null;
-const mockPrices = { day: [4900, 3500, 2800], week: [15000, 9900, 8500], month: [57000, 39900, 35910], halfyear: [114143, 79900, 71910], year: [299800, 149900, 149900], lifetime: [642429, 149900, 134910], chat: [7000, 4900, 4410] };
+const mockPrices = {day:5900,week:17900,month:34900,halfyear:124900,year:179900,lifetime:369900,chat:7900};
 const mockUntil = Date.UTC(2026, 11, 18, 10);
 let mockPremium: { active: boolean; expiresAt: number | null; webPurchaseAvailable: boolean; upiPurchaseAvailable?: boolean; lifetime?: boolean } = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
 const mockInvalidate = jest.fn();
 const mockRefetch = jest.fn();
 jest.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mockInvalidate, setQueryData: jest.fn() }),
-  useQuery: ({ queryKey }: { queryKey: string[] }) => ({ data: queryKey[0] === "premium" ? mockPremium : queryKey[0] === "launch-offer" && !mockOfferError ? { active: true, personalized: mockMemberPercent ? { id: "12345678-1234-1234-1234-123456789abc", discountPercent: mockMemberPercent, startsAt: Date.now(), expiresAt: Date.now()+7*86400000, reason: "both-limits", city: "Pune", interest: "music" } : null, code: mockOfferCode, couponAvailable: true, remaining: 250, plans: Object.fromEntries(Object.entries(mockPrices).map(([id, [regular, offer, coupon]]) => [id, { regular, amount: mockMemberPercent && ["month","year","lifetime"].includes(id) ? Math.round(regular*(100-mockMemberPercent)/100) : mockOfferCode ? coupon : offer, offer, coupon }])) } : undefined, isError: queryKey[0] === "launch-offer" && mockOfferError, refetch: mockRefetch })
+  useQuery: ({ queryKey }: { queryKey: string[] }) => ({ data: queryKey[0] === "premium" ? mockPremium : queryKey[0] === "launch-offer" && !mockOfferError ? { active:false, personalized:null, code:null, couponAvailable:false, remaining:0, plans:Object.fromEntries(Object.entries(mockPrices).map(([id,amount])=>[id,{regular:amount,amount,offer:amount,coupon:amount}])) } : undefined, isError: queryKey[0] === "launch-offer" && mockOfferError, refetch: mockRefetch })
 }));
 jest.mock("@react-navigation/native", () => ({ useNavigation: () => ({ navigate: jest.fn() }) }));
 jest.mock("react-native", () => ({ Platform: { OS: "web" }, Linking: { openURL: jest.fn() }, Pressable: "Pressable" }));
@@ -44,7 +42,7 @@ jest.mock("../src/services/supportMode", () => ({ isSupportView: false }));
 jest.mock("../src/utils/chatAccess", () => ({ restoreDrafts: jest.fn(), takeReturnChat: jest.fn() }));
 jest.mock("../src/config/legal", () => ({ legal: {} }));
 
-afterEach(() => { jest.clearAllMocks(); mockChat = undefined; mockOfferCode = null; mockOfferError = false; mockMemberPercent = null; });
+afterEach(() => { jest.clearAllMocks(); mockChat = undefined; mockOfferError = false; });
 
 test("an active web member can extend by the selected days, retaining the current expiry", async () => {
   mockPremium = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
@@ -53,15 +51,15 @@ test("an active web member can extend by the selected days, retaining the curren
   await act(async () => { tree = renderer.create(<PremiumScreen />); });
   const button = () => tree.root.findByProps({ testID: "premium-purchase" });
   expect(button().props.disabled).toBe(false);
-  expect(button().props.children).toBe("Extend Plus by 60 days · ₹399");
+  expect(button().props.children).toBe("Extend Plus by 30 days · ₹349");
   const extension = () => tree.root.findByProps({ testID: "premium-extension" }).findAll(node => typeof node.props.children === "string").map(node => node.props.children).join(" ");
-  expect(extension()).toContain(new Date(mockUntil + 60 * 86_400_000).toLocaleString("en-IN"));
+  expect(extension()).toContain(new Date(mockUntil + 30 * 86_400_000).toLocaleString("en-IN"));
   await act(async () => { tree.root.findByProps({ testID: "premium-more-options" }).props.onPress(); });
   await act(async () => { tree.root.findByProps({ testID: "premium-plan-day" }).props.onPress(); });
-  expect(button().props.children).toBe("Extend Plus by 1 day · ₹35");
+  expect(button().props.children).toBe("Extend Plus by 1 day · ₹59");
   expect(extension()).toContain(new Date(mockUntil + 86_400_000).toLocaleString("en-IN"));
   await act(async () => { await button().props.onPress(); });
-  expect(purchaseWebPass).toHaveBeenCalledWith("day", "#000", undefined, 3500);
+  expect(purchaseWebPass).toHaveBeenCalledWith("day", "#000", undefined, 5900);
   await act(async () => { tree.unmount(); });
 });
 
@@ -93,17 +91,17 @@ test.each(["pending", "paid", "cancelled"])("an existing pass does not misreport
 });
 
 
-test("Lifetime Plus is ₹1,499 once, starts immediately and never pretends to add finite days", async () => {
+test("Lifetime Plus is ₹3,699 once, starts immediately and never pretends to add finite days", async () => {
   mockPremium = { active: true, expiresAt: mockUntil, webPurchaseAvailable: true };
   jest.mocked(purchaseWebPass).mockResolvedValue({ redirecting: true });
   let tree!: renderer.ReactTestRenderer;
   await act(async () => { tree = renderer.create(<PremiumScreen />); });
   await act(async () => { tree.root.findByProps({ testID: "premium-plan-lifetime" }).props.onPress(); });
-  expect(tree.root.findByProps({ testID: "premium-purchase" }).props.children).toBe("Get Lifetime Plus · ₹1,499");
+  expect(tree.root.findByProps({ testID: "premium-purchase" }).props.children).toBe("Get Lifetime Plus · ₹3,699");
   expect(tree.root.findAllByProps({ testID: "premium-extension" })).toHaveLength(0);
-  expect(tree.root.findByProps({ testID: "premium-lifetime-terms" }).props.children.join("")).toMatch(/₹1,499 once/);
+  expect(tree.root.findByProps({ testID: "premium-lifetime-terms" }).props.children.join("")).toMatch(/₹3,699 once/);
   await act(async () => { await tree.root.findByProps({ testID: "premium-purchase" }).props.onPress(); });
-  expect(purchaseWebPass).toHaveBeenCalledWith("lifetime", "#000", undefined, 149900);
+  expect(purchaseWebPass).toHaveBeenCalledWith("lifetime", "#000", undefined, 369900);
   await act(async () => { tree.unmount(); });
 });
 
@@ -129,11 +127,11 @@ test("featured offers keep monthly, day, lifetime order; six months is a deliber
   expect(choices()).toEqual(["premium-plan-year", "premium-plan-lifetime", "premium-plan-month", "premium-plan-day", "premium-plan-week", "premium-plan-halfyear"]);
   await act(async () => { tree.root.findByProps({ testID: "premium-plan-halfyear" }).props.onPress(); });
   const button = tree.root.findByProps({ testID: "premium-purchase" });
-  expect(button.props.children).toBe("Extend Plus by 180 days · ₹799");
+  expect(button.props.children).toBe("Extend Plus by 180 days · ₹1,249");
   const extension = tree.root.findByProps({ testID: "premium-extension" }).findAll(node => typeof node.props.children === "string").map(node => node.props.children).join(" ");
   expect(extension).toContain(new Date(mockUntil + 180 * 86_400_000).toLocaleString("en-IN"));
   await act(async () => { await button.props.onPress(); });
-  expect(purchaseWebPass).toHaveBeenCalledWith("halfyear", "#000", undefined, 79900);
+  expect(purchaseWebPass).toHaveBeenCalledWith("halfyear", "#000", undefined, 124900);
   await act(async () => { tree.unmount(); });
 });
 
@@ -158,26 +156,25 @@ test("eligible members can deliberately open messaging-only checkout from Plus w
   await act(async () => { tree = renderer.create(<PremiumScreen />); });
   expect(purchaseChatUnlock).not.toHaveBeenCalled();
   const buyChat = tree.root.findByProps({ testID: "chat-access-unlock" });
-  expect(buyChat.props.children).toBe("Unlock unlimited chats — ₹49 once");
+  expect(buyChat.props.children).toBe("Unlock unlimited chats — ₹79 once");
   await act(async () => { await buyChat.props.onPress(); });
-  expect(purchaseChatUnlock).toHaveBeenCalledWith("#000", undefined, undefined, 4900);
+  expect(purchaseChatUnlock).toHaveBeenCalledWith("#000", undefined, undefined, 7900);
   expect(purchaseWebPass).not.toHaveBeenCalled();
   await act(async () => { tree.unmount(); });
 });
 
 
-test("validated coupon prices reach hosted checkout only after a deliberate purchase", async () => {
+test("retired coupons do not reach hosted checkout", async () => {
   mockPremium = { active: false, expiresAt: null, webPurchaseAvailable: true };
-  mockOfferCode = "PAIRE250";
   jest.mocked(purchaseWebPass).mockResolvedValue({ redirecting: true });
   let tree!: renderer.ReactTestRenderer;
   await act(async () => { tree = renderer.create(<PremiumScreen />); });
   await act(async () => { tree.root.findByProps({ testID: "premium-more-options" }).props.onPress(); });
   await act(async () => { tree.root.findByProps({ testID: "premium-plan-day" }).props.onPress(); });
-  expect(tree.root.findByProps({ testID: "premium-purchase" }).props.children).toBe("Get 1 day · ₹28");
+  expect(tree.root.findByProps({ testID: "premium-purchase" }).props.children).toBe("Get 1 day · ₹59");
   expect(purchaseWebPass).not.toHaveBeenCalled();
   await act(async () => { await tree.root.findByProps({ testID: "premium-purchase" }).props.onPress(); });
-  expect(purchaseWebPass).toHaveBeenCalledWith("day", "#000", "PAIRE250", 2800);
+  expect(purchaseWebPass).toHaveBeenCalledWith("day", "#000", undefined, 5900);
   await act(async () => { tree.unmount(); });
 });
 test("a failed promo validation disables purchase instead of silently charging another price", async () => {
@@ -189,52 +186,52 @@ test("a failed promo validation disables purchase instead of silently charging a
   await act(async () => { tree.unmount(); });
 });
 
-test("the exact earned Lifetime offer is passed to checkout after explicit selection", async()=>{
- mockPremium={active:false,expiresAt:null,webPurchaseAvailable:true};mockMemberPercent=50;
+test("the fixed Lifetime price is passed to checkout after explicit selection", async()=>{
+ mockPremium={active:false,expiresAt:null,webPurchaseAvailable:true};
  jest.mocked(purchaseWebPass).mockResolvedValue({redirecting:true});let tree!:renderer.ReactTestRenderer;
  await act(async()=>{tree=renderer.create(<PremiumScreen/>);});
  expect(tree.root.findAll(node=>node.props.accessibilityRole==="radio").map(node=>node.props.testID)).toEqual(["premium-plan-year","premium-plan-lifetime","premium-plan-month"]);
  await act(async()=>tree.root.findByProps({testID:"premium-plan-lifetime"}).props.onPress());
- expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Get Lifetime Plus · ₹3,212.15");expect(purchaseWebPass).not.toHaveBeenCalled();
- await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});expect(purchaseWebPass).toHaveBeenCalledWith("lifetime","#000",undefined,321215);
+ expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Get Lifetime Plus · ₹3,699");expect(purchaseWebPass).not.toHaveBeenCalled();
+ await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});expect(purchaseWebPass).toHaveBeenCalledWith("lifetime","#000",undefined,369900);
  await act(async()=>tree.unmount());
 });
 
-test("annual checkout submits the exact 50 percent offer only after a deliberate purchase", async()=>{
- mockPremium={active:false,expiresAt:null,webPurchaseAvailable:true};mockMemberPercent=50;
+test("annual checkout submits the fixed annual price only after a deliberate purchase", async()=>{
+ mockPremium={active:false,expiresAt:null,webPurchaseAvailable:true};
  jest.mocked(purchaseWebPass).mockResolvedValue({redirecting:true});let tree!:renderer.ReactTestRenderer;
  await act(async()=>{tree=renderer.create(<PremiumScreen/>);});
  await act(async()=>tree.root.findByProps({testID:"premium-plan-year"}).props.onPress());
- expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Get Annual Plus · ₹1,499");
- expect(tree.root.findByProps({testID:"premium-plan-year"}).props.accessibilityLabel).toContain("1499 rupees");
+ expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Get Annual Plus · ₹1,799");
+ expect(tree.root.findByProps({testID:"premium-plan-year"}).props.accessibilityLabel).toContain("1799 rupees");
  expect(purchaseWebPass).not.toHaveBeenCalled();
  await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});
- expect(purchaseWebPass).toHaveBeenCalledWith("year","#000",undefined,149900);
+ expect(purchaseWebPass).toHaveBeenCalledWith("year","#000",undefined,179900);
  await act(async()=>tree.unmount());
 });
 
 test("hosted checkout keeps the advertised member price when direct UPI is also available",async()=>{
- mockPremium={active:false,expiresAt:null,webPurchaseAvailable:true,upiPurchaseAvailable:true};mockMemberPercent=50;
+ mockPremium={active:false,expiresAt:null,webPurchaseAvailable:true,upiPurchaseAvailable:true};
  jest.mocked(purchaseWebPass).mockResolvedValue({redirecting:true});let tree!:renderer.ReactTestRenderer;
  await act(async()=>{tree=renderer.create(<PremiumScreen/>);});
  await act(async()=>tree.root.findByProps({testID:"premium-plan-year"}).props.onPress());
  await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});
- expect(purchaseWebPass).toHaveBeenCalledWith("year","#000",undefined,149900);expect(startUpiUnlock).not.toHaveBeenCalled();
+ expect(purchaseWebPass).toHaveBeenCalledWith("year","#000",undefined,179900);expect(startUpiUnlock).not.toHaveBeenCalled();
  await act(async()=>tree.unmount());
 });
 test("direct UPI fallback shows its full catalog amount and hides the inapplicable member saving",async()=>{
- mockPremium={active:false,expiresAt:null,webPurchaseAvailable:false,upiPurchaseAvailable:true};mockMemberPercent=50;
+ mockPremium={active:false,expiresAt:null,webPurchaseAvailable:false,upiPurchaseAvailable:true};
  jest.mocked(startUpiUnlock).mockResolvedValue({status:"owned"});let tree!:renderer.ReactTestRenderer;
  await act(async()=>{tree=renderer.create(<PremiumScreen/>);});
  await act(async()=>tree.root.findByProps({testID:"premium-plan-year"}).props.onPress());
- expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Pay ₹2,998 by UPI · Annual Plus");
+ expect(tree.root.findByProps({testID:"premium-purchase"}).props.children).toBe("Pay ₹1,799 by UPI · Annual Plus");
  expect(JSON.stringify(tree.toJSON())).not.toContain("50% OFF");
  await act(async()=>{await tree.root.findByProps({testID:"premium-purchase"}).props.onPress();});
  expect(startUpiUnlock).toHaveBeenCalledWith("year");expect(purchaseWebPass).not.toHaveBeenCalled();
  await act(async()=>tree.unmount());
 });
 test("short passes never claim the member offer that only covers longer plans",async()=>{
- mockPremium={active:false,expiresAt:null,webPurchaseAvailable:true};mockMemberPercent=50;let tree!:renderer.ReactTestRenderer;
+ mockPremium={active:false,expiresAt:null,webPurchaseAvailable:true};let tree!:renderer.ReactTestRenderer;
  await act(async()=>{tree=renderer.create(<PremiumScreen/>);});
  await act(async()=>tree.root.findByProps({testID:"premium-more-options"}).props.onPress());
  const day=tree.root.findByProps({testID:"premium-plan-day"});

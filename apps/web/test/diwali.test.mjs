@@ -40,13 +40,15 @@ test('past days are never offered: the link moves to the next day left',()=>{
   assert.equal(pickDay(undefined,at('2026-11-09')),'2026-11-09');
   assert.equal(pickDay(undefined,at('2026-11-06')),'2026-11-08');
 });
-test('state round-trips through the URL fragment without extra fields',()=>{
+test('state round-trips through the URL fragment without extra fields',t=>{
+  t.mock.timers.enable({apis:['Date'],now:at('2026-11-01')});
   const now=at('2026-11-01');
   for(const vibe of Object.keys(VIBES)){const state={vibe,day:'2026-11-09',city:'Bengaluru'};assert.deepEqual(parseFragment(toFragment(state),now),state);}
   assert.equal(toFragment({vibe:'chai',day:'2026-11-08',city:''}),'#v=chai&d=2026-11-08');
   assert.doesNotMatch(toFragment({vibe:'chai',day:'2026-11-08',city:'Pune',name:'Asha',phone:'999'}),/Asha|999|name|phone/);
 });
-test('the card carries only the plan, day and an optional city',()=>{
+test('the card carries only the plan, day and an optional city',t=>{
+  t.mock.timers.enable({apis:['Date'],now:at('2026-11-01')});
   const lines=cardLines({vibe:'chai',day:'2026-11-08',city:'Pune'});
   assert.equal(lines.ask,'Chai & mithai, anyone?');assert.equal(lines.where,'Around Pune · Sun 8 Nov');assert.equal(lines.care,'Public places. Mutual yes only.');
   assert.equal(cardLines({vibe:'chai',day:'2026-11-08',city:''}).where,'Sun 8 Nov');

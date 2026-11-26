@@ -151,7 +151,7 @@ describe("Plus validity extensions", () => {
   test("active members can buy every pass; each adds its full duration and refunds preserve earlier time", async () => {
     const uid = await buyer();
     let until = 0;
-    for (const [plan, days] of [["day", 1], ["week", 7], ["month", 60]] as const) {
+    for (const [plan, days] of [["day", 1], ["week", 7], ["month", 30]] as const) {
       const { orderId } = await call(createPlusOrder, uid, { plan });
       // Opening checkout alone never changes validity.
       expect((await admin.doc(`billing/${uid}`).get()).get("expiresAt") ?? 0).toBe(until);
@@ -177,7 +177,7 @@ describe("Plus validity extensions", () => {
   test("six-month Plus is priced by the server, grants 180 days and unlimited likes, and refunds cleanly", async () => {
     const uid = await buyer();
     const { orderId, amount } = await call(createPlusOrder, uid, { plan: "halfyear", amountPaise: 1 });
-    expect(amount).toBe(79900);
+    expect(amount).toBe(124900);
     const payment = pay(orderId);
     const status = await confirm(uid, payment);
     const order = await saved(orderId);
@@ -219,8 +219,8 @@ describe("Plus validity extensions", () => {
     const queued = [await saved(one.orderId), await saved(two.orderId)].sort((a, b) => a.startsAt - b.startsAt);
     expect(queued[0].startsAt).toBe(until);
     expect(queued[1].startsAt).toBe(queued[0].expiresAt);
-    expect(queued[1].expiresAt).toBe(until + 61 * day);
-    expect((await admin.doc(`webPassLedger/${uid}`).get()).get("until")).toBe(until + 61 * day);
+    expect(queued[1].expiresAt).toBe(until + 31 * day);
+    expect((await admin.doc(`webPassLedger/${uid}`).get()).get("until")).toBe(until + 31 * day);
   });
 
   test("a pending extension leaves an active pass's expiry unchanged", async () => {
@@ -238,7 +238,7 @@ describe("Unlimited Chat orders", () => {
     for (const plan of ["day", "week", "month", "halfyear"]) {
       const uid = await buyer();
       const result = await call(createPlusOrder, uid, { plan });
-      expect(fake.orders.get(result.orderId)?.notes).toEqual({ product: "kraftai_plus", plan });
+      expect(fake.orders.get(result.orderId)?.notes).toEqual({ product: "kraftai_plus", plan, pricing:"fixed", priceVersion:"paire-web-2026-11" });
       expect(result.description).toMatch(/^KraftAI Plus/);
       expect(result.hostedUrl).toMatch(/^https:\/\/kraftai\.in\/\?order=/);
       expect((await admin.doc(`razorpayOrders/${result.orderId}`).get()).get("uid")).toBe(uid);
@@ -264,7 +264,7 @@ describe("Unlimited Chat orders", () => {
     fake.orders.get(legacy)!.notes = { product: "paire_unlimited_chat", uid };
     const replacement = await checkout(uid);
     expect(replacement).not.toBe(legacy);
-    expect(fake.orders.get(replacement)?.notes).toEqual({ product: "kraftai_unlimited_chat" });
+    expect(fake.orders.get(replacement)?.notes).toEqual({ product: "kraftai_unlimited_chat", pricing:"fixed",priceVersion:"paire-web-2026-11" });
     expect((await admin.doc(`chatUnlockOrders/${legacy}`).get()).get("status")).toBe("created");
     pay(legacy);
     const payment = [...fake.payments.values()].find(item => item.order_id === legacy)!;
@@ -277,9 +277,9 @@ describe("Unlimited Chat orders", () => {
     const result = await call(chat.createChatUnlockOrder, uid, { amount: 1, currency: "USD", uid: "someone-else", product: "plus" });
     expect(result.status).toBe("checkout");
     if (result.status !== "checkout") return;
-    expect(result.checkout).toMatchObject({ amount: 4900, currency: "INR", name: "KraftAI", description: "KraftAI Unlimited Chat · one-time ₹49 unlock" });
-    expect(fake.orders.get(result.checkout.orderId)?.notes).toEqual({ product: "kraftai_unlimited_chat" });
-    expect((await admin.doc(`chatUnlockOrders/${result.checkout.orderId}`).get()).data()).toMatchObject({ uid, amountPaise: 4900, currency: "INR", mode: "test", status: "created" });
+    expect(result.checkout).toMatchObject({ amount: 7900, currency: "INR", name: "KraftAI", description: "KraftAI Unlimited Chat · one-time ₹79 unlock" });
+    expect(fake.orders.get(result.checkout.orderId)?.notes).toEqual({ product: "kraftai_unlimited_chat", pricing:"fixed",priceVersion:"paire-web-2026-11" });
+    expect((await admin.doc(`chatUnlockOrders/${result.checkout.orderId}`).get()).data()).toMatchObject({ uid, amountPaise: 7900, currency: "INR", mode: "test", status: "created" });
   });
 
   test("offered only after a real mutual match, while sales are on, to accounts in good standing", async () => {
@@ -293,8 +293,8 @@ describe("Unlimited Chat orders", () => {
     const real = await buyer({ cohort: "public" });
     await expect(call(chat.createChatUnlockOrder, real)).rejects.toThrow(/test accounts/);
     // Even if such an order existed, a captured test payment for it is rejected, not granted.
-    await admin.doc("chatUnlockOrders/order_ForgedTest01").set({ uid: real, product: "paire_unlimited_chat", amountPaise: 4900, currency: "INR", mode: "test", status: "created" });
-    fake.orders.set("order_ForgedTest01", { id: "order_ForgedTest01", amount: 4900, currency: "INR", status: "created", notes: {} });
+    await admin.doc("chatUnlockOrders/order_ForgedTest01").set({ uid: real, product: "paire_unlimited_chat", amountPaise: 7900, currency: "INR", mode: "test", status: "created" });
+    fake.orders.set("order_ForgedTest01", { id: "order_ForgedTest01", amount: 7900, currency: "INR", status: "created", notes: {} });
     const payment = pay("order_ForgedTest01");
     expect(await webhook("payment.captured", paymentEvent(payment))).toBe(200);
     expect(await unlockOf(real)).toBeUndefined();
@@ -316,7 +316,7 @@ describe("confirming a payment", () => {
     const result = await call(chat.confirmChatUnlock, uid, { orderId, paymentId: payment.id, signature: checkoutSignature(orderId, payment.id) });
     expect(result.status).toBe("owned");
     expect(result.access).toMatchObject({ canSend: true, unlimited: true, unlock: { status: "owned" } });
-    expect(await unlockOf(uid)).toMatchObject({ status: "active", orderId, paymentId: payment.id, amountPaise: 4900, currency: "INR", product: "paire_unlimited_chat", mode: "test" });
+    expect(await unlockOf(uid)).toMatchObject({ status: "active", orderId, paymentId: payment.id, amountPaise: 7900, currency: "INR", product: "paire_unlimited_chat", mode: "test" });
     expect(await mirrorOf(uid)).toMatchObject({ unlimited: true });
     expect(await unlockOf(other)).toBeUndefined();
     // Another device, a retry or a second tab: no new order, no second charge.
@@ -422,7 +422,7 @@ describe("webhooks", () => {
     expect(unlock?.status).toBe("active");
     const winner = unlock?.paymentId as string;
     const loser = winner === paymentA.id ? paymentB : paymentA;
-    expect(fake.refunds).toContainEqual({ paymentId: loser.id, amount: 4900 });
+    expect(fake.refunds).toContainEqual({ paymentId: loser.id, amount: 7900 });
     expect((await admin.doc(`chatUnlockOrders/${loser.order_id}`).get()).get("status")).toBe("duplicate");
     // Razorpay's refund event for the duplicate leaves the real unlock alone.
     expect(await webhook("refund.processed", { refund: { entity: { payment_id: loser.id } }, payment: { entity: { id: loser.id, order_id: loser.order_id } } })).toBe(200);
@@ -437,7 +437,7 @@ describe("webhooks", () => {
     // Razorpay late-captures an earlier attempt on the same order.
     const second = pay(orderId);
     await webhook("payment.captured", paymentEvent(second));
-    expect(fake.refunds).toContainEqual({ paymentId: second.id, amount: 4900 });
+    expect(fake.refunds).toContainEqual({ paymentId: second.id, amount: 7900 });
     const order = (await admin.doc(`chatUnlockOrders/${orderId}`).get()).data()!;
     expect(order).toMatchObject({ status: "paid", paymentId: first.id, extraPaymentIds: [second.id] });
     // The refund event for that second payment (found by order id) must not revoke what the first bought.
@@ -471,7 +471,7 @@ describe("webhooks", () => {
     const uid = await buyer();
     const orderId = await checkout(uid);
     const payment = pay(orderId);
-    payment.amount_refunded = 4900;
+    payment.amount_refunded = 7900;
     payment.refund_status = "full";
     await webhook("refund.processed", { refund: { entity: { payment_id: payment.id } }, payment: { entity: { id: payment.id, order_id: orderId } } });
     await webhook("payment.captured", paymentEvent(payment));
@@ -499,7 +499,7 @@ describe("webhooks", () => {
     expect((await admin.doc(`users/${gone}`).get()).exists).toBe(false);
     expect(await unlockOf(gone)).toBeUndefined();
     expect((await admin.doc(`chatUnlockOrders/${payment.order_id}`).get()).get("status")).toBe("orphaned");
-    expect(fake.refunds).toContainEqual({ paymentId: payment.id, amount: 4900 });
+    expect(fake.refunds).toContainEqual({ paymentId: payment.id, amount: 7900 });
 
     const banned = await buyer();
     const paid = pay(await checkout(banned));
@@ -526,8 +526,8 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     const uid = await buyer();
     const first = await call(upi.createUpiUnlockOrder, uid);
     if (first.status !== "order") throw new Error("expected an order");
-    expect(first.order.amountPaise).toBeGreaterThan(4900);
-    expect(first.order.amountPaise).toBeLessThan(5000);
+    expect(first.order.amountPaise).toBe(7900);
+
     expect(first.order.upiLink).toContain("pa=paire.in%40ybl");
     expect(first.order.upiLink).toContain(`am=${(first.order.amountPaise / 100).toFixed(2)}`);
     expect(first.order.qrDataUrl).toMatch(/^data:image\/png;base64,/);
@@ -571,8 +571,8 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     const created = await call(upi.createUpiUnlockOrder, uid, { plan: "week" });
     if (created.status !== "order") throw new Error("expected an order");
     expect(created.order).toMatchObject({ kind: "plus", product: "Paire Plus · 7 days" });
-    expect(created.order.amountPaise).toBeGreaterThan(9900);
-    expect(created.order.amountPaise).toBeLessThan(10000);
+    expect(created.order.amountPaise).toBe(17900);
+
     // A Plus order and an Unlimited Chat order are separate.
     const reference = utr();
     await call(upi.submitUpiPayment, uid, { orderId: created.order.orderId, utr: reference });
@@ -584,7 +584,7 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     expect(await mirrorOf(uid)).toMatchObject({ premiumUntil: order.expiresAt });
     const extension = await call(upi.createUpiUnlockOrder, uid, { plan: "day" });
     if (extension.status !== "order") throw new Error("expected an extension order");
-    await call(upi.submitUpiPayment, uid, { orderId: extension.order.orderId });
+    await call(upi.submitUpiPayment, uid, { orderId: extension.order.orderId,utr:utr() });
     await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: extension.order.orderId, decision: "approve" });
     expect((await admin.doc(`upiUnlockOrders/${extension.order.orderId}`).get()).data()).toMatchObject({ startsAt: order.expiresAt, expiresAt: order.expiresAt + 86_400_000 });
     await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: extension.order.orderId, decision: "revoke" });
@@ -597,9 +597,9 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     const uid = await buyer();
     const created = await call(upi.createUpiUnlockOrder, uid, { plan: "halfyear", amountPaise: 1 });
     if (created.status !== "order") throw new Error("expected an order");
-    expect(created.order.amountPaise).toBeGreaterThanOrEqual(79900);
-    expect(created.order.amountPaise).toBeLessThan(80000);
-    await call(upi.submitUpiPayment, uid, { orderId: created.order.orderId });
+    expect(created.order.amountPaise).toBe(124900);
+
+    await call(upi.submitUpiPayment, uid, { orderId: created.order.orderId,utr:utr() });
     await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "approve" });
     const record = (await admin.doc(`upiUnlockOrders/${created.order.orderId}`).get()).data()!;
     expect(record.expiresAt - record.startsAt).toBe(180 * 86400000);
@@ -617,6 +617,8 @@ describe("Unlimited Chat by UPI (into Paire's own account)", () => {
     const uid = await buyer();
     const created = await call(upi.createUpiUnlockOrder, uid);
     if (created.status !== "order") throw new Error("expected an order");
+    await expect(call(upi.submitUpiPayment,uid,{orderId:created.order.orderId})).rejects.toThrow("reference");
+    await admin.doc(`upiUnlockOrders/${created.order.orderId}`).update({priceVersion:null,amountPaise:4937});
     expect((await call(upi.submitUpiPayment, uid, { orderId: created.order.orderId })).order).toMatchObject({ status: "submitted", utr: null });
     expect(await unlockOf(uid)).toBeUndefined();
     await moderatorCall(upi.reviewUpiPayment, "mod1", { orderId: created.order.orderId, decision: "approve" });
@@ -681,7 +683,7 @@ describe("Lifetime Plus", () => {
   test("₹1,499 lifetime checkout is reused, verified at the server price, permanent and protected from another purchase", async () => {
     const uid = await buyer(), other = await buyer();
     const created = await call(createPlusOrder, uid, { plan: "lifetime", amountPaise: 1, uid: other, lifetime: false });
-    expect(created.amount).toBe(149900);
+    expect(created.amount).toBe(369900);
     expect((await call(createPlusOrder, uid, { plan: "lifetime" })).orderId).toBe(created.orderId);
     const payment = pay(created.orderId);
     await expect(confirmLifetime(other, payment)).rejects.toThrow(/find that order/);
@@ -714,7 +716,7 @@ describe("Lifetime Plus", () => {
     expect(await Promise.all(payments.map(p => webhook("payment.captured", paymentEvent(p))))).toEqual([200, 200]);
     const records = await Promise.all([first, second].map(async o => (await admin.doc(`razorpayOrders/${o.orderId}`).get()).data()!));
     expect(records.map(r => r.status).sort()).toEqual(["duplicate", "paid"]);
-    expect(fake.refunds.length - before).toBe(1); expect(fake.refunds.at(-1)?.amount).toBe(149900);
+    expect(fake.refunds.length - before).toBe(1); expect(fake.refunds.at(-1)?.amount).toBe(369900);
     const duplicate = payments[records.findIndex(r => r.status === "duplicate")];
     await webhook("payment.captured", paymentEvent(duplicate));
     await webhook("refund.processed", { refund: { entity: { payment_id: duplicate.id } } });
@@ -739,7 +741,7 @@ describe("Lifetime Plus", () => {
     finally { transaction.mockRestore(); clock.mockRestore(); }
     expect((await admin.doc(`razorpayOrders/${second.orderId}`).get()).get("status")).toBe("duplicate");
     expect(fake.refunds.length - before).toBe(1);
-    expect(fake.refunds.at(-1)?.amount).toBe(149900);
+    expect(fake.refunds.at(-1)?.amount).toBe(369900);
     expect((await statusOf(uid)).lifetime).toBe(true);
   });
 
@@ -781,68 +783,18 @@ describe("Lifetime Plus", () => {
   });
 });
 
-describe("October offers through KraftAI and Razorpay", () => {
-  beforeEach(async () => {
-    jest.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-30T12:00:00+05:30"));
-    // These in-process payment fixtures deliberately have no real Auth user.
-    const { adminAuth } = await import("../src/admin");
-    jest.spyOn(adminAuth(), "getUser").mockResolvedValue({ metadata: { creationTime: "Fri, 30 Oct 2026 01:00:00 GMT" } } as import("firebase-admin/auth").UserRecord);
+describe("fixed catalogue migration",()=>{
+  test("new offers are refused before any provider order, historical monthly orders retain 60 days",async()=>{
+    const uid=await buyer(), before=fake.orders.size;
+    await expect(call(createPlusOrder,uid,{plan:"month",promoCode:"PAIRE250"})).rejects.toThrow("ended");
+    expect(fake.orders.size).toBe(before);
+    const order=rid("order");
+    fake.orders.set(order,{id:order,amount:28500,currency:"INR",status:"created",notes:{pricing:"member_offer"}});
+    await admin.doc(`razorpayOrders/${order}`).set({uid,plan:"month",amountPaise:28500,pricing:"member_offer",mode:"test",currency:"INR",status:"created"});
+    const payment=pay(order);
+    await call(confirmPlusPayment,uid,{orderId:order,paymentId:payment.id,signature:checkoutSignature(order,payment.id)});
+    const original=(await admin.doc(`razorpayOrders/${order}`).get()).data()!;
+    expect(original.expiresAt-original.startsAt).toBe(60*86400000);
+    expect(original.amountPaise).toBe(28500);
   });
-  afterEach(() => jest.restoreAllMocks());
-
-  test("every Plus coupon records and charges its exact hosted quote, then grants normally", async () => {
-    for (const [plan, expected] of [["day", 2800], ["week", 8500], ["month", 35910], ["halfyear", 71910], ["lifetime", 134910]] as const) {
-      const uid = await buyer();
-      const order = await call(createPlusOrder, uid, { plan, promoCode: "PAIRE250", expectedAmount: expected });
-      expect(order.amount).toBe(expected);
-      expect(order.hostedUrl).toBe(`https://kraftai.in/?order=${order.orderId}`);
-      expect(fake.orders.get(order.orderId)?.notes).toMatchObject({ product: "kraftai_plus", plan, promo: "PAIRE250", pricing: "coupon", campaign: "october-2026" });
-      expect((await admin.doc(`razorpayOrders/${order.orderId}`).get()).get("amountPaise")).toBe(expected);
-      const paid = pay(order.orderId);
-      const result = await call(confirmPlusPayment, uid, { orderId: order.orderId, paymentId: paid.id, signature: checkoutSignature(order.orderId, paid.id) });
-      expect(result.active).toBe(true);
-      if (plan === "lifetime") expect(result.lifetime).toBe(true);
-      else expect(result.expiresAt).toBeGreaterThan(Date.now());
-    }
-  });
-  test("discounted Unlimited Chat grants once and duplicate capture refunds the actual discounted amount", async () => {
-    const uid = await buyer();
-    const created = await call(chat.createChatUnlockOrder, uid, { promoCode: "WELCOME250", expectedAmount: 4410 });
-    if (created.status !== "checkout") throw new Error("expected hosted checkout");
-    const order = created.checkout;
-    expect(order.amount).toBe(4410);
-    expect(order.description).toContain("₹44.1");
-    expect(fake.orders.get(order.orderId)?.notes).toMatchObject({ product: "kraftai_unlimited_chat", pricing: "coupon" });
-    const paid = pay(order.orderId);
-    const confirmed = await call(chat.confirmChatUnlock, uid, { orderId: order.orderId, paymentId: paid.id, signature: checkoutSignature(order.orderId, paid.id) });
-    expect(confirmed.status).toBe("owned");
-    const second = pay(order.orderId);
-    expect(await webhook("payment.captured", paymentEvent(second))).toBe(200);
-    expect(fake.refunds).toContainEqual({ paymentId: second.id, amount: 4410 });
-    expect((await unlockOf(uid))?.status).toBe("active");
-  });
-  test("an old full-price chat order cannot silently replace an applied coupon quote", async () => {
-    const uid = await buyer();
-    await checkout(uid);
-    await expect(call(chat.createChatUnlockOrder, uid, { promoCode: "PAIRE250", expectedAmount: 4410 })).rejects.toThrow("different price");
-    expect((await admin.doc(`launchOfferClaims/${uid}`).get()).exists).toBe(false);
-  });
-});
-
-
-describe("earned member offers and paid entitlements",()=>{
- beforeEach(()=>{jest.spyOn(Date,"now").mockReturnValue(Date.parse("2026-11-01T12:00:00+05:30"));});
- test("Monthly, Annual and Lifetime quotes settle their exact price and duration",async()=>{
-  const {memberPrice,validMemberQuote}=await import("../src/lib/member-offer");
-  const {dayKey}=await import("../src/lib/ids");
-  for(const plan of ["month","year","lifetime"] as const)for(const percent of [50] as const){
-   const uid=await buyer();await admin.doc(`limits/${uid}/daily/${dayKey(new Date(Date.now()))}`).set({likes:percent>=40?10:0,supers:percent===50?1:0});
-   const order=await call(createPlusOrder,uid,{plan,expectedAmount:memberPrice(plan,percent)});
-   const remote=fake.orders.get(order.orderId)!;expect(remote.amount).toBe(memberPrice(plan,percent));expect(remote.notes.discountPercent).toBe(String(percent));
-   expect(validMemberQuote(plan,remote.amount,remote.notes,remote.created_at)).toBe(true);
-   const payment=pay(order.orderId);const active=await call(confirmPlusPayment,uid,{orderId:order.orderId,paymentId:payment.id,signature:checkoutSignature(order.orderId,payment.id)});
-   expect(active.active).toBe(true);
-   if(plan==="lifetime")expect(active.lifetime).toBe(true);else {const saved=(await admin.doc(`razorpayOrders/${order.orderId}`).get()).data()!;expect(saved.expiresAt-saved.startsAt).toBe((plan === "year" ? 365 : 60)*86400000);}
-  }
- });
 });

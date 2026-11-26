@@ -1,3 +1,4 @@
+import { FIXED_CATALOG, FIXED_PRICE_VERSION } from "./lib/fixed-catalog";
 import { savePremiumQueue } from "./premiumQueue";
 import { appendPremiumCredit, premiumQueue, purchaseKey, reversePremiumCredit } from "./lib/premiumQueue";
 import { randomInt } from "crypto";
@@ -8,7 +9,7 @@ import QRCode from "qrcode";
 import { db } from "./admin";
 import { billingEnabled, storeExpiryIfEnabled, syncPremium, webPassBenefits, webPassExpiry } from "./billing";
 import { syncChatAccess, upiSalesOpen, upiVpa } from "./chatEntitlement";
-import { isPlusPlan, planWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
+import { isPlusPlan, passWindow, planWindow, PLUS_PASSES, PlusPlan } from "./lib/razorpay";
 import { CHAT_UNLOCK, REGION } from "./config";
 import { requireAuth, requireReadAuth } from "./lib/auth";
 import { consumeDailyQuota } from "./quota";
@@ -45,7 +46,10 @@ type Kind = "chat" | "plus";
 const kindOf = (doc: DocumentSnapshot): Kind => (doc.get("kind") === "plus" ? "plus" : "chat");
 
 /** What an order buys, for people: "Unlimited Chat" or "Paire Plus · 7 days". */
-const productLabel = (doc: DocumentSnapshot) => (kindOf(doc) === "plus" ? PLUS_PASSES[doc.get("plan") as PlusPlan]?.label ?? "Paire Plus" : "Unlimited Chat");
+const productLabel = (doc: DocumentSnapshot) => {
+  const label = kindOf(doc) === "plus" ? PLUS_PASSES[doc.get("plan") as PlusPlan]?.label ?? "Paire Plus" : "Unlimited Chat";
+  return doc.get("priceVersion") === FIXED_PRICE_VERSION ? label.replace(/1 month \+ 1 month free/i, "30 days") : label;
+};
 
 /** The member's newest UPI order of this kind that's still open (waiting for payment or for review). */
 export async function openUpiOrder(uid: string, kind: Kind = "chat") {
@@ -66,6 +70,7 @@ function upiLink(vpa: string, amountPaise: number, orderId: string, kind: Kind):
 }
 
 export type UpiOrderView = {
+  referenceRequired: boolean;
   orderId: string;
   kind: Kind;
   product: string;
@@ -90,6 +95,7 @@ async function viewOf(doc: DocumentSnapshot): Promise<UpiOrderView> {
     product: productLabel(doc),
     status: doc.get("status"),
     amountPaise,
+    referenceRequired: doc.get("priceVersion") === FIXED_PRICE_VERSION,
     amountLabel: `₹${(amountPaise / 100).toFixed(2)}`,
     vpa,
     payeeName: payeeName(),
@@ -98,19 +104,6 @@ async function viewOf(doc: DocumentSnapshot): Promise<UpiOrderView> {
     expiresAt: (Number(doc.get("createdAt")) || 0) + ORDER_PAY_WINDOW_MS,
     utr: (doc.get("utr") as string | undefined) ?? null
   };
-}
-
-/** Holds a free amount (the price plus 1–99 paise) for this order, so it's easy to find in the bank statement. */
-async function reserveAmount(orderId: string, basePaise: number, now: number): Promise<number> {
-  const candidates = Array.from(new Set(Array.from({ length: 12 }, () => basePaise + 1 + randomInt(99))));
-  return db.runTransaction(async (tx) => {
-    const slots = await tx.getAll(...candidates.map((amount) => db.doc(`upiSlots/${amount}`)));
-    const free = candidates.find((_, index) => !slots[index].exists || (Number(slots[index].get("until")) || 0) < now);
-    // All taken (very busy): any amount works; the reference and UTR still identify the payment.
-    const amount = free ?? candidates[0];
-    tx.set(db.doc(`upiSlots/${amount}`), { orderId, until: now + ORDER_PAY_WINDOW_MS });
-    return amount;
-  });
 }
 
 /**
@@ -144,12 +137,14 @@ export const createUpiUnlockOrder = onCall({ region: REGION, secrets: ["REVENUEC
   const now = Date.now();
   let orderId = newOrderId();
   while ((await db.doc(`upiUnlockOrders/${orderId}`).get()).exists) orderId = newOrderId();
-  const base = kind === "plus" ? PLUS_PASSES[plan as PlusPlan].amountPaise : CHAT_UNLOCK.amountPaise;
-  const amountPaise = await reserveAmount(orderId, base, now);
+  const quote = FIXED_CATALOG[plan as PlusPlan ?? "chat"];
+  const amountPaise = quote.amount;
   const ref = db.doc(`upiUnlockOrders/${orderId}`);
   await ref.set({
     uid,
     kind,
+    priceVersion: FIXED_PRICE_VERSION,
+    durationDays: quote.days,
     ...(kind === "plus" ? { plan, product: "paire_plus" } : { product: CHAT_UNLOCK.product }),
     amountPaise,
     currency: "INR",
@@ -173,6 +168,7 @@ export const submitUpiPayment = onCall({ region: REGION }, async (request): Prom
   await db.runTransaction(async (tx) => {
     const [order, used] = cleanUtr ? await tx.getAll(ref, db.doc(`upiUtrs/${cleanUtr}`)) : [await tx.get(ref), null];
     if (!order.exists || order.get("uid") !== uid) throw new HttpsError("not-found", "We couldn't find that order.");
+    if (!cleanUtr && order.get("priceVersion") === FIXED_PRICE_VERSION) throw new HttpsError("invalid-argument","Enter the 12-digit transfer reference to identify this fixed-price payment.");
     if (order.get("status") === "submitted" && (order.get("utr") ?? "") === cleanUtr) return;
     if (order.get("status") !== "awaiting_payment" && order.get("status") !== "submitted") throw new HttpsError("failed-precondition", "This order is closed. Contact support if you paid.");
     if (used?.exists && used.get("orderId") !== orderId) throw new HttpsError("already-exists", "That UPI reference has already been used. Check the number, or contact support.");
@@ -254,8 +250,8 @@ export const reviewUpiPayment = onCall({ region: REGION, secrets: ["REVENUECAT_S
         const benefits = await webPassBenefits(uid, now, tx);
         const queuedUntil = queue ? benefits.expiresAt : Math.max(Number(ledger?.get("until")) || 0, storeExpiry, benefits.expiresAt);
         const plan = order.get("plan") as PlusPlan;
-        const added = queue && plan !== "lifetime" ? appendPremiumCredit(queue, purchaseKey("upi", orderId), plan, now) : null;
-        const { startsAt, expiresAt } = added ? added.window : planWindow(now, plan, queuedUntil);
+        const added = queue && plan !== "lifetime" ? appendPremiumCredit(queue, purchaseKey("upi", orderId), plan, now, order.get("durationDays")) : null;
+        const { startsAt, expiresAt } = added ? added.window : order.get("durationDays") ? passWindow(now,order.get("durationDays"),queuedUntil) : planWindow(now, plan, queuedUntil);
         if (added) savePremiumQueue(tx, ledgerRef, added, now);
         else tx.set(ledgerRef, { until: expiresAt ?? queuedUntil, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
         tx.update(ref, { ...audit, status: "approved", startsAt, expiresAt, ...(added ? { entitlementQueueVersion: 2 } : {}) });

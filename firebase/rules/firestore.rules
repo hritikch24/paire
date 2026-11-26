@@ -356,29 +356,10 @@ service cloud.firestore {
         || chat.get('firstMoveBy', null) == request.auth.uid;
     }
 
-    // Paid chat. Its switches live in runtime/trust (server-managed) because the rules already
-    // read that document: one get(), never exists() + get(), which would count twice. A missing
-    // policy or field means sending is free, as before. Only the sender's own access counts:
-    // reading and receiving are always free. Four-person Duo sends are close to the rules'
-    // 10-read and 1,000-expression limits, so the gate-off path stops after one comparison.
-    function maySend(chat) {
-      let trust = get(/databases/$(database)/documents/runtime/trust);
-      return trust == null || trust.data.get('enforcePaidChat', false) != true || paidSendAllowed(chat, trust.data);
-    }
-
-    // Unlimited Chat or a running Paire Plus pass, mirrored by the server onto the sender's
-    // moderation record (already read by verifiedParticipants()); or an announced start date
-    // still ahead; or a chat from before the gate inside its grace period (0 = no grace); or a
-    // woman (the server mirrors freeSender from her profile) while runtime/trust.womenSendFree is on.
-    function paidSendAllowed(chat, policy) {
-      let now = request.time.toMillis();
+    // The server maintains each sender's own purchase mirror.
+    function maySend() {
       let access = get(/databases/$(database)/documents/moderation/$(request.auth.uid)).data.get('chatAccess', {});
-      return now < policy.get('enforceFrom', 0)
-        || access.get('unlimited', false) == true
-        || access.get('premiumUntil', 0) > now
-        || (policy.get('womenSendFree', false) == true && access.get('freeSender', false) == true)
-        || (now < policy.get('legacyGraceUntil', 0) && chat.createdAt is timestamp
-          && chat.createdAt.toMillis() < policy.get('enforceFrom', 0));
+      return access.get('unlimited', false) == true || access.get('premiumUntil', 0) > request.time.toMillis();
     }
 
     // Mirrors src/config/chatContactPolicy.json; parity and rejection tests prevent drift.
@@ -408,7 +389,7 @@ service cloud.firestore {
         && bumpedOnce(others, 0, unreadBefore, unreadAfter)
         && bumpedOnce(others, 1, unreadBefore, unreadAfter)
         && bumpedOnce(others, 2, unreadBefore, unreadAfter)
-        && maySend(resource.data);
+        && maySend();
     }
 
     // Reader clears only their own unread count and stamps their own read time.
@@ -458,7 +439,7 @@ service cloud.firestore {
           && request.resource.data.get('contactShareConfirmed', false) is bool
           && (request.resource.data.get('contactShareConfirmed', false) == true || noContactDetails(request.resource.data.text))
           && request.resource.data.createdAt == request.time
-          && maySend(parentMatch());
+          && maySend();
         allow update, delete: if false;
       }
 

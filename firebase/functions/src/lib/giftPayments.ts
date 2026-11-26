@@ -1,3 +1,4 @@
+import { FIXED_PRICE_VERSION } from "./fixed-catalog";
 import { createHash } from "crypto";
 import { giftAmountPaise, GiftPlan } from "./gifts";
 import { RazorpayMode } from "./chatAccess";
@@ -15,8 +16,8 @@ export const GIFT_PRODUCT = "gift_plan";
 export const GIFT_CHECKOUT_REUSE_MS = 6 * 3600_000;
 
 /** The Razorpay order for a gift: the existing pass price, and nothing about who is involved. */
-export function giftOrderBody(plan: GiftPlan, now: number): { amount: number; currency: "INR"; receipt: string; notes: { plan: GiftPlan; product: typeof GIFT_PRODUCT } } {
-  return { amount: giftAmountPaise(plan), currency: "INR", receipt: `gift_plan_${plan}_${now}`, notes: { plan, product: GIFT_PRODUCT } };
+export function giftOrderBody(plan: GiftPlan, now: number) {
+  return { amount: giftAmountPaise(plan), currency: "INR", receipt: `gift_plan_${plan}_${now}`, notes: { plan, product: GIFT_PRODUCT, pricing: "fixed", priceVersion: FIXED_PRICE_VERSION } };
 }
 
 /** Match ids are pairIds of two uids; anything else is refused before it reaches a document path. */

@@ -1,4 +1,4 @@
-import { passDays, PLUS_PASSES } from "./razorpay";
+import { FIXED_CATALOG } from "./fixed-catalog";
 
 /**
  * Gift a Plus pass to a match. Pure rules and the plan table only; payments live elsewhere.
@@ -18,10 +18,10 @@ export function isGiftPlan(value: unknown): value is GiftPlan {
 }
 
 /** What the gifter pays, in paise: exactly the pass's existing price. */
-export const giftAmountPaise = (plan: GiftPlan): number => PLUS_PASSES[plan].amountPaise;
+export const giftAmountPaise = (plan: GiftPlan): number => FIXED_CATALOG[plan].amount;
 
-/** How long the gift runs once claimed: as long as buying the pass (month = 60 days). */
-export const giftDays = (plan: GiftPlan): number => passDays(plan);
+/** How long the gift runs once claimed: as long as buying the pass (new monthly gifts run 30 days). */
+export const giftDays = (plan: GiftPlan): number => FIXED_CATALOG[plan].days;
 
 export type GiftDenied = "no-match" | "blocked" | "unavailable" | "limit" | "already-lifetime";
 

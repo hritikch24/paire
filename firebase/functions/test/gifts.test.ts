@@ -8,7 +8,6 @@ import {
   giftState,
   isGiftPlan
 } from "../src/lib/gifts";
-import { PLUS_PASSES } from "../src/lib/razorpay";
 
 const ok = {
   fromUid: "alexa",
@@ -36,18 +35,15 @@ describe("gift plans", () => {
   });
 
   test("prices come from the existing pass table", () => {
-    expect(giftAmountPaise("day")).toBe(PLUS_PASSES.day.amountPaise);
-    expect(giftAmountPaise("week")).toBe(PLUS_PASSES.week.amountPaise);
-    expect(giftAmountPaise("month")).toBe(PLUS_PASSES.month.amountPaise);
-    expect(giftAmountPaise("day")).toBe(3500);
-    expect(giftAmountPaise("week")).toBe(9900);
-    expect(giftAmountPaise("month")).toBe(39900);
+    expect(giftAmountPaise("day")).toBe(5900);
+    expect(giftAmountPaise("week")).toBe(17900);
+    expect(giftAmountPaise("month")).toBe(34900);
   });
 
-  test("days match what the pass buys; the month is 60 days", () => {
+  test("days match what the pass buys; the month is 30 days", () => {
     expect(giftDays("day")).toBe(1);
     expect(giftDays("week")).toBe(7);
-    expect(giftDays("month")).toBe(60);
+    expect(giftDays("month")).toBe(30);
   });
 
   test("constants", () => {
