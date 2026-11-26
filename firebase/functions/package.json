@@ -8,7 +8,7 @@
   },
   "main": "lib/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && cp templates/event-room.html lib/event-room.html",
     "build:watch": "tsc -p tsconfig.build.json --watch",
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",

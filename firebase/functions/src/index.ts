@@ -57,3 +57,5 @@ export { joinWedding, getWeddingGuests, sendNod, leaveWedding, weddingGuestSafet
 export { cleanupEventParticipants, saveEventRoom, getAdminEventRoom, getEventRoom, setEventParticipation, previewEventDeck, getEventMembers } from "./eventRooms";
 
 export { attributeEventVisit,countEventJoin,countEventMatch,countEventFirstSend,countEventPlusPayment,countEventChatPayment,countEventGiftPayment,countEventCcavenuePayment,countEventUpiPayment } from "./eventMetrics";
+
+export { publicEventListing } from "./eventListing";

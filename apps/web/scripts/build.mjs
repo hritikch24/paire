@@ -82,6 +82,7 @@ writeFileSync(
 );
 
 cpSync(resolve(web, "site"), output, { recursive: true });
+cpSync(resolve(web, "../../firebase/functions/templates/event-room.html"), resolve(output,"events/index.html"));
 await prepareFaceCheckAssets(output);
 
 

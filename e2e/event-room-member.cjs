@@ -108,7 +108,12 @@ const db = backend("firebase-admin/firestore").getFirestore(),
             "room.css": "text/css",
           }[name],
           body: await readFile(
-            resolve(__dirname, "../apps/web/site/events", name),
+            name === "index.html"
+              ? resolve(
+                  __dirname,
+                  "../firebase/functions/templates/event-room.html",
+                )
+              : resolve(__dirname, "../apps/web/site/events", name),
           ),
         });
       }

@@ -94,7 +94,8 @@ $("load").onclick = async () => {
   }
 };
 try {
-  const room = await call("getEventRoom", {});
+  const embedded = document.querySelector("main").dataset.room;
+  const room = embedded ? JSON.parse(embedded) : await call("getEventRoom", {});
   if (room.cover) {
     $("cover").src = room.cover;
     $("cover").hidden = false;

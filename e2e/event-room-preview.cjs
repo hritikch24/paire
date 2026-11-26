@@ -69,7 +69,11 @@ const root = require("node:path").resolve(__dirname, "..");
             : filename.endsWith("js")
               ? "text/javascript"
               : "text/html",
-          body: await fs.readFile(root + "/apps/web/site/events/" + filename),
+          body: await fs.readFile(
+            filename === "index.html"
+              ? root + "/firebase/functions/templates/event-room.html"
+              : root + "/apps/web/site/events/" + filename,
+          ),
         });
       });
       await page.goto(

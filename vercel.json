@@ -19,6 +19,7 @@
     }
   ],
   "rewrites": [
+    {"source": "/events/", "has": [{"type":"query","key":"id","value":"(?<eventRoomId>[A-Za-z0-9]{20})"}], "destination":"https://us-central1-muse-352ba.cloudfunctions.net/publicEventListing?id=:eventRoomId"},
     {"source": "/events/api/getEventRoom/", "destination": "https://us-central1-muse-352ba.cloudfunctions.net/getEventRoom"},
     {"source": "/events/api/previewEventDeck/", "destination": "https://us-central1-muse-352ba.cloudfunctions.net/previewEventDeck"},
 

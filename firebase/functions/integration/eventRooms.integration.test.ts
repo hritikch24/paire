@@ -178,3 +178,39 @@ test("preview sessions and replayed outcomes count once outside account totals",
     firstSend: 1,
   });
 });
+
+test("public listing works without JavaScript, revalidates cached content and disappears on unpublish", async () => {
+  const host = process.env.MUSE_FUNCTIONS_EMULATOR_HOST || "127.0.0.1:5001";
+  if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host))
+    throw Error("This test requires a loopback Functions emulator.");
+  const listing = db.collection("eventRooms").doc();
+  const now = Date.now();
+  await listing.set({
+    title: "Local fixture",
+    city: "Pune",
+    venue: "Fictional venue",
+    category: "Social",
+    timezone: "Asia/Kolkata",
+    start: now - 3600000,
+    end: now,
+    closesAt: now + 604800000,
+    status: "published",
+    coverLicense: "internal QA only",
+  });
+  const url =
+    "http://" +
+    host +
+    "/demo-muse/us-central1/publicEventListing?id=" +
+    listing.id;
+  const response = await fetch(url);
+  expect(response.status).toBe(200);
+  const body = await response.text();
+  expect(body).toContain("<h1>Local fixture</h1>");
+  expect(body).not.toContain("internal QA only");
+  expect(response.headers.get("cache-control")).toContain("must-revalidate");
+  const etag = response.headers.get("etag");
+  expect(etag).toBeTruthy();
+  await listing.update({ status: "draft" });
+  const hidden = await fetch(url, { headers: { "if-none-match": etag! } });
+  expect(hidden.status).toBe(404);
+});
