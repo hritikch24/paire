@@ -82,7 +82,9 @@ writeFileSync(
 );
 
 cpSync(resolve(web, "site"), output, { recursive: true });
-cpSync(resolve(web, "../../firebase/functions/templates/event-room.html"), resolve(output,"events/index.html"));
+// Vercel gives a matching static file precedence over the live room rewrite.
+// Local static previews use the same shell and fetch their listing progressively.
+if (!process.env.VERCEL) cpSync(resolve(web, "../../firebase/functions/templates/event-room.html"), resolve(output,"events/index.html"));
 await prepareFaceCheckAssets(output);
 
 
