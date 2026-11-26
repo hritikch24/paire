@@ -82,7 +82,7 @@ export function EventRoomScreen({
       <YStack padding="$4" gap="$3">
         {room.data ? (
           <Text>
-            {room.data.open ? 'Room closes ' : 'Room closed '}
+            {room.data.open ? 'Room closes ' : 'Room closed · scheduled close '}
             {new Date(room.data.closesAt).toLocaleString(undefined, {
               timeZone: room.data.timezone
             })}{' '}

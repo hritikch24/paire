@@ -114,7 +114,7 @@ try {
     room.city,
     date(room.start) + " – " + date(room.end),
     room.timezone,
-    room.open ? "Room closes " + date(room.closesAt) : "Room closed",
+    (room.open ? "Room closes " : "Room closed · scheduled close ") + date(room.closesAt),
   ].join(" · ");
   document.querySelector("section").hidden = !room.open;
   function checkClosingTime() {

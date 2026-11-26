@@ -41,6 +41,37 @@ test("event authorization, exact closing instant and private preview", async () 
   await expect(saveEventRoom.run(request(fields, uid))).rejects.toThrow(
     "already exists",
   );
+  const { swipe, undoSwipe } = await import("../src/swipes");
+  for (const action of [swipe, undoSwipe]) {
+    await expect(
+      action.run(request({ targetUid: uid, eventId: id, type: "like" })),
+    ).rejects.toThrow();
+  }
+  const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST;
+  if (!firestoreHost || !/^(localhost|127\.0\.0\.1):\d+$/.test(firestoreHost))
+    throw Error("This boundary test requires a loopback emulator");
+  const docs =
+    "http://" +
+    firestoreHost +
+    "/v1/projects/demo-muse/databases/(default)/documents/";
+  for (const path of [
+    "eventRooms/" + id,
+    "eventRooms/" + id + "/eventParticipants/" + uid,
+    "eventPreviewDecks/private",
+    "users/" + uid,
+  ]) {
+    const direct = await fetch(docs + path);
+    expect(direct.status).toBe(403);
+  }
+  expect(
+    (
+      await fetch(docs + "eventRooms/" + id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: { status: { stringValue: "closed" } } }),
+      })
+    ).status,
+  ).toBe(403);
   const closes = Date.parse("2026-11-17T14:30:00Z");
   const clock = jest.spyOn(Date, "now").mockReturnValue(closes - 1);
   try {
