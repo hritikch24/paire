@@ -2,6 +2,10 @@
 
 Local implementation on release/event-rooms-local in muse-events and kanoon-simplified-events. Starting revisions are 9511421 and 8509fb6 respectively. The older gift checkout branch is a separate line. No deployment or live configuration change is part of this package.
 
+## Production receipt • 27 November 2026 IST
+
+The owner authorised the subsequent release. KraftAI validator `72ff8e6` reached production first. Firebase CLI released the rules, indexes and all 44 targeted functions in `muse-352ba`. KraftAI comparison `f97019e` and Paire UI `9520a6e` reached production. The public app and pricing pages returned HTTP 200, both domains displayed all seven prices, and an unknown event link returned the listing service’s 404. The production terms and privacy pages contained no deployment contact placeholders. Marketing publication remains separate.
+
 ## Operator and member flows
 
 An existing support operator opens /app/?admin=events. The callable checks the signed-in account, current moderator and support claims and enabled operator record. Save as unpublished to remove a listing from discovery. Close to retain a historical listing while ending room actions. A room ID stays stable when the listing changes. Enter dates with an explicit offset and select the display timezone. Cover images are optional site-owned assets under /event-covers/ with recorded permission. No event or attendee is seeded.
