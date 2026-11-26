@@ -1,5 +1,7 @@
 # Presence and paid chat
 
+The November 27 local candidate requires each sender to have their own valid Plus or Unlimited Chat access across all mutual matches. The new web chat price is ₹79. The switch and grace-period descriptions below document earlier releases. [Candidate details](event-rooms-release.md).
+
 Two features, each behind its own switch, both **off** until you turn them on:
 
 1. **Activity-based presence**: "Online" and an approximate "Active 3 h ago" for your matches.

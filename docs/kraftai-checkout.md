@@ -1,5 +1,7 @@
 # Razorpay Checkout on kraftai.in
 
+The local November 27 candidate issues fixed catalogue version `paire-web-2026-11`. The contract below remains applicable to historical quotes. Stored amounts, versions and promised durations control settlement. Deploy the compatible KraftAI validator before the Paire issuer. [Catalogue and release checklist](event-rooms-release.md).
+
 Paire's web payments (Paire Plus ₹29 / ₹99 / ₹299 and Unlimited Chat ₹49) go through **KraftAI's Razorpay account**, which is registered for kraftai.in. So Razorpay Checkout opens on kraftai.in, not on paire.in. Everything else stays here: Paire's server creates every order and confirms every payment with Razorpay before granting.
 
 New Razorpay orders require `KRAFTAI_CHECKOUT_URL=https://kraftai.in`. Missing or invalid settings refuse checkout; the browser app never opens inline Razorpay Checkout on paire.in.

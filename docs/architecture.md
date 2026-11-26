@@ -1,5 +1,7 @@
 # Muse architecture
 
+The local event-room release adds operator-managed rooms, a restricted guest projection, explicit member participation and three-entry server rewind history. The existing swipe and match documents remain authoritative. [Release architecture and rollout](event-rooms-release.md).
+
 Muse is an Expo (React Native) app on Firebase: Auth, Firestore, Storage, Cloud Functions, Cloud Messaging and Hosting. The server is authoritative for anything that affects other people: who you can see, what counts as a match, blocks, moderation and account deletion. The app writes only its own data, and security rules validate every write.
 
 ## Data model

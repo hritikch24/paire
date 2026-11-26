@@ -1,5 +1,9 @@
 # Muse: project state
 
+## Local release candidate • 2026-11-27
+
+Operator-created event rooms, a private guest preview, free three-profile rewind, paid sending for each sender and a fixed web catalogue are staged on `release/event-rooms-local`. Production deployment and marketing publication require separate authorization. [Release package](docs/event-rooms-release.md).
+
 Last updated: 2026-10-26
 
 ## Accept a like, women reply free, gifted Plus (2026-10-26, local branch, all switches off)
