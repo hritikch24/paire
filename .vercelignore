@@ -11,7 +11,12 @@ node_modules
 /.brew-cache
 /.test-backend
 /.idea
-/firebase
+/firebase/*
+!/firebase/functions
+/firebase/functions/*
+!/firebase/functions/templates
+/firebase/functions/templates/*
+!/firebase/functions/templates/event-room.html
 /store
 /tools
 /e2e
