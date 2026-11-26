@@ -1,0 +1,146 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fbf8f6;
+  --surface: #fff;
+  --ink: #311923;
+  --accent: #b83a5e;
+  --button-ink: #fff;
+  --border: #e6d6dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #20191b;
+    --surface: #2e2428;
+    --ink: #f9edf0;
+    --accent: #ffacc3;
+    --button-ink: #311923;
+    --border: #605057;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    1.1rem/1.55 system-ui,
+    sans-serif;
+}
+main {
+  max-width: 42rem;
+  margin: auto;
+  padding: clamp(1rem, 5vw, 3rem);
+}
+h1,
+h2 {
+  line-height: 1.15;
+}
+a {
+  color: var(--accent);
+}
+section,
+article:not(:empty) {
+  background: var(--surface);
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  margin: 1rem 0;
+}
+button,
+select,
+label,
+a {
+  font: inherit;
+  min-height: 44px;
+}
+label {
+  display: block;
+  margin: 0.75rem 0;
+}
+button,
+select {
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.8rem;
+}
+button {
+  cursor: pointer;
+}
+article:not(:empty) {
+  background: var(--bg);
+}
+
+#cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2;
+  object-fit: cover;
+  border-radius: 1rem;
+}
+#card[data-profile]::before {
+  content: "";
+  display: block;
+  height: clamp(6rem, 20vh, 11rem);
+  margin-bottom: 1rem;
+  border-radius: 0.7rem;
+  background:
+    radial-gradient(
+      ellipse 1.6rem 1.8rem at 50% 34%,
+      var(--accent) 85%,
+      transparent
+    ),
+    radial-gradient(
+      ellipse 3.8rem 4rem at 50% 100%,
+      var(--accent) 85%,
+      transparent
+    );
+  opacity: 0.45;
+}
+
+main > a:first-child {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+}
+h1 {
+  margin-bottom: 0.3em;
+  overflow-wrap: anywhere;
+}
+section h2 {
+  margin-top: 0.3em;
+}
+button,
+select,
+#join {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+}
+#load,
+#join {
+  background: var(--accent);
+  color: var(--button-ink);
+  border-color: transparent;
+  font-weight: 600;
+}
+#join {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.6rem;
+  padding: 0.45rem 1rem;
+  text-decoration: none;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+#card {
+  touch-action: pan-y;
+}

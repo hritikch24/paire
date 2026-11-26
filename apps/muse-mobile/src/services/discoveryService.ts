@@ -38,6 +38,6 @@ export function acceptLike(targetUid: string): Promise<{ matched: true; matchId:
 }
 
 /** Brings back someone you passed on. */
-export function undoPass(targetUid: string): Promise<{ ok: boolean }> {
-  return callFunction<{ ok: boolean }>("undoSwipe", { targetUid });
+export function undoPass(targetUid: string): Promise<{ ok: boolean; profile: DiscoverProfile }> {
+  return callFunction<{ ok: boolean; profile: DiscoverProfile }>("undoSwipe", { targetUid });
 }

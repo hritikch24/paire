@@ -4,7 +4,7 @@ import { logger } from "firebase-functions";
 import { adminAuth, db } from "./admin";
 import { REGION } from "./config";
 import { requireAuth } from "./lib/auth";
-import { authEmail, AuthEmailKind, paireActionLink } from "./lib/authEmail";
+import { authEmail, AuthEmailKind, eventVerificationReturn, paireActionLink } from "./lib/authEmail";
 import { dayKey } from "./lib/ids";
 import { consumeDailyQuota } from "./quota";
 
@@ -57,7 +57,8 @@ export const requestAuthEmail = onCall({ region: REGION, secrets: ["RESEND_API_K
       const user = await adminAuth().getUser(uid);
       if (!user.email || user.emailVerified) return { sent: true };
       await consumeDailyQuota(uid, "verifyEmails", VERIFY_PER_DAY);
-      await send(user.email, "verify", await adminAuth().generateEmailVerificationLink(user.email));
+      const url = eventVerificationReturn(request.data?.eventQuery);
+      await send(user.email, "verify", await adminAuth().generateEmailVerificationLink(user.email,url ? {url} : undefined));
       return { sent: true };
     }
     const email = typeof request.data?.email === "string" ? request.data.email.trim().toLowerCase() : "";

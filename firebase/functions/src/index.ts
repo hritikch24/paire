@@ -54,3 +54,6 @@ export { claimGift, declineGift, expireGifts, listGifts } from "./giftLifecycle"
 export { requestPlusGift, getPlusGiftRequests, closePlusGiftRequest } from "./giftRequests";
 
 export { joinWedding, getWeddingGuests, sendNod, leaveWedding, weddingGuestSafety, cleanupWeddings } from "./weddings";
+export { cleanupEventParticipants, saveEventRoom, getAdminEventRoom, getEventRoom, setEventParticipation, previewEventDeck, getEventMembers } from "./eventRooms";
+
+export { attributeEventVisit,countEventJoin,countEventMatch,countEventFirstSend,countEventPlusPayment,countEventChatPayment,countEventGiftPayment,countEventCcavenuePayment,countEventUpiPayment } from "./eventMetrics";

@@ -19,6 +19,9 @@
     }
   ],
   "rewrites": [
+    {"source": "/events/api/getEventRoom/", "destination": "https://us-central1-muse-352ba.cloudfunctions.net/getEventRoom"},
+    {"source": "/events/api/previewEventDeck/", "destination": "https://us-central1-muse-352ba.cloudfunctions.net/previewEventDeck"},
+
     {
       "source": "/app/:path*",
       "destination": "/app/index.html"

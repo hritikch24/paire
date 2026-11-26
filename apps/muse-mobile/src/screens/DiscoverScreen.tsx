@@ -1,6 +1,3 @@
-import { MemberOfferBanner } from "../components/MemberOfferBanner";
-import { OutOfLikesBar } from "../components/OutOfLikesBar";
-import { useLaunchOffer } from "../hooks/useLaunchOffer";
 import { useWebScreenActive } from "../hooks/useWebScreenActive";
 import { DiscoverEmpty } from "../components/DiscoverEmpty";
 import { DiscoverWebStyles } from "../components/DiscoverWebStyles";
@@ -195,8 +192,6 @@ function DiscoveryExperience() {
   const uid = useAuthStore((state) => state.user?.uid);
   const screenActive = useWebScreenActive();
   const premium = useQuery({ queryKey: ["premium", uid], queryFn: fetchPremiumStatus, enabled: Boolean(uid) && screenActive, refetchInterval: 300_000, retry: 1 });
-  const memberQuote = useLaunchOffer();
-  const refreshMemberOffer = memberQuote.quote.refetch;
   const plus = premium.data?.active === true;
   // Only lock the chips once we know there's no pass; if the check fails, the server decides.
   const plusLocked = premium.isSuccess && !plus;
@@ -279,7 +274,8 @@ function DiscoveryExperience() {
   const [error, setError] = useState<string | null>(null);
   const [exhausted, setExhausted] = useState(false);
   const [blindMode, setBlindMode] = useState(false);
-  const [lastPass, setLastPass] = useState<DiscoverProfile | null>(null);
+  const [recentPasses, setRecentPasses] = useState<string[]>([]);
+  const lastPass = recentPasses[0];
   const [match, setMatch] = useState<MatchState>(null);
   // The note composer, for a like or Super Like with a note.
   const [compose, setCompose] = useState<{ profile: DiscoverProfile; kind: "like" | "super"; draft?: string } | null>(null);
@@ -453,11 +449,11 @@ function DiscoveryExperience() {
       return;
     }
     setDeck((current) => current.filter((item) => item.uid !== profile.uid));
-    setLastPass(type === "nope" ? profile : null);
+
     sendSwipe(profile.uid, type, type === "nope" ? null : note)
       .then((result) => {
+        if (type === "nope") setRecentPasses(previous => [profile.uid, ...previous.filter(id => id !== profile.uid)].slice(0, Platform.OS === "web" ? 3 : 1));
         void refreshAllowance();
-        if (Platform.OS === "web" && type !== "nope" && result.remaining[type === "super" ? "supers" : "likes"] === 0) void refreshMemberOffer();
         void queryClient.invalidateQueries({ queryKey: LIKES_YOU_KEY });
         if (note && type !== "nope") setFlight({ key: Date.now(), name: profile.displayName });
         if (result.matched && result.matchId) {
@@ -469,11 +465,10 @@ function DiscoveryExperience() {
       })
       .catch((err) => {
         void refreshAllowance();
-        if (Platform.OS === "web") void refreshMemberOffer();
         if (errorCode(err) === "functions/not-found") return; // they left or blocked you
         // Out of likes, or offline: put the card back so nothing is silently lost.
         setDeck((current) => [profile, ...current.filter((item) => item.uid !== profile.uid)]);
-        setLastPass(null);
+
         if (offerPlusForLikeLimit(err, () => navigation.navigate("Premium"))) {
           if (note) pendingNoteRef.current = { uid: profile.uid, note };
           return;
@@ -487,7 +482,7 @@ function DiscoveryExperience() {
           errorCode(err) === "functions/resource-exhausted" ? "info" : "error"
         );
       });
-  }, [refreshAllowance, refreshMemberOffer, plusLocked, navigation]);
+  }, [refreshAllowance, plusLocked, navigation]);
 
   const sendFromComposer = (note: string | null) => {
     const current = compose;
@@ -503,14 +498,12 @@ function DiscoveryExperience() {
   };
 
   const handleUndo = async () => {
-    const profile = lastPass;
-    if (!profile) return;
-    setLastPass(null);
-    setDeck((current) => [profile, ...current.filter((item) => item.uid !== profile.uid)]);
+    if (!lastPass) return;
+    setRecentPasses(previous => previous.filter(id => id !== lastPass));
     try {
-      await undoPass(profile.uid);
+      const { profile } = await undoPass(lastPass);
+      setDeck(current => [profile, ...current.filter(item => item.uid !== profile.uid)]);
     } catch (err) {
-      setDeck((current) => current.filter((item) => item.uid !== profile.uid));
       showToast(friendlyError(err, "Couldn't bring that profile back."), "error");
     }
   };
@@ -627,7 +620,6 @@ function DiscoveryExperience() {
         </XStack>
       ) : null}
 
-      {Platform.OS === "web" && !plus ? <MemberOfferBanner compact offer={memberQuote.quote.data?.personalized} onExplore={() => navigation.navigate("Premium")} /> : null}
 
       <YStack testID="discover-modes" paddingBottom="$2">
         <ModeSwitch mode={mode} onChange={changeMode} duoBadge={!duosSeen && !duo.duo} />
@@ -714,13 +706,14 @@ function DiscoveryExperience() {
 
       {mode === "vibe" && (top || (Platform.OS !== "web" && lastPass)) ? (
         <XStack alignItems="center" gap="$2" paddingHorizontal="$4" paddingTop="$2" paddingBottom="$2">
-          <IconButton testID="discover-undo" icon="arrow-undo" accessibilityLabel="Undo last pass" size={46} disabled={!lastPass} onPress={() => void handleUndo()} />
+          <IconButton testID="discover-undo" icon="arrow-undo" accessibilityLabel="Rewind a passed profile for free" size={46} disabled={!lastPass} onPress={() => void handleUndo()} />
           <YStack flex={1}><SecondaryButton testID="discover-nope" disabled={!top} onPress={() => top && handleSwipe(top, "nope")}>Pass</SecondaryButton></YStack>
           <IconButton testID="discover-spark" icon="chatbubble-ellipses" accessibilityLabel="Like with a note" size={46} disabled={!top} onPress={() => top && setCompose({ profile: top, kind: "like" })} />
           <YStack flex={1}><PrimaryButton testID="discover-like" disabled={!top} leftIcon={<Icon name="heart-outline" color="primaryForeground" size={18} />} onPress={() => top && handleSwipe(top, "like")}>Like</PrimaryButton></YStack>
         </XStack>
       ) : null}
 
+      {!top && lastPass && Platform.OS === "web" ? <SecondaryButton onPress={() => void handleUndo()}>Rewind a passed profile</SecondaryButton> : null}
       {mode === "solo" && top && Platform.OS === "web" ? (
         <DiscoveryActions
           undoDisabled={!lastPass}
@@ -736,7 +729,7 @@ function DiscoveryExperience() {
           <IconButton
             testID="discover-undo"
             icon="arrow-undo"
-            accessibilityLabel="Undo last pass"
+            accessibilityLabel="Rewind a passed profile for free"
             variant="soft"
             color="warning"
             size={46}
@@ -791,7 +784,6 @@ function DiscoveryExperience() {
         </XStack>
       ) : null}
 
-      {Platform.OS === "web" && !plus && mode !== "duo" ? <OutOfLikesBar offer={memberQuote.quote.data?.personalized} likesLeft={allowance.data && !allowance.isError ? allowance.data.remaining.likes : undefined} onOpen={() => navigation.navigate("Premium")} /> : null}
 
       {mode !== "duo" && (Platform.OS !== "web" || top) ? (
         <XStack testID="discover-footer" paddingHorizontal="$4" paddingBottom="$2" gap="$3" alignItems="center" justifyContent="space-between">

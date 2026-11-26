@@ -8,6 +8,24 @@ export type AuthEmailKind = "verify" | "reset";
 
 export const SITE_URL = (process.env.PAIRE_SITE_URL || "https://www.paire.in").replace(/\/+$/, "");
 
+/** Only a published-link-shaped Paire destination may travel with verification. */
+export function eventVerificationReturn(query: unknown, site = SITE_URL): string | undefined {
+  if (typeof query !== "string" || query.length > 1500) return;
+  const params = new URLSearchParams(query);
+  const event = params.get("event");
+  if (!event || !/^[A-Za-z0-9]{20}$/.test(event)) return;
+  const target = new URL("/app/", site);
+  target.searchParams.set("event",event);
+  for (const [key,value] of params) {
+    if (/^utm_(source|medium|campaign|content|term)$/.test(key) && value.length <= 150) target.searchParams.set(key,value);
+  }
+  const deck=params.get("deck"), slot=params.get("slot");
+  if (deck && /^[a-f0-9-]{36}$/.test(deck) && slot && /^(?:[0-9]|1[01])$/.test(slot)) {
+    target.searchParams.set("deck",deck);target.searchParams.set("slot",slot);
+  }
+  return target.href;
+}
+
 /** Firebase's generated link → the same one-time code on Paire's own page. */
 export function paireActionLink(firebaseLink: string, site = SITE_URL): string | null {
   try {
@@ -20,6 +38,13 @@ export function paireActionLink(firebaseLink: string, site = SITE_URL): string |
     link.searchParams.set("oobCode", oobCode);
     const apiKey = source.searchParams.get("apiKey");
     if (apiKey) link.searchParams.set("apiKey", apiKey);
+    const next = source.searchParams.get("continueUrl");
+    if (mode === "verifyEmail" && next) {
+      const candidate=URL.canParse(next) ? new URL(next) : null;
+      if (!candidate) return link.toString();
+      const safe=eventVerificationReturn(candidate.search,site);
+      if (safe && candidate.origin===link.origin && candidate.pathname==="/app/") link.searchParams.set("continueUrl",safe);
+    }
     return link.toString();
   } catch {
     return null;

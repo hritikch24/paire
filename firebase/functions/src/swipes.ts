@@ -5,7 +5,8 @@ import { db } from "./admin";
 import { LIMITS, REGION } from "./config";
 import { requireAuth } from "./lib/auth";
 import { pairId } from "./lib/ids";
-import { buildDiscoveryEntry } from "./lib/discovery";
+import { isCandidateForViewer, candidateLatLng } from "./lib/prefs";
+import { buildDiscoveryEntry, viewerTraits, toDiscoverProfile } from "./lib/discovery";
 import { assertLikeEligible, buildMatchDoc } from "./lib/matchDoc";
 import { parseSwipeInput, parseTargetInput } from "./lib/validate";
 import { snippetOf } from "./profiles";
@@ -66,6 +67,14 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
         db.doc(`moderation/${targetUid}`)
       );
 
+    const restored = existingSnap.get("type") === "rewound";
+    const eventId = existingSnap.get("eventId") ?? request.data?.eventId;
+    if (eventId !== undefined) {
+      if (typeof eventId !== "string" || !/^[A-Za-z0-9]{20}$/.test(eventId)) throw new HttpsError("invalid-argument","Invalid room.");
+      const room = db.collection("eventRooms").doc(eventId);
+      const [listing, mine, theirs] = await tx.getAll(room,room.collection("eventParticipants").doc(uid),room.collection("eventParticipants").doc(targetUid));
+      if (!mine.exists || !theirs.exists || listing.get("status") !== "published" || Date.now() >= listing.get("closesAt")) throw new HttpsError("failed-precondition","This event action is no longer available.");
+    }
     if (!targetSnap.exists || blockedSnap.exists || blockedBySnap.exists) {
       throw new HttpsError("not-found", "That profile is no longer available.");
     }
@@ -85,7 +94,7 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
     // Retries of the same swipe are idempotent. Paire Plus members can swipe again on
     // someone they passed on (they see them again once everyone new is seen); likes stay final.
     const secondLook = existingSnap.get("type") === "nope" && type !== "nope" && limits.priority;
-    if (existingSnap.exists && !secondLook) {
+    if (existingSnap.exists && !secondLook && !restored) {
       const active = matchSnap.exists && matchSnap.get("active") !== false;
       return { matched: false, matchId: active ? matchId : null, remaining: remaining(), me: null };
     }
@@ -94,12 +103,18 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
     const theyLikedMe = isPositive(reciprocalType);
 
     // A stale card or a hand-crafted API request must not bypass current preferences or hiding.
-    if (isPositive(type)) {
+    if (isPositive(type) || eventId || restored) {
       const mine = buildDiscoveryEntry(uid, meSnap.data() as Partial<PublicProfile>, mySettings.data() as UserSettings | undefined, myModeration.data() as ModerationRecord | undefined);
       const theirs = buildDiscoveryEntry(targetUid, targetSnap.data() as Partial<PublicProfile>, theirSettings.data() as UserSettings | undefined, theirModeration.data() as ModerationRecord | undefined);
-      assertLikeEligible({ mine, theirs, theyLikedMe, mySettings: mySettings.data() as UserSettings | undefined, note });
+      assertLikeEligible({ mine, theirs, theyLikedMe, mySettings: mySettings.data() as UserSettings | undefined, note, passing: type === "nope" });
     }
 
+    const historyRef = db.doc(`swipes/${uid}`);
+    if (type === "nope") {
+      const history = await tx.get(historyRef);
+      const recent: string[] = history.get("recentPasses") ?? [];
+      tx.set(historyRef, { recentPasses: [targetUid, ...recent.filter(id => id !== targetUid)].slice(0, 3) }, { merge: true });
+    }
     const counter = COUNTER_FIELD[type];
     const cap = limitFor[type];
     if (cap !== null && used[counter] >= cap) {
@@ -114,6 +129,7 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
     used[counter] += 1;
 
     tx.set(swipeRef, {
+      ...(eventId ? { eventId } : {}),
       fromUid: uid,
       toUid: targetUid,
       type,
@@ -149,6 +165,7 @@ export const swipe = onCall({ region: REGION, secrets: WEB_PUSH_SECRETS }, async
           targetUid,
           me,
           target,
+          ...(eventId ? {source:"event"} : {}),
           superLikedBy,
           notes: { [uid]: note ?? undefined, [targetUid]: reciprocalSnap.get("note") },
           firstMove: {
@@ -191,11 +208,33 @@ export const undoSwipe = onCall({ region: REGION }, async (request) => {
   const uid = requireAuth(request);
   const { targetUid } = parseTargetInput(request.data);
   const swipeRef = db.doc(`swipes/${uid}/outgoing/${targetUid}`);
-  const snap = await swipeRef.get();
-  if (!snap.exists) return { ok: true };
-  if (snap.get("type") !== "nope") {
-    throw new HttpsError("failed-precondition", "Only passes can be undone.");
-  }
-  await swipeRef.delete();
-  return { ok: true };
+  const historyRef = db.doc(`swipes/${uid}`);
+  return db.runTransaction(async tx => {
+    await requireVerifiedUsers([uid, targetUid], tx);
+    const [history, swipe, block, blockedBy, match, me, them, mySettings, theirSettings, myMod, theirMod] = await tx.getAll(
+      historyRef, swipeRef, db.doc(`blocks/${uid}/blocked/${targetUid}`), db.doc(`blocks/${targetUid}/blocked/${uid}`),
+      db.doc(`matches/${pairId(uid,targetUid)}`), db.doc(`users/${uid}`), db.doc(`users/${targetUid}`),
+      db.doc(`users/${uid}/private/settings`), db.doc(`users/${targetUid}/private/settings`),
+      db.doc(`moderation/${uid}`), db.doc(`moderation/${targetUid}`)
+    );
+    const eventId = swipe.get("eventId");
+    if (eventId) {
+      const room = db.collection("eventRooms").doc(eventId);
+      const [listing, mine, theirs] = await tx.getAll(room,room.collection("eventParticipants").doc(uid),room.collection("eventParticipants").doc(targetUid));
+      if (!mine.exists || !theirs.exists || listing.get("status") !== "published" || Date.now() >= listing.get("closesAt")) throw new HttpsError("failed-precondition","Room unavailable.");
+    }
+    const recent: string[] = history.get("recentPasses") ?? [];
+    const mine = buildDiscoveryEntry(uid, me.data(), mySettings.data(), myMod.data());
+    const theirs = buildDiscoveryEntry(targetUid, them.data(), theirSettings.data(), theirMod.data());
+    const location = candidateLatLng(mine);
+    if (!recent.includes(targetUid) || swipe.get("type") !== "nope" || block.exists || blockedBy.exists || match.exists ||
+      !mine.visible || theirs.incognito || !isCandidateForViewer(mine, theirs, { viewerLocation: location, sharedVibesOnly: mySettings.get("sharedVibesOnly") === true })) {
+      throw new HttpsError("failed-precondition", "This profile is no longer available to rewind.");
+    }
+    const profile = toDiscoverProfile(them.data()!, theirs, location, false, viewerTraits(mine, me.data()));
+    if (!profile) throw new HttpsError("not-found", "Profile unavailable.");
+    tx.update(swipeRef, {type:"rewound"});
+    tx.update(historyRef, { recentPasses: recent.filter(id => id !== targetUid) });
+    return { ok: true, profile };
+  });
 });

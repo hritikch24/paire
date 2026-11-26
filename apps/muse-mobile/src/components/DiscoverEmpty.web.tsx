@@ -7,7 +7,7 @@ import { updateSettings } from "../services/profileService";
 import { isSupportView } from "../services/supportMode";
 import { useAuthStore } from "../store/authStore";
 import { MIN_AGE, MAX_AGE } from "../utils/age";
-import { MONTH_OFFER, PREMIUM_PLANS, webPlan } from "../config/premium";
+import { PREMIUM_PLANS, webPlan } from "../config/premium";
 import { withSettingsDefaults } from "../utils/profile";
 
 type Props = {
@@ -64,12 +64,11 @@ export function DiscoverEmpty({ onReload, plus, onGetPlus }: Props) {
     return (
       <YStack testID="discover-empty-plus" flex={1} alignItems="center" justifyContent="center" paddingVertical="$3" paddingHorizontal="$3" gap="$2">
         <Text fontSize="$5" fontWeight="700" textAlign="center">Want to meet more people?</Text>
-        <Text testID="discover-month-offer" fontSize="$3" fontWeight="700" color="$primary" textAlign="center">{`🎁 ${MONTH_OFFER}`}</Text>
         <Text fontSize="$2" color="$textMuted" textAlign="center" maxWidth={300} lineHeight={20}>
           {`Unlimited likes, 5 daily Super Likes and priority likes. ₹${month.priceInr} for ${monthly.days} days (₹${monthly.perDay}/day), or ₹${day.priceInr} for one day. No auto-renewal.`}
         </Text>
         <YStack width="100%" maxWidth={280} gap="$2">
-          <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>{`Get 2 months · ₹${month.priceInr}`}</PrimaryButton>
+          <PrimaryButton testID="discover-get-plus" height={48} minHeight={48} onPress={onGetPlus}>{`Get 30 days · ₹${month.priceInr}`}</PrimaryButton>
           <Text testID="discover-expand-description" fontSize="$1" color="$textMuted" textAlign="center">{wider ? `Or widen your search. ${hint}` : hint}</Text>
           <SecondaryButton testID="discover-expand" loading={busy} disabled={!uid} onPress={() => void expand()}>
             {wider ? "Expand search" : "Check again"}

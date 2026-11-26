@@ -21,7 +21,29 @@ export function useWebLinks() {
       const valid = (value: string | null) => Boolean(value && /^[A-Za-z0-9_-]{1,256}$/.test(value));
       const circle = workCircle(url.searchParams.get("circle"));
       let navigate: () => void;
-      if (url.searchParams.get("admin") === "premium-buyers") {
+      let event = url.searchParams.get("event");
+      try {
+        const intent = JSON.parse(sessionStorage.getItem("paire.eventIntent") ?? "null");
+        if (!event && !url.searchParams.size && intent && !intent.opened && Date.now()-intent.at < 86400000) event=intent.id;
+        if (event && intent?.id===event) sessionStorage.setItem("paire.eventIntent",JSON.stringify({...intent,opened:true}));
+      } catch { /* Storage is optional. */ }
+      if (event && /^[A-Za-z0-9]{20}$/.test(event)) {
+        try {
+          const deck=url.searchParams.get("deck"),slot=url.searchParams.get("slot");
+          if(deck && /^[a-f0-9-]{36}$/.test(deck) && slot && /^(?:[0-9]|1[01])$/.test(slot)) {
+            sessionStorage.setItem("paire.eventIntent",JSON.stringify({id:event,deck,slot:Number(slot),campaign:url.search,opened:true,at:Date.now()}));
+          }
+          url.searchParams.delete("deck");url.searchParams.delete("slot");
+          const session=sessionStorage.getItem("paire.preview."+event);
+          if(session) void callFunction("attributeEventVisit",{id:event,session}).catch(()=>undefined);
+        } catch { /* Storage may be disabled in an in-app browser. */ }
+        const id=event;
+        navigate = () => navigation.navigate("App",{screen:"EventRoom",params:{id}});
+        url.searchParams.delete("event");
+      } else if (url.searchParams.get("admin") === "events") {
+        navigate = () => navigation.navigate("App",{screen:"EventAdmin"});
+        url.searchParams.delete("admin");
+      } else if (url.searchParams.get("admin") === "premium-buyers") {
         navigate = () => navigation.navigate("App", { screen: "RecentPremiumBuyers" });
         url.searchParams.delete("admin");
       } else if (url.searchParams.get("admin") === "signup-funnel") {

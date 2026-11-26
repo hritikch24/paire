@@ -57,9 +57,9 @@ export async function signUp(email: string, password: string) {
  * Paire's own email (from paire.in, linking to www.paire.in) when the server can
  * send one; otherwise Firebase's built-in email.
  */
-async function requestAuthEmail(kind: "verify" | "reset", email?: string): Promise<boolean> {
+async function requestAuthEmail(kind: "verify" | "reset", email?: string, eventQuery?: string): Promise<boolean> {
   try {
-    return (await callFunction<{ sent: boolean }>("requestAuthEmail", { kind, email })).sent;
+    return (await callFunction<{ sent: boolean }>("requestAuthEmail", { kind, email, ...(eventQuery ? {eventQuery} : {}) })).sent;
   } catch (error) {
     // Limits are real answers; anything else (offline server, old backend) falls back.
     if (errorCode(error) === "functions/resource-exhausted") throw error;
@@ -71,7 +71,26 @@ export async function resendVerificationEmail() {
   requireAccountChanges();
   const user = auth.currentUser;
   if (!user) throw new Error("Not signed in");
-  if (!(await requestAuthEmail("verify"))) await sendEmailVerification(user);
+  let destination: URL | undefined;
+  if (typeof window !== "undefined" && window.location) {
+    const current = new URL(window.location.href);
+    if (/^[A-Za-z0-9]{20}$/.test(current.searchParams.get("event") ?? "")) {
+      destination = new URL("/app/",current.origin);
+      for (const [key,value] of current.searchParams) if (/^(event|utm_(source|medium|campaign|content|term))$/.test(key)) destination.searchParams.set(key,value);
+      try {
+        const intent=JSON.parse(sessionStorage.getItem("paire.eventIntent") ?? "null");
+        const session=sessionStorage.getItem("paire.preview."+current.searchParams.get("event"));
+        if(session) void callFunction("attributeEventVisit",{id:current.searchParams.get("event"),session}).catch(()=>undefined);
+        if(intent?.id===current.searchParams.get("event") && intent.deck) {
+          destination.searchParams.set("deck",intent.deck);destination.searchParams.set("slot",String(intent.slot));
+        }
+      } catch { /* The room link still works without storage. */ }
+    }
+  }
+  if (!(await requestAuthEmail("verify",undefined,destination?.search))) {
+    if(destination) await sendEmailVerification(user,{url:destination.href});
+    else await sendEmailVerification(user);
+  }
 }
 
 /**

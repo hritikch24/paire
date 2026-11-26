@@ -57,6 +57,7 @@ export function assertLikeEligible(args: {
   theyLikedMe: boolean;
   mySettings: UserSettings | undefined;
   note: string | null;
+  passing?: boolean;
 }): void {
   const { mine, theirs, theyLikedMe, mySettings, note } = args;
   const eligible = theyLikedMe
@@ -70,7 +71,7 @@ export function assertLikeEligible(args: {
     throw new HttpsError("not-found", "That profile is no longer available for matching.");
   }
   // "Notes only": a like needs a note, unless it answers their like.
-  if (theirs.requireNote && !note && !theyLikedMe) {
+  if (!args.passing && theirs.requireNote && !note && !theyLikedMe) {
     throw new HttpsError("failed-precondition", "They only accept likes with a note. Add one to say why you'd click.");
   }
 }

@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { showToast } from "../components/Toast";
-import type { AppStackParamList } from "../navigation/types";
+import type { RootStackParamList } from "../navigation/types";
 import { fetchPremiumStatus, PremiumStatus } from "../services/billingService";
 import { ChatAccess, fetchChatAccess } from "../services/chatAccessService";
 import { callFunction } from "../services/firebase";
@@ -51,7 +51,7 @@ async function recheck(kind: "plus" | "chat"): Promise<Outcome> {
 export function useKraftaiReturn() {
   const uid = useAuthStore((state) => state.user?.uid);
   const queryClient = useQueryClient();
-  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   useEffect(() => {
     if (Platform.OS !== "web" || isSupportView || !uid || typeof window === "undefined") return;
     const url = new URL(window.location.href);
@@ -66,7 +66,15 @@ export function useKraftaiReturn() {
     restoreDrafts();
     // Back to the chat the payment was started from (this tab only), where the draft is waiting.
     const chat = takeReturnChat();
-    if (chat) setTimeout(() => navigation.navigate("Chat", { matchId: chat }), 0);
+    if (chat) setTimeout(() => navigation.navigate("App", {screen:"Chat", params:{matchId:chat}}), 0);
+
+    if (!chat) {
+      try {
+        const event=sessionStorage.getItem("paire.paymentEvent");
+        sessionStorage.removeItem("paire.paymentEvent");
+        if (event && /^[A-Za-z0-9]{20}$/.test(event)) setTimeout(()=>navigation.navigate("App",{screen:"EventRoom",params:{id:event}}),0);
+      } catch { /* Payment settlement proceeds without tab storage. */ }
+    }
 
     const paid = result === "paid" && ORDER.test(orderId) && PAYMENT.test(paymentId) && SIGNATURE.test(signature);
     const plus = kind === "plus";

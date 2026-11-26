@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <meta
+      name="description"
+      content="An 18+ Paire community room for an event. Browse a private preview and choose whether to join."
+    />
+    <title>Event room · Paire</title>
+    <link rel="stylesheet" href="/events/room.css" />
+    <script type="module" src="/events/room.js"></script>
+  </head>
+  <body>
+    <main>
+      <a href="/">Paire</a
+      ><img id="cover" hidden alt="" width="720" height="360" />
+      <h1>Event room</h1>
+      <p id="info" role="status">Loading event details…</p>
+      <p>
+        An independent Paire community room for adults. A listing does not imply
+        endorsement by the organiser.
+      </p>
+      <section hidden>
+        <h2>Private preview</h2>
+        <p>
+          Browse anonymous placeholders. Only members who chose to join this
+          room can appear. Browsing sends nothing.
+        </p>
+        <label><input id="adult" type="checkbox" /> I am 18 or older</label
+        ><label
+          >Age range
+          <select id="age">
+            <option value="all">All adults</option>
+            <option value="18-29">18–29</option>
+            <option value="30-44">30–44</option>
+            <option value="45+">45 and over</option>
+          </select></label
+        ><label
+          >Preview
+          <select id="gender">
+            <option value="woman">Show women</option>
+            <option value="man">Show men</option>
+          </select></label
+        ><button id="load">Show preview</button>
+        <article aria-live="polite" id="card"></article>
+        <button id="back" disabled>Previous</button>
+        <button id="next" disabled>Next preview</button>
+        <p>
+          Rewind is free. Each sender needs Plus or Unlimited Chat to message a
+          mutual match.
+        </p>
+        <a id="join" href="/app/">Open Paire to join</a>
+      </section>
+    </main>
+  </body>
+</html>

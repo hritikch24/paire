@@ -53,7 +53,7 @@ export function DiscoveryActions({ undoDisabled, onUndo, onPass, onSuper, onNote
   const heart = useHoldToSuper(onLike, onSuper);
   const superColor = theme.superLike?.val ?? "#4f6bed";
   const actions: Array<{ id: string; label: string; spoken: string; icon: IconName; onClick: () => void; color: string; main?: boolean; filled?: boolean; disabled?: boolean }> = [
-    { id: "undo", label: "Undo", spoken: "Undo last pass", icon: "arrow-undo", onClick: onUndo, color: theme.textMuted?.val, disabled: undoDisabled },
+    { id: "undo", label: "Rewind", spoken: "Rewind a passed profile for free", icon: "arrow-undo", onClick: onUndo, color: theme.textMuted?.val, disabled: undoDisabled },
     { id: "nope", label: "Pass", spoken: "Pass", icon: "close", onClick: onPass, color: theme.nope?.val, main: true },
     { id: "super", label: "Super", spoken: "Super Like", icon: "star", onClick: onSuper, color: theme.superLike?.val },
     { id: "spark", label: "Note", spoken: "Like with a note", icon: "chatbubble-ellipses", onClick: onNote, color: theme.primary?.val },

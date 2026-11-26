@@ -75,6 +75,16 @@
   const API_KEY = "AIzaSyD30LSvbx2NCWulfLira3hD7cd6TxVjc4o";
   const params = new URLSearchParams(location.search);
   const mode = params.get("mode");
+  if (mode === "verifyEmail" && params.has("continueUrl")) {
+    try {
+      const next = new URL(params.get("continueUrl"));
+      if (next.origin === location.origin && next.pathname === "/app/" && /^[A-Za-z0-9]{20}$/.test(next.searchParams.get("event") || "")) {
+        const target = new URL("/app/", location.origin);
+        for (const [key,value] of next.searchParams) if (/^(event|deck|slot|utm_(source|medium|campaign|content|term))$/.test(key)) target.searchParams.set(key,value.slice(0,150));
+        document.querySelectorAll('a[href="/app/"]').forEach(anchor => anchor.href=target.href);
+      }
+    } catch { /* An invalid continuation uses the ordinary app entry. */ }
+  }
   const code = params.get("oobCode");
   const key = params.get("apiKey") || API_KEY;
   const $ = (id) => document.getElementById(id);

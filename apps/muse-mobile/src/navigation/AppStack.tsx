@@ -68,6 +68,8 @@ export function AppStack() {
       />
       {Platform.OS === "web" ? <Stack.Screen name="WorkCircles" component={WorkCirclesScreen} /> : null}
       {Platform.OS === "web" ? <Stack.Screen name="WorkCircle" component={WorkCircleScreen} /> : null}
+      {Platform.OS === "web" ? <Stack.Screen name="EventAdmin" getComponent={() => require("../screens/EventAdminScreen").EventAdminScreen} /> : null}
+      {Platform.OS === "web" ? <Stack.Screen name="EventRoom" getComponent={() => require("../screens/EventRoomScreen").EventRoomScreen} /> : null}
       {Platform.OS === "web" ? <Stack.Screen name="WeddingNods" component={WeddingNodsScreen} /> : null}
       {Platform.OS === "web" ? <Stack.Screen name="Wedding" component={WeddingScreen} /> : null}
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />

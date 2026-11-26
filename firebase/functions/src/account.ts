@@ -54,6 +54,9 @@ export async function purgeUserData(uid: string): Promise<void> {
   await purgeDuoData(uid);
   // Wedding Nods: the member's spots, nods and invitation photos, before users/{uid} (their index) goes.
   await purgeWeddingData(uid);
+  await deleteQueryResults(db.collection("eventPreviewDecks").where("candidates","array-contains",uid));
+  await db.doc(`eventAttribution/${uid}`).delete();
+  await deleteQueryResults(db.collectionGroup("eventParticipants").where("uid", "==", uid));
   const matches = await db.collection("matches").where("participants", "array-contains", uid).get();
   for (const match of matches.docs) {
     await recursiveDelete(match.ref);
