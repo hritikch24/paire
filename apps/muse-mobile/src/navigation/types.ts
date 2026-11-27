@@ -36,6 +36,7 @@ export type AppStackParamList = {
   };
   WorkCircles: undefined;
   WorkCircle: { circle: WorkSector };
+  ExploreDiscovery: {mode:"vibes"|"metro"|"events"};
   EventAdmin: undefined;
   EventRoom: { id: string };
   WeddingNods: undefined;

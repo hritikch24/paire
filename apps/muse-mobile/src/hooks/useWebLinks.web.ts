@@ -40,6 +40,10 @@ export function useWebLinks() {
         const id=event;
         navigate = () => navigation.navigate("App",{screen:"EventRoom",params:{id}});
         url.searchParams.delete("event");
+      } else if (["vibes","metro","events"].includes(url.searchParams.get("explore")??"")) {
+        const mode=url.searchParams.get("explore") as "vibes"|"metro"|"events";
+        navigate=()=>navigation.navigate("App",{screen:"ExploreDiscovery",params:{mode}});
+        url.searchParams.delete("explore");
       } else if (url.searchParams.get("admin") === "events") {
         navigate = () => navigation.navigate("App",{screen:"EventAdmin"});
         url.searchParams.delete("admin");

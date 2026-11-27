@@ -1,5 +1,6 @@
 {
   "indexes": [
+    {"collectionGroup":"eventRooms","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"closesAt","order":"ASCENDING"}]},
     {
       "collectionGroup": "matches",
       "queryScope": "COLLECTION",
@@ -410,6 +411,10 @@
     }
   ],
   "fieldOverrides": [
+    {"collectionGroup":"introHistory","fieldPath":"expireAt","ttl":true,"indexes":[]},
+    {"collectionGroup":"vibeIntroMembers","fieldPath":"expireAt","ttl":true,"indexes":[]},
+    {"collectionGroup":"metroCircleMembers","fieldPath":"expireAt","ttl":true,"indexes":[]},
+
     {"collectionGroup":"eventPreviewQuotas","fieldPath":"expireAt","ttl":true,"indexes":[]},
     { "collectionGroup": "eventPreviewDecks", "fieldPath": "expireAt", "ttl": true, "indexes": [] },
     { "collectionGroup": "eventAttribution", "fieldPath": "expireAt", "ttl": true, "indexes": [] },

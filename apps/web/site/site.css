@@ -25,3 +25,5 @@
 @media(max-width:700px){[aria-label="Plus member offers"] table{font-size:10px}[aria-label="Plus member offers"] th,[aria-label="Plus member offers"] td{padding:10px 3px}[aria-label="Plus member offers"] th:first-child{width:24%}[aria-label="Plus member offers"] th:not(:first-child){width:19%}}
 
 .primary-price-grid.has-lifetime{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:700px){.primary-price-grid.has-lifetime{grid-template-columns:1fr}}
+
+.paire-discovery-links{display:flex;gap:.4rem;flex-wrap:wrap;margin:1rem 0}.paire-discovery-links a{display:inline-flex;align-items:center;gap:.4em;min-height:44px;padding:.25rem .8rem;border:1px solid currentColor;border-radius:999px;font-size:.88rem;text-decoration:none;color:inherit}.paire-discovery-links a:focus-visible{outline:3px solid currentColor;outline-offset:2px}.paire-discovery-links span{color:#aa375c;font-size:1.1em}

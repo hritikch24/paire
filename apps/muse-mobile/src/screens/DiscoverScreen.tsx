@@ -1,3 +1,4 @@
+import { DiscoveryRoutes } from "../components/DiscoveryRoutes";
 import { useWebScreenActive } from "../hooks/useWebScreenActive";
 import { DiscoverEmpty } from "../components/DiscoverEmpty";
 import { DiscoverWebStyles } from "../components/DiscoverWebStyles";
@@ -572,6 +573,7 @@ function DiscoveryExperience() {
         </XStack>
       </XStack>
 
+      {Platform.OS === "web" ? <YStack paddingHorizontal="$4" marginBottom="$2"><DiscoveryRoutes onOpen={mode=>mode==="wedding"?navigation.navigate("WeddingNods"):navigation.navigate("ExploreDiscovery",{mode})}/></YStack> :
       <XStack testID="discover-intro" paddingHorizontal="$4" alignItems="center" justifyContent="space-between" gap="$2" marginBottom="$3">
         <YStack flex={1}>
           {filter === "diwali" && mode !== "duo" ? (
@@ -603,6 +605,7 @@ function DiscoveryExperience() {
         </YStack>
       </XStack>
 
+      }
       {hidden ? (
         <XStack
           testID="discover-hidden"

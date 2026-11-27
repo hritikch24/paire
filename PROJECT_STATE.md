@@ -1,8 +1,8 @@
 # Muse: project state
 
-## Local release candidate • 2026-11-27
+## Browser discovery • 2026-11-27
 
-Operator-created event rooms, a private guest preview, free three-profile rewind, paid sending for each sender and a fixed web catalogue are staged on `release/event-rooms-local`. Production deployment and marketing publication require separate authorization. [Release package](docs/event-rooms-release.md).
+The [event rooms and fixed prices](docs/event-rooms-release.md) reached production. The next browser change adds visible navigation, opt-in shared-vibe introductions and voluntary Metro city circles. [Discovery release](docs/discovery-introductions-release.md).
 
 Last updated: 2026-10-26
 

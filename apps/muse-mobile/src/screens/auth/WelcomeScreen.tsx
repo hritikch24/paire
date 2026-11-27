@@ -1,6 +1,7 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { ScrollView } from "react-native";
+import { DiscoveryRoutes, DiscoveryRoute } from "../../components/DiscoveryRoutes";
+import { Platform, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, XStack, YStack } from "tamagui";
 import { Icon, IconName } from "../../components/Icon";
@@ -20,6 +21,20 @@ export function WelcomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const insets = useSafeAreaInsets();
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const [choice,setChoice]=useState<DiscoveryRoute|null>(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return null;
+    const params=new URLSearchParams(window.location.search);
+    const route=params.get("explore");
+    if(route==="vibes" || route==="metro" || route==="events") return route;
+    return params.get("wedding")==="1"?"wedding":null;
+  });
+  function choose(mode:DiscoveryRoute){
+    const url=new URL(window.location.href);
+    url.pathname="/app/";
+    for(const key of ["wedding","explore","event","slot","deck","profile","chat","circle","admin","edition","discover","duo","circles"]) url.searchParams.delete(key);
+    url.searchParams.set(mode==="wedding"?"wedding":"explore",mode==="wedding"?"1":mode);
+    window.history.replaceState(window.history.state,"",url.href);setChoice(mode);
+  }
   return (
     <YStack flex={1} backgroundColor="$background">
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: insets.top + 20, paddingBottom: 24, gap: 24 }}>
@@ -29,8 +44,9 @@ export function WelcomeScreen() {
         </XStack>
         <YStack gap="$3">
           <Text fontSize={42} lineHeight={48} fontWeight="700" letterSpacing={-1.5} accessibilityRole="header">Find your <Text color="$primary">Paire.</Text></Text>
-          <Text color="$textMuted" fontSize="$4" lineHeight={25}>Women set the rules. Men get a fair chance. Send a note with your like, and reveal who likes you with Plus.</Text>
+          <Text color="$textMuted" fontSize="$4" lineHeight={25}>{Platform.OS==="web"?"Meet through a shared vibe, a Metro circle or an event. You both choose where it goes.":"Women set the rules. Men get a fair chance. Send a note with your like, and reveal who likes you with Plus."}</Text>
         </YStack>
+        {Platform.OS==="web"?<YStack gap="$3"><DiscoveryRoutes selected={choice} onOpen={choose}/><Text accessibilityLiveRegion="polite" color="$textMuted">{choice?({metro:"Choose your city after signing in. Metro uses voluntary city circles.",vibes:"Sign in to opt into introductions based on shared profile vibes.",events:"Sign in to browse published event rooms.",wedding:"Sign in to give a private Wedding Nod."})[choice]:"Choose a way to meet, then sign in or create an account."}</Text></YStack>:
         <YStack borderRadius={28} backgroundColor="$primarySoft" padding="$5" gap="$4" overflow="hidden" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <XStack alignItems="center" justifyContent="space-between" gap="$2">
             <Text color="$primary" fontSize={10} lineHeight={15} fontWeight="700" letterSpacing={1.6} flex={1}>THAT FIRST-DATE FEELING</Text>
@@ -42,6 +58,7 @@ export function WelcomeScreen() {
             <XStack backgroundColor="$backgroundStrong" borderRadius={999} paddingHorizontal="$3" paddingVertical="$2" gap={6} alignItems="center"><Icon name="cafe-outline" size={14} color="primary" /><Text fontSize="$2">A little chemistry</Text></XStack>
           </XStack>
         </YStack>
+        }
         <YStack gap="$4">
           {HIGHLIGHTS.map((item) => (
             <XStack key={item.title} gap="$3" alignItems="flex-start">

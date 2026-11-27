@@ -59,3 +59,5 @@ export { cleanupEventParticipants, saveEventRoom, getAdminEventRoom, getEventRoo
 export { attributeEventVisit,countEventJoin,countEventMatch,countEventFirstSend,countEventPlusPayment,countEventChatPayment,countEventGiftPayment,countEventCcavenuePayment,countEventUpiPayment } from "./eventMetrics";
 
 export { publicEventListing } from "./eventListing";
+
+export { discoveryIntroduction, listDiscoveryEvents } from "./introductions";

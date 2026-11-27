@@ -57,7 +57,7 @@ export function DiscoveryActions({ undoDisabled, onUndo, onPass, onSuper, onNote
     { id: "nope", label: "Pass", spoken: "Pass", icon: "close", onClick: onPass, color: theme.nope?.val, main: true },
     { id: "super", label: "Super", spoken: "Super Like", icon: "star", onClick: onSuper, color: theme.superLike?.val },
     { id: "spark", label: "Note", spoken: "Like with a note", icon: "chatbubble-ellipses", onClick: onNote, color: theme.primary?.val },
-    { id: "like", label: "Like", spoken: "Like. Press and hold for a Super Like", icon: "heart", onClick: heart.click, color: theme.primaryForeground?.val, main: true, filled: true }
+    { id: "like", label: "Like", spoken: "Like. Press and hold for a Super Like", icon: "heart", onClick: heart.click, color: theme.background?.val, main: true, filled: true }
   ];
   return <div data-testid="discover-actions" style={{ display: "flex", gap: 10, justifyContent: "center", alignItems: "center", padding: "8px 12px 0", flexShrink: 0 }}>
     <style>{`
@@ -79,7 +79,7 @@ export function DiscoveryActions({ undoDisabled, onUndo, onPass, onSuper, onNote
           padding: 0, border: 0, background: "transparent", cursor: action.disabled ? "default" : "pointer", opacity: action.disabled ? .35 : 1,
           color: theme.textMuted?.val, minWidth: action.main ? 56 : 44, minHeight: 76, font: "inherit", flexShrink: 0
         }}>
-        <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: size, height: size, borderRadius: "50%", background: action.filled ? theme.primary?.val : theme.backgroundStrong?.val, border: `1px solid ${action.filled ? "transparent" : theme.border?.val}`, boxShadow: action.main ? "0 3px 12px #35101d0d" : "none", transform: isLike && heart.charge > 0 ? `scale(${1 + heart.charge * 0.12})` : undefined }}>
+        <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: size, height: size, borderRadius: "50%", background: action.filled ? theme.like?.val : theme.backgroundStrong?.val, border: `1px solid ${action.filled ? "transparent" : theme.border?.val}`, boxShadow: action.main ? "0 3px 12px #35101d0d" : "none", transform: isLike && heart.charge > 0 ? `scale(${1 + heart.charge * 0.12})` : undefined }}>
           {isLike && heart.charge > 0.08 ? <span aria-hidden="true" data-testid="discover-like-charge" style={{ position: "absolute", inset: -5, borderRadius: "50%", background: `conic-gradient(${superColor} ${heart.charge * 360}deg, transparent 0deg)`, WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))", mask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))" }} /> : null}
           {isLike && heart.burst ? <span key={heart.burst} aria-hidden="true">
             <span className="paire-super-fx" style={{ position: "absolute", inset: -2, borderRadius: "50%", border: `3px solid ${superColor}`, animation: "paire-super-ring .6s ease-out forwards" }} />

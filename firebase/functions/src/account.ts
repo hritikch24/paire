@@ -55,6 +55,9 @@ export async function purgeUserData(uid: string): Promise<void> {
   // Wedding Nods: the member's spots, nods and invitation photos, before users/{uid} (their index) goes.
   await purgeWeddingData(uid);
   await deleteQueryResults(db.collection("eventPreviewDecks").where("candidates","array-contains",uid));
+  await db.doc(`vibeIntroMembers/${uid}`).delete();
+  await db.doc(`metroCircleMembers/${uid}`).delete();
+  await deleteQueryResults(db.collection("introHistory").where("members","array-contains",uid));
   await db.doc(`eventAttribution/${uid}`).delete();
   await deleteQueryResults(db.collectionGroup("eventParticipants").where("uid", "==", uid));
   const matches = await db.collection("matches").where("participants", "array-contains", uid).get();
