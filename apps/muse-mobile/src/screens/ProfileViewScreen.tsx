@@ -49,12 +49,13 @@ export function ProfileViewScreen() {
   const profile: ProfileViewData | null | undefined =
     passed ?? (source === "self" ? me : source === "match" ? (fetched.isLoading ? undefined : fetched.data) : source === "shared" ? (shared.isLoading ? undefined : shared.data?.profile ?? null) : null);
 
+  const inlineDiscovery = source === "circle" || source === "explore";
   const [answering, setAnswering] = useState(false);
 
   const swipe = (type: SwipeType) => {
     if (!profile) return;
-    if ((source === "shared" || source === "circle") && type !== "nope") { setComposeShared(true); return; }
-    if (source === "likes" || source === "shared" || source === "circle") {
+    if ((source === "shared" || source === "circle" || (source === "explore" && passed?.requiresNote)) && type !== "nope") { setComposeShared(true); return; }
+    if (source === "likes" || source === "shared" || inlineDiscovery) {
       void answerLike(type);
       return;
     }
@@ -71,6 +72,7 @@ export function ProfileViewScreen() {
     try {
       const result = await sendSwipe(profile.uid, type, note);
       void queryClient.invalidateQueries({ queryKey: LIKES_YOU_KEY });
+      if (source === "explore") void queryClient.invalidateQueries({queryKey:["explore-discover-picks"]});
       if (source === "circle") void queryClient.invalidateQueries({ queryKey: ["work-circle-feed"] });
       if (result.matched && result.matchId) {
         suppressMatchAlert(result.matchId);
@@ -90,7 +92,7 @@ export function ProfileViewScreen() {
       showToast(friendlyError(error, "Couldn't save that. Please try again."), "error");
     }
   };
-  const showActions = source === "discover" || source === "likes" || source === "shared" || source === "circle";
+  const showActions = source === "discover" || source === "likes" || source === "shared" || inlineDiscovery;
 
   const confirmBlock = () => {
     if (!profile) return;
@@ -179,8 +181,8 @@ export function ProfileViewScreen() {
         </XStack>
       ) : null}
 
-      {(source === "shared" || source === "circle") && composeShared && (source === "circle" ? passed : shared.data?.profile) ? (
-        <SparkComposer profile={(source === "circle" ? passed : shared.data?.profile) as DiscoverProfile} kind="like" onClose={() => setComposeShared(false)} onSend={(note) => { setComposeShared(false); void answerLike("like", note); }} />
+      {(source === "shared" || inlineDiscovery) && composeShared && (inlineDiscovery ? passed : shared.data?.profile) ? (
+        <SparkComposer profile={(inlineDiscovery ? passed : shared.data?.profile) as DiscoverProfile} kind="like" onClose={() => setComposeShared(false)} onSend={(note) => { setComposeShared(false); void answerLike("like", note); }} />
       ) : null}
       <ActionSheet
         visible={menuOpen}

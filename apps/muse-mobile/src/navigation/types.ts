@@ -29,7 +29,7 @@ export type AppStackParamList = {
   Chat: { matchId: string; otherUid?: string; name?: string; photoUrl?: string | null };
   ProfileView: {
     /** `likes`: someone from "Likes you", answered from the profile itself. */
-    source: "discover" | "match" | "self" | "likes" | "shared" | "circle";
+    source: "discover" | "match" | "self" | "likes" | "shared" | "circle" | "explore";
     profile?: ProfileViewData;
     uid?: string;
     matchId?: string;

@@ -24,6 +24,7 @@ const db = backend("firebase-admin/firestore").getFirestore(),
   const room = db.collection("eventRooms").doc(),
     viewer = randomUUID(),
     other = randomUUID(),
+    next = randomUUID(),
     now = Date.now(),
     password = "LocalFixtureOnly123!";
   const title = "QA fixture · Shared occasion";
@@ -41,13 +42,13 @@ const db = backend("firebase-admin/firestore").getFirestore(),
   await db
     .doc("runtime/trust")
     .set({ requireVerification: false }, { merge: true });
-  for (const uid of [viewer, other]) {
+  for (const uid of [viewer, other, next]) {
     const isViewer = uid === viewer,
       email = uid + "@example.com";
     await auth.createUser({ uid, email, password, emailVerified: true });
     await db.doc("users/" + uid).set({
       uid,
-      displayName: isViewer ? "QA viewer" : "QA participant",
+      displayName: isViewer ? "QA viewer" : uid === other ? "Mira" : "Tara",
       gender: isViewer ? "man" : "woman",
       age: 28,
       city: "Pune",
@@ -76,13 +77,11 @@ const db = backend("firebase-admin/firestore").getFirestore(),
       .set({ emailVerified: true, status: "ok" });
   }
 
-  await db
-    .doc("vibeIntroMembers/" + other)
-    .set({
-      bucket: "vibes",
-      until: now + 86400000,
-      expireAt: new Date(now + 86400000),
-    });
+  await db.doc("vibeIntroMembers/" + other).set({
+    bucket: "vibes",
+    until: now + 86400000,
+    expireAt: new Date(now + 86400000),
+  });
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({
@@ -120,8 +119,19 @@ const db = backend("firebase-admin/firestore").getFirestore(),
     await page.getByTestId("signin-password").fill(password);
     await page.getByTestId("signin-submit").click();
     await page.getByText("Meet through your city.", { exact: true }).waitFor();
-    await page.getByRole("radio", { name: "Pune", exact: true }).click();
-    await page.getByText("Join Pune circle", { exact: true }).click();
+    await page.getByTestId("explore-profile").first().waitFor();
+    await page.getByRole("button", { name: "More cities" }).click();
+    await page.getByRole("button", { name: "Join Nagpur circle" }).waitFor();
+    await page
+      .getByRole("button", { name: "Join Pune circle", exact: true })
+      .click();
+    await page.getByText(/No eligible circle profile yet/).waitFor();
+    await page.getByTestId("explore-profile").first().waitFor();
+    await shot("metro-profiles-390");
+    await page.getByTestId("explore-profile").first().click();
+    await page.getByRole("button", { name: "Pass", exact: true }).waitFor();
+    await page.goto("http://localhost:8082/app/?explore=metro");
+    await page.getByTestId("explore-profile").first().waitFor();
     await page.getByText("Leave Metro circle", { exact: true }).waitFor();
     assert.equal(
       (await db.doc("metroCircleMembers/" + viewer).get()).get("city"),
@@ -135,6 +145,10 @@ const db = backend("firebase-admin/firestore").getFirestore(),
     await page.getByTestId("route-events").click();
     await page.getByText(title, { exact: true }).first().click();
     await page.getByText("Join this room", { exact: true }).waitFor();
+    await room.update({ status: "closed" });
+    await page.goto("http://localhost:8082/app/?explore=events");
+    await page.getByText("No open event rooms yet").waitFor();
+    await page.getByTestId("explore-profile").first().waitFor();
     await page.goto("http://localhost:8082/app/?explore=vibes");
     await page.getByText("Turn on vibe matches", { exact: true }).click();
     await page.getByText("I'd like to connect", { exact: true }).waitFor();
@@ -144,6 +158,18 @@ const db = backend("firebase-admin/firestore").getFirestore(),
     );
     await page.getByText("I'd like to connect", { exact: true }).click();
     await page.getByText(/You chose to connect/).waitFor();
+    await db.doc("vibeIntroMembers/" + next).set({
+      bucket: "vibes",
+      until: now + 86400000,
+      expireAt: new Date(now + 86400000),
+    });
+    await page.getByText("Pass on this introduction", { exact: true }).click();
+    await page.getByText("I'd like to connect", { exact: true }).waitFor();
+    const slot = await db.doc("vibeIntroMembers/" + viewer).get();
+    assert.equal(slot.get("peer"), next);
+    assert(
+      !(await db.doc("swipes/" + viewer + "/outgoing/" + next).get()).exists,
+    );
     console.log(
       "Welcome shortcuts at 320/390/768/1440; Metro sign-in return, explicit join/leave, Discover → published room, automatic shared-vibe introduction and deliberate decision passed.",
     );

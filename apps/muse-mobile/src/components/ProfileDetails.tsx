@@ -33,6 +33,7 @@ export type ProfileViewData = {
   basics?: ProfileBasics;
   workSector?: WorkSector | null;
   photosPrivate?: boolean;
+  requiresNote?: boolean;
   isNew?: boolean;
   note?: string;
   lastActiveAt?: number;

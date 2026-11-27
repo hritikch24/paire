@@ -5,6 +5,7 @@ import { Pressable, Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../navigation/types';
 import type { DiscoverProfile } from '../types/models';
+import { fetchFeedPage } from '../services/discoveryService';
 import { callFunction } from '../services/firebase';
 import { Screen } from '../components/Screen';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -46,6 +47,96 @@ type Intro = {
   accepted?: boolean;
   matchId?: string;
 };
+function DiscoverPicks({ navigation }: Pick<Props, 'navigation'>) {
+  const uid = useAuthStore((s) => s.user?.uid);
+  const active = useWebScreenActive();
+  const query = useQuery({
+    queryKey: ['explore-discover-picks', uid],
+    staleTime: 0,
+    gcTime: 0,
+    enabled: Boolean(uid && active),
+    retry: false,
+    queryFn: async () => {
+      let page = await fetchFeedPage(null);
+      for (let i = 1; i < 3 && !page.profiles.length && page.cursor; i++)
+        page = await fetchFeedPage(page.cursor);
+      return page.profiles.slice(0, 3);
+    }
+  });
+  return (
+    <YStack gap="$2">
+      <Text accessibilityRole="header" fontWeight="700" fontSize="$6">
+        People from Discover
+      </Text>
+      {query.isFetching ? <Text accessibilityLiveRegion="polite">Finding profiles…</Text> : null}
+      {query.isError ? (
+        <SecondaryButton onPress={() => void query.refetch()}>
+          Retry loading profiles
+        </SecondaryButton>
+      ) : null}
+      {query.data?.length === 0 ? (
+        <Text color="$textMuted">You’re caught up with the people available in Discover.</Text>
+      ) : null}
+      {active &&
+        !query.isFetching &&
+        !query.isError &&
+        query.data?.map((profile) => (
+          <Pressable
+            key={profile.uid}
+            testID="explore-profile"
+            accessibilityRole="button"
+            accessibilityLabel={'View ' + profile.displayName + '’s profile'}
+            onPress={() => navigation.navigate('ProfileView', { source: 'explore', profile })}
+          >
+            <XStack
+              backgroundColor="$backgroundStrong"
+              borderWidth={1}
+              borderColor="$border"
+              borderRadius={18}
+              alignItems="center"
+              gap="$3"
+              padding="$3"
+            >
+              {profile.photoUrls[0] ? (
+                <Image
+                  accessible={false}
+                  source={{ uri: profile.photoUrls[0] }}
+                  style={{ width: 64, height: 76, borderRadius: 12 }}
+                />
+              ) : (
+                <YStack
+                  width={64}
+                  height={76}
+                  alignItems="center"
+                  justifyContent="center"
+                  borderRadius={12}
+                  backgroundColor="$primarySoft"
+                >
+                  <Text color="$primary" fontSize="$7">
+                    {profile.displayName.slice(0, 1)}
+                  </Text>
+                </YStack>
+              )}
+              <YStack flex={1} gap="$1">
+                <Text fontSize="$5" fontWeight="700">
+                  {profile.displayName}, {profile.age}
+                </Text>
+                {profile.bio ? (
+                  <Text color="$textMuted" numberOfLines={2}>
+                    {profile.bio}
+                  </Text>
+                ) : null}
+              </YStack>
+              <Icon name="chevron-forward" size={18} color="primary" />
+            </XStack>
+          </Pressable>
+        ))}
+      <SecondaryButton onPress={() => navigation.navigate('Tabs', { screen: 'Discover' })}>
+        Open full Discover
+      </SecondaryButton>
+    </YStack>
+  );
+}
 function Rooms({ navigation }: Pick<Props, 'navigation'>) {
   const [after, setAfter] = useState<Cursor>(null);
   const query = useQuery({
@@ -71,13 +162,11 @@ function Rooms({ navigation }: Pick<Props, 'navigation'>) {
           padding="$4"
           gap="$2"
         >
-          <Text fontWeight="700">No open rooms on this page</Text>
-          <Text color="$textMuted">
-            Published rooms appear here while discovery is open. A shared event link also opens its
-            listing directly.
-          </Text>
+          <Text fontWeight="700">{after ? 'No more open rooms' : 'No open event rooms yet'}</Text>
+          <Text color="$textMuted">Published events will appear here.</Text>
         </YStack>
       ) : null}
+      {query.data?.rooms.length === 0 && !after ? <DiscoverPicks navigation={navigation} /> : null}
       {query.data?.rooms.map((room) => (
         <Pressable
           key={room.id}
@@ -123,11 +212,14 @@ function Introductions({
   const uid = useAuthStore((s) => s.user?.uid),
     active = useWebScreenActive(),
     metro = mode === 'metro';
-  const [city, setCity] = useState('Delhi NCR'),
-    [busy, setBusy] = useState(false),
+  const [busy, setBusy] = useState(false),
     [message, setMessage] = useState('');
+  const profileCity = useAuthStore((s) => s.profile?.city);
+  const homeCity = cities.find((c) => c.toLowerCase() === profileCity?.trim().toLowerCase());
+  const [allCities, setAllCities] = useState(false);
+  const orderedCities = homeCity ? [homeCity, ...cities.filter((c) => c !== homeCity)] : cities;
   const key = ['discovery-intro', uid, mode];
-  const invoke = (action: string, ticket?: string) =>
+  const invoke = (action: string, ticket?: string, city?: string) =>
     callFunction<Intro>('discoveryIntroduction', { mode, action, city, ticket });
   const query = useQuery({
     queryKey: key,
@@ -143,13 +235,14 @@ function Introductions({
   const client = useQueryClient(),
     data = query.data,
     card = data?.profile;
-  async function act(action: string) {
+  async function act(action: string, city?: string) {
     setBusy(true);
     setMessage('');
     try {
       await client.cancelQueries({ queryKey: key });
-      let next = await invoke(action, data?.ticket);
-      if (action === 'join' && next.state === 'waiting') next = await invoke('check');
+      let next = await invoke(action, data?.ticket, city);
+      if ((action === 'join' || action === 'pass') && next.state === 'waiting')
+        next = await invoke('check');
       client.setQueryData(key, next);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Please try again.');
@@ -159,47 +252,54 @@ function Introductions({
   }
   return (
     <YStack gap="$3">
-      <Text color="$textMuted" lineHeight={23}>
-        {metro
-          ? 'Choose a city to meet other adults who opted into its Metro circle. Your station, train and route stay private.'
-          : 'Let a shared profile vibe start the introduction. Paire pairs two opted-in people who fit each other’s discovery preferences.'}
-      </Text>
-      {query.isLoading ? <Text>Checking your introductions…</Text> : null}
+      {query.isLoading ? <Text>Finding your profile cards…</Text> : null}
       {query.isError ? (
         <SecondaryButton onPress={() => void query.refetch()}>Retry introductions</SecondaryButton>
       ) : null}
       {data?.state === 'off' ? (
         <>
+          <Text color="$textMuted">
+            {metro
+              ? 'Tap a city to join its circle for 24 hours. Your station and route stay private.'
+              : 'Opt in for 24 hours to meet someone who shares a profile vibe. You both choose whether to connect.'}
+          </Text>
           {metro ? (
             <XStack flexWrap="wrap" gap="$2">
-              {cities.map((c) => (
+              {(allCities ? orderedCities : orderedCities.slice(0, 3)).map((c) => (
                 <Pressable
                   key={c}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: c === city }}
-                  onPress={() => setCity(c)}
+                  accessibilityRole="button"
+                  disabled={busy}
+                  accessibilityLabel={'Join ' + c + ' circle'}
+                  onPress={() => void act('join', c)}
                 >
                   <YStack
+                    paddingHorizontal="$3"
                     justifyContent="center"
                     minHeight={44}
                     borderRadius={16}
                     borderWidth={1}
-                    borderColor={c === city ? '$primary' : '$border'}
-                    backgroundColor={c === city ? '$primarySoft' : '$backgroundStrong'}
-                    paddingHorizontal="$3"
+                    borderColor="$border"
+                    backgroundColor="$backgroundStrong"
                   >
                     <Text>{c}</Text>
                   </YStack>
                 </Pressable>
               ))}
+              <Pressable
+                accessibilityRole="button"
+                aria-expanded={allCities}
+                onPress={() => setAllCities(!allCities)}
+                style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}
+              >
+                <Text color="$primary">{allCities ? 'Fewer cities' : 'More cities'}</Text>
+              </Pressable>
             </XStack>
-          ) : null}
-          <Text>
-            Join for 24 hours. You both decide whether to connect after seeing the introduction.
-          </Text>
-          <PrimaryButton disabled={busy} onPress={() => void act('join')}>
-            {metro ? 'Join ' + city + ' circle' : 'Turn on vibe matches'}
-          </PrimaryButton>
+          ) : (
+            <PrimaryButton disabled={busy} onPress={() => void act('join')}>
+              Turn on vibe matches
+            </PrimaryButton>
+          )}
           {!metro ? (
             <SecondaryButton onPress={() => navigation.navigate('EditProfile')}>
               Edit my profile vibes
@@ -211,15 +311,18 @@ function Introductions({
         <>
           <YStack padding="$4" borderRadius={22} backgroundColor="$primarySoft" gap="$2">
             <Text fontWeight="700">{metro ? data.city + ' circle' : 'Vibe matches are on'}</Text>
-            <Text>
-              No introduction ready yet. Both people need to opt in and meet each other’s
-              preferences.
+            <Text accessibilityLiveRegion="polite">
+              {metro ? 'No eligible circle profile yet.' : 'No shared-vibe introduction yet.'} New
+              introductions appear here automatically.
             </Text>
           </YStack>
-          <PrimaryButton disabled={busy} onPress={() => void act('check')}>
-            Check for an introduction
-          </PrimaryButton>
         </>
+      ) : null}
+      {busy && data?.state === 'off' ? (
+        <Text accessibilityLiveRegion="polite">Finding your introduction…</Text>
+      ) : null}
+      {data?.state === 'off' || data?.state === 'waiting' ? (
+        <DiscoverPicks navigation={navigation} />
       ) : null}
       {data?.state === 'intro' && card ? (
         <YStack
