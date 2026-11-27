@@ -18,3 +18,9 @@ The labelled entry points draw on Tinder’s themed Explore and Bumble’s Disco
 Local emulator screenshots show the [welcome screen](evidence/discovery/welcome-390.png), [Discover](evidence/discovery/discover-390.png) and [introduction](evidence/discovery/vibe-390.png). The profiles are QA fixtures.
 
 **Rollback order** Roll the web deployment back to c4f2a91 first. Keep account deletion cleanup, expiry policies and established match records. If introduction writes must stop immediately, restrict invocation of the new discoveryIntroduction function as part of the incident response.
+
+## Production evidence
+
+Product commit `51cd789` reached [Vercel production](https://vercel.com/team-rockstar/paire/FGMYSr79CxpSDta9JooVnpxzCwhF). Firebase CLI deployed the event directory index and TTL fields, discoveryIntroduction, listDiscoveryEvents, deleteAccount and onAuthUserDeleted. Both discovery callables returned HTTP 401 to signed-out requests. A read-only aggregate found zero open published rooms at verification time. The event directory composite index was READY.
+
+The full verification run passed 297 app unit tests, 426 function unit tests, 161 rules tests and 284 emulator integration tests. A subsequent targeted run included an additional passing expiry-between-decisions regression. Final web typecheck and production build passed. The signed-in browser path ran solely against emulators with fictional adults. The live public homepage and guest routes were tested in Chromium at 320 and 768 pixels, WebKit at 390 pixels and Firefox at 1440 pixels. Each preserved campaign attribution after changing routes. A Chromium touch session with an Android Instagram-style user agent, reduced motion, 4× CPU throttling and 120 ms network latency also passed. Physical devices and the actual Instagram webview were outside the tested coverage. [Live WebKit screenshot](evidence/discovery/live-webkit-390.png).
